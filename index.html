@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excelsis Advisors - Smart Audit Portal</title>
+    <meta name="description" content="A premium, highly responsive real-time audit scoring application for school campuses.">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar styling for a premium feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #242f4d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e2e8f0;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #313e63;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #cbd5e1;
+        }
+        
+        /* Smooth transitions for interactive elements */
+        .transition-all-custom {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Glassmorphism utility */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .dark .glass-card {
+            background: rgba(22, 29, 48, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(36, 47, 77, 0.6);
+        }
+
+        /* PRINT STYLES FOR THE PDF REPORT */
+        @media print {
+            body {
+                background: white !important;
+                color: #0f172a !important;
+            }
+            /* Hide the main UI app screens entirely */
+            body > :not(#print-report-container) {
+                display: none !important;
+            }
+            #print-report-container {
+                display: block !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 10px !important;
+            }
+            .print-page-break {
+                page-break-before: always;
+            }
+            .print-avoid-break {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-[#0B0F19] text-slate-800 dark:text-slate-200 min-h-screen font-sans antialiased transition-colors duration-300">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Hidden Print Report Container -->
+    <div id="print-report-container" class="hidden print:block bg-white text-slate-900 p-8 min-h-screen"></div>
+
+    <div class="flex flex-col lg:flex-row min-h-screen">
+        
+        <!-- ================= SIDEBAR / METADATA & CONTROL PANEL ================= -->
+        <aside class="w-full lg:w-96 bg-white dark:bg-[#111827] border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-[#1F2937] p-6 flex flex-col justify-between shrink-0 lg:h-screen lg:sticky lg:top-0">
+            <div class="flex flex-col gap-5 overflow-y-auto pr-1">
+                <!-- Branding Header -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-brand-500 text-white p-2.5 rounded-xl shadow-lg shadow-brand-500/20 flex items-center justify-center">
+                                <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h1 class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-brand-500 to-indigo-500 dark:from-brand-100 dark:to-indigo-300 bg-clip-text text-transparent">Excelsis Advisors</h1>
+                                <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Audit Portal v2.0</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Theme Toggle -->
+                        <button id="theme-toggle" onclick="toggleTheme()" class="p-2 rounded-lg bg-slate-100 dark:bg-[#1F2937] hover:bg-slate-200 dark:hover:bg-[#374151] text-slate-600 dark:text-slate-300 transition-colors" title="Toggle Theme">
+                            <svg id="theme-sun" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364-3.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707m2.828 9.9a5 5 0 117.072 0l-7.072 0z"/></svg>
+                            <svg id="theme-moon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Server Connection Status Badge -->
+                    <div id="server-status" class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-[#1F2937] dark:text-slate-500 px-2 py-1 rounded-lg w-fit transition-all-custom">
+                        <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                        <span>Checking server connection...</span>
+                    </div>
+                </div>
+
+                <!-- Total Score Summary Card -->
+                <div class="bg-gradient-to-br from-brand-600 to-indigo-700 text-white rounded-2xl p-5 shadow-xl shadow-brand-500/20 relative overflow-hidden">
+                    <div class="absolute -right-6 -bottom-6 w-32 h-32 rounded-full bg-white/5 pointer-events-none"></div>
+                    <div class="absolute -left-6 -top-6 w-24 h-24 rounded-full bg-white/5 pointer-events-none"></div>
+
+                    <div class="flex flex-col gap-1 relative z-10">
+                        <span class="text-xs font-semibold text-brand-100 uppercase tracking-wider">Risk-Adjusted Audit Score</span>
+                        <div class="flex items-baseline gap-2">
+                            <span id="score-display" class="text-4xl font-black tracking-tight">60.00%</span>
+                        </div>
+                        
+                        <div class="mt-4 flex items-center justify-between text-xs text-brand-100 bg-white/10 px-3 py-2 rounded-xl backdrop-blur-sm">
+                            <span class="font-medium">Total Reviewed:</span>
+                            <span id="reviewed-count" class="font-bold">0 / 56 Indicators</span>
+                        </div>
+                        
+                        <div class="w-full bg-white/20 h-1.5 rounded-full mt-3 overflow-hidden">
+                            <div id="overall-progress-bar" class="bg-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audit Meta Form Card -->
+                <div class="flex flex-col gap-4">
+                    <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Metadata Details</h2>
+                    
+                    <!-- School Campus Selector -->
+                    <div class="flex flex-col gap-1">
+                        <label for="meta-school" class="text-xs font-semibold text-slate-500 dark:text-slate-400">School Campus</label>
+                        <select id="meta-school" onchange="handleMetaChange('school', this.value)" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Auditor Input -->
+                    <div class="flex flex-col gap-1">
+                        <label for="meta-auditor" class="text-xs font-semibold text-slate-500 dark:text-slate-400">Auditor Name</label>
+                        <input type="text" id="meta-auditor" oninput="handleMetaChange('auditor', this.value)" placeholder="e.g., Rohit Bhat" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom">
+                    </div>
+
+                    <!-- Date Picker -->
+                    <div class="flex flex-col gap-1">
+                        <label for="meta-date" class="text-xs font-semibold text-slate-500 dark:text-slate-400">Audit Date</label>
+                        <input type="date" id="meta-date" onchange="handleMetaChange('date', this.value)" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom">
+                    </div>
+                </div>
+
+                <!-- Server API Settings Panel -->
+                <div class="flex flex-col gap-2 border-t border-slate-100 dark:border-[#1F2937] pt-4">
+                    <label for="meta-api-url" class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Server API URL</label>
+                    <div class="relative">
+                        <input type="text" id="meta-api-url" oninput="handleAPIUrlChange(this.value)" placeholder="http://127.0.0.1:8000" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl pl-3 pr-8 py-2 text-[11px] font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom">
+                        <span class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-slate-400">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Database Audits History Panel -->
+                <div class="flex flex-col gap-2 border-t border-slate-100 dark:border-[#1F2937] pt-4" id="database-history-panel">
+                    <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-between">
+                        <span>Database Audits</span>
+                        <button onclick="fetchHistory()" class="text-[10px] text-brand-500 hover:underline hover:text-brand-600 font-bold flex items-center gap-0.5 cursor-pointer">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17"/></svg>
+                            Refresh
+                        </button>
+                    </h2>
+                    <div id="saved-audits-list" class="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1 text-[11px] scrollbar-none">
+                        <span class="text-slate-400 dark:text-slate-600 italic">Checking for database connection...</span>
+                    </div>
+                </div>
+
+                <!-- Category Navigation List (Desktop) -->
+                <div class="hidden lg:flex flex-col gap-1.5 mt-2">
+                    <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Categories</h2>
+                    <nav id="category-sidebar-list" class="flex flex-col gap-1">
+                        <!-- Populated dynamically -->
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Footer Action Buttons -->
+            <div class="flex flex-col gap-2 mt-6 pt-4 border-t border-slate-200 dark:border-[#1F2937]">
+                <!-- Generate PDF Board Report -->
+                <button onclick="generatePDFReport()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-3 rounded-xl shadow-lg shadow-indigo-600/10 active:scale-[0.98] transition-all-custom flex items-center justify-center gap-2 cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span>Generate PDF Board Report</span>
+                </button>
+                
+                <!-- Download Spreadsheet CSV -->
+                <button onclick="exportToCSV()" class="w-full bg-slate-100 hover:bg-slate-200 dark:bg-[#1F2937] dark:hover:bg-[#2b3547] text-slate-700 dark:text-slate-300 font-semibold text-xs px-4 py-2.5 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    <span>Download CSV Spreadsheet</span>
+                </button>
+
+                <!-- Reset Button -->
+                <button onclick="confirmReset()" class="w-full bg-transparent hover:bg-red-500/10 hover:text-red-500 text-slate-400 dark:text-slate-500 font-semibold text-[10px] px-4 py-1.5 rounded-lg transition-all-custom flex items-center justify-center gap-1 cursor-pointer">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    <span>Reset All Fields</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ================= MAIN AUDIT PANEL ================= -->
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-[#0B0F19] lg:h-screen lg:overflow-hidden">
+            
+            <!-- Global Search and Category Bar for Mobile -->
+            <header class="bg-white dark:bg-[#111827] border-b border-slate-200 dark:border-[#1F2937] p-4 lg:p-6 flex flex-col gap-4 shrink-0">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 id="active-category-title" class="text-xl font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            Infrastructure
+                        </h2>
+                        <p id="active-category-subtitle" class="text-xs font-semibold text-slate-400 dark:text-slate-500 mt-0.5">
+                            Macro-Weight: 10% of Total Audit
+                        </p>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="relative w-full md:w-80">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </span>
+                        <input type="text" id="search-input" oninput="handleSearch(this.value)" placeholder="Search indicators..." class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl pl-10 pr-9 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom">
+                        <button id="search-clear-btn" onclick="clearSearch()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hidden">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Horizontal scrollable categories for mobile/tablets -->
+                <nav id="category-mobile-list" class="flex lg:hidden gap-2 overflow-x-auto pb-1 scrollbar-none">
+                    <!-- Populated dynamically -->
+                </nav>
+            </header>
+
+            <!-- Audit Cards Grid Area -->
+            <section class="flex-1 overflow-y-auto p-4 lg:p-6">
+                <!-- Cards Container -->
+                <div id="indicators-grid" class="flex flex-col gap-6 max-w-5xl mx-auto pb-8">
+                    <!-- Generated dynamically -->
+                </div>
+                
+                <!-- Empty state shown when searching returns no matches -->
+                <div id="search-empty-state" class="hidden flex-col items-center justify-center py-20 text-center gap-4">
+                    <div class="bg-slate-100 dark:bg-[#1F2937] text-slate-400 dark:text-slate-500 p-4 rounded-full">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-700 dark:text-slate-300">No Indicators Found</h3>
+                        <p class="text-sm text-slate-400 dark:text-slate-500 mt-1">Try refining your search keyword.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+        // --- 1. DATA CONFIGURATION (MATCHING config.py) ---
+        const SCHOOLS = [
+            "Children's Academy Bachani Nagar",
+            "Children's Academy Ashok Nagar",
+            "Children's Academy Thakur Complex",
+            "Children's Academy Thane",
+            "Aspee Nutan Academy"
+        ];
+
+        const CATEGORIES = {
+            "1. Infrastructure": {
+                "weight": 0.10,
+                "indicators": {
+                    "1.1 Classroom": 2, "1.2 Washroom": 2, "1.3 Drinking water facility": 3, "1.4 Laboratories": 2,
+                    "1.5 Ground Area": 2, "1.6 Art Room": 1, "1.7 Sports Room": 2, "1.8 Electric and Lift Room": 3,
+                    "1.9 Inventory Room": 1, "1.10 Pump Room": 3, "1.11 Server Room": 2, "1.12 Terrace": 1,
+                    "1.13 Printing Room": 1, "1.14 Library": 2, "1.15 Computer Room": 2, "1.16 Hall": 1,
+                    "1.17 Staff Room": 1, "1.18 Store Room": 1, "1.19 Activity Room": 1, "1.20 Sick Bay": 3,
+                    "1.21 Conference Room": 1, "1.22 Music Room": 1, "1.23 Peon Room": 1, "1.24 Reflection Room": 1,
+                    "1.25 Counselling Room": 2
+                }
+            },
+            "2. Learning Environment": {
+                "weight": 0.10,
+                "indicators": {"2.1 Ventilation": 2, "2.2 Lighting": 2, "2.3 Furniture": 2, "2.4 Noise": 1}
+            },
+            "3. Safety & Security": {
+                "weight": 0.15,
+                "indicators": {
+                    "3.1 Firefighting readiness": 3, "3.2 Visitor entry procedures": 2,
+                    "3.3 Hazardous materials": 3, "3.4 Hobby classes protocols": 1,
+                    "3.5 Documentation of records": 2, "3.6 School CCTV Surveillance": 3,
+                    "3.7 Bus Safety Protocols & ARD AMC": 3
+                }
+            },
+            "4. Health": {
+                "weight": 0.10,
+                "indicators": {"4.1 Health Check-up": 3, "4.2 Safe Water Provision": 3, "4.3 Documentation of Records": 1}
+            },
+            "5. Transport": {
+                "weight": 0.10,
+                "indicators": {"5.1 Bus Infrastructure": 2, "5.2 HR": 2, "5.3 Safety Protocols": 3}
+            },
+            "6. Canteen": {
+                "weight": 0.05,
+                "indicators": {"6.1 Canteen Infrastructure": 2, "6.2 Documentation of records": 1}
+            },
+            "7. Regulatory Compliance": {
+                "weight": 0.15,
+                "indicators": {"7.1 Teaching Staff": 3, "7.2 Non-Teaching Staff": 3, "7.3 Documentation of Records": 2, "7.4 HR": 2}
+            },
+            "8. Institutional Records": {
+                "weight": 0.05,
+                "indicators": {"8.1 Fees": 2, "8.2 Admissions/ LC": 2, "8.3 Inventory records": 1, "8.4 Documentation of records": 1}
+            },
+            "9. School Operations": {
+                "weight": 0.15,
+                "indicators": {"9.1 Examinations": 2, "9.2 Teaching Learning Process": 3, "9.3 Documentation of records": 3}
+            },
+            "10. Student & Staff Dev": {
+                "weight": 0.05,
+                "indicators": {
+                    "10.1 Events": 2, "10.2 Assembly": 1, "10.3 Achievements and Initiatives": 2,
+                    "10.4 Documentation of various committees": 1, "10.5 CARE Dept": 3
+                }
+            }
+        };
+
+        // --- 2. BACKEND API SETTINGS & CONNECTION ---
+        let API_BASE = localStorage.getItem("excelsis_api_url") || "http://127.0.0.1:8000";
+        let isServerOnline = false;
+
+        function handleAPIUrlChange(url) {
+            let cleanUrl = url.trim();
+            if (cleanUrl.endsWith("/")) {
+                cleanUrl = cleanUrl.slice(0, -1);
+            }
+            API_BASE = cleanUrl || "http://127.0.0.1:8000";
+            localStorage.setItem("excelsis_api_url", API_BASE);
+            checkServerConnection();
+        }
+
+        async function checkServerConnection() {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout
+                const res = await fetch(`${API_BASE}/`, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
+                if (res.ok) {
+                    isServerOnline = true;
+                    updateServerStatusUI(true);
+                    fetchHistory();
+                } else {
+                    isServerOnline = false;
+                    updateServerStatusUI(false);
+                }
+            } catch (e) {
+                isServerOnline = false;
+                updateServerStatusUI(false);
+            }
+        }
+
+        function updateServerStatusUI(online) {
+            const el = document.getElementById('server-status');
+            if (online) {
+                el.className = "flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 px-2 py-1 rounded-lg w-fit";
+                el.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>Server: Connected</span>`;
+            } else {
+                el.className = "flex items-center gap-1.5 text-[10px] font-bold text-rose-500 bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 px-2 py-1 rounded-lg w-fit";
+                el.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span><span>Offline Mode (Local Backup)</span>`;
+                
+                const historyList = document.getElementById('saved-audits-list');
+                historyList.innerHTML = `<span class="text-slate-400 dark:text-slate-600 italic">Database audits history unavailable offline</span>`;
+            }
+        }
+
+        // --- 3. APPLICATION STATE ---
+        let state = {
+            school: SCHOOLS[0],
+            auditor: "",
+            date: new Date().toISOString().split('T')[0],
+            activeCategory: Object.keys(CATEGORIES)[0],
+            searchQuery: "",
+            auditData: {}
+        };
+
+        const sessionPhotoUrls = {};
+        const STORAGE_KEY = "excelsis_audit_v2_state";
+
+        // --- 4. SYSTEM INITIALIZATION ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            initializeMetadataSelectors();
+            setupTheme();
+            renderCategoryNavigation();
+            renderActiveCategoryIndicators();
+            updateCalculations();
+            
+            // Initial server handshake
+            checkServerConnection();
+            
+            // Poll server connection state every 10 seconds
+            setInterval(checkServerConnection, 10000);
+        });
+
+        function initializeMetadataSelectors() {
+            const selectEl = document.getElementById('meta-school');
+            selectEl.innerHTML = SCHOOLS.map(s => `<option value="${s}">${s}</option>`).join('');
+            
+            selectEl.value = state.school;
+            document.getElementById('meta-auditor').value = state.auditor;
+            document.getElementById('meta-date').value = state.date;
+            document.getElementById('meta-api-url').value = API_BASE;
+        }
+
+        // --- 5. THEME CONTROLLER ---
+        function setupTheme() {
+            const isDark = localStorage.getItem('theme') === 'dark' || 
+                (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-sun').classList.remove('hidden');
+                document.getElementById('theme-moon').classList.add('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('theme-sun').classList.add('hidden');
+                document.getElementById('theme-moon').classList.remove('hidden');
+            }
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            
+            if (isDark) {
+                document.getElementById('theme-sun').classList.remove('hidden');
+                document.getElementById('theme-moon').classList.add('hidden');
+            } else {
+                document.getElementById('theme-sun').classList.add('hidden');
+                document.getElementById('theme-moon').classList.remove('hidden');
+            }
+        }
+
+        // --- 6. TOAST UTILITY ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `px-4 py-3 rounded-xl shadow-xl text-white font-semibold text-sm transition-all duration-300 transform translate-y-4 opacity-0 flex items-center gap-2 pointer-events-auto ${
+                type === 'success' ? 'bg-emerald-600' : type === 'info' ? 'bg-indigo-600' : 'bg-rose-600'
+            }`;
+            
+            const icon = type === 'success' 
+                ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
+                : `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`;
+                
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            }, 50);
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-4', 'opacity-0');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        // --- 7. STATE PERSISTENCE (LOCALSTORAGE & FASTAPI SYNCS) ---
+        function loadState() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    state = { ...state, ...parsed };
+                } catch(e) {
+                    console.error("Failed to parse local storage draft.");
+                }
+            }
+            
+            for (const [catName, catData] of Object.entries(CATEGORIES)) {
+                if (!state.auditData[catName]) {
+                    state.auditData[catName] = {};
+                }
+                for (const indName of Object.keys(catData.indicators)) {
+                    if (!state.auditData[catName][indName]) {
+                        state.auditData[catName][indName] = {
+                            score: 3,
+                            features: "",
+                            gaps: "",
+                            actions: "",
+                            photoName: "",
+                            reviewed: false
+                        };
+                    }
+                }
+            }
+        }
+
+        let dbSaveTimeout = null;
+        function saveState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            
+            // Debounce database calls to prevent write spam while typing notes
+            if (isServerOnline) {
+                clearTimeout(dbSaveTimeout);
+                dbSaveTimeout = setTimeout(syncStateToDatabase, 1500);
+            }
+        }
+
+        async function syncStateToDatabase() {
+            if (!isServerOnline) return;
+            const score = calculateScore();
+            try {
+                const res = await fetch(`${API_BASE}/api/save`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        school: state.school,
+                        auditor: state.auditor,
+                        date: state.date,
+                        score: score,
+                        audit_data: state.auditData
+                    })
+                });
+                if (res.ok) {
+                    fetchHistory();
+                }
+            } catch(e) {
+                console.error("Failed to auto-sync with database server:", e);
+            }
+        }
+
+        // Fetch list of saved audits from SQLite
+        async function fetchHistory() {
+            if (!isServerOnline) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/history`);
+                if (res.ok) {
+                    const history = await res.json();
+                    renderHistoryList(history);
+                }
+            } catch (e) {
+                console.error("Failed to retrieve audit history:", e);
+            }
+        }
+
+        // Retrieve specific audit from SQLite
+        async function loadAuditFromDatabase(school, date) {
+            if (!isServerOnline) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/load?school=${encodeURIComponent(school)}&date=${encodeURIComponent(date)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    state.school = school;
+                    state.date = date;
+                    state.auditor = data.auditor;
+                    state.auditData = data.audit_data;
+                    
+                    // Sync HTML elements
+                    document.getElementById('meta-school').value = school;
+                    document.getElementById('meta-auditor').value = data.auditor;
+                    document.getElementById('meta-date').value = date;
+                    
+                    // Revoke old session preview photos
+                    Object.keys(sessionPhotoUrls).forEach(cat => {
+                        Object.keys(sessionPhotoUrls[cat]).forEach(ind => {
+                            URL.revokeObjectURL(sessionPhotoUrls[cat][ind]);
+                        });
+                    });
+                    
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                    renderCategoryNavigation();
+                    renderActiveCategoryIndicators();
+                    updateCalculations();
+                    showToast(`Audit for ${school} (${date}) loaded successfully!`, 'info');
+                }
+            } catch(e) {
+                showToast("Error loading audit data from database.", "error");
+            }
+        }
+
+        // Delete audit record from SQLite
+        async function deleteAuditFromDatabase(school, date, event) {
+            if (event) event.stopPropagation(); // Avoid triggering card loading click
+            if (!confirm(`Are you sure you want to delete the audit record for ${school} on ${date} from the database?`)) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/delete?school=${encodeURIComponent(school)}&date=${encodeURIComponent(date)}`, {
+                    method: "DELETE"
+                });
+                if (res.ok) {
+                    fetchHistory();
+                    showToast(`Audit record deleted.`);
+                    
+                    // If the currently open audit was the deleted one, reset state to clear fields
+                    if (state.school === school && state.date === date) {
+                        state.auditor = "";
+                        state.auditData = {};
+                        loadState();
+                        initializeMetadataSelectors();
+                        renderCategoryNavigation();
+                        renderActiveCategoryIndicators();
+                        updateCalculations();
+                    }
+                }
+            } catch(e) {
+                showToast("Failed to delete record.", "error");
+            }
+        }
+
+        function confirmReset() {
+            if (confirm("Are you sure you want to reset all scores, notes, and metadata? This action cannot be undone.")) {
+                localStorage.removeItem(STORAGE_KEY);
+                state.auditor = "";
+                state.date = new Date().toISOString().split('T')[0];
+                state.school = SCHOOLS[0];
+                state.activeCategory = Object.keys(CATEGORIES)[0];
+                state.searchQuery = "";
+                state.auditData = {};
+                
+                Object.keys(sessionPhotoUrls).forEach(cat => {
+                    Object.keys(sessionPhotoUrls[cat]).forEach(ind => {
+                        URL.revokeObjectURL(sessionPhotoUrls[cat][ind]);
+                    });
+                });
+                
+                loadState();
+                initializeMetadataSelectors();
+                clearSearch();
+                renderCategoryNavigation();
+                renderActiveCategoryIndicators();
+                updateCalculations();
+                showToast("All fields cleared.");
+            }
+        }
+
+        // Section save checkpoint button trigger
+        async function saveDraftAction() {
+            saveState();
+            if (isServerOnline) {
+                const score = calculateScore();
+                try {
+                    const res = await fetch(`${API_BASE}/api/save`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            school: state.school,
+                            auditor: state.auditor,
+                            date: state.date,
+                            score: score,
+                            audit_data: state.auditData
+                        })
+                    });
+                    if (res.ok) {
+                        fetchHistory();
+                        showToast("Audit checkpoint written to server database!");
+                    } else {
+                        showToast("Local backup saved, server error.", "error");
+                    }
+                } catch(e) {
+                    showToast("Server offline. Local browser backup updated.", "error");
+                }
+            } else {
+                showToast("Saved to offline local browser database!");
+            }
+        }
+
+        // --- 8. EVENT HANDLERS ---
+        function handleMetaChange(field, val) {
+            state[field] = val;
+            saveState();
+        }
+
+        function handleCategorySelect(catName) {
+            state.activeCategory = catName;
+            state.searchQuery = "";
+            document.getElementById('search-input').value = "";
+            document.getElementById('search-clear-btn').classList.add('hidden');
+            
+            saveState();
+            renderCategoryNavigation();
+            renderActiveCategoryIndicators();
+            
+            document.getElementById('indicators-grid').parentElement.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function handleScoreChange(catName, indName, score) {
+            const item = state.auditData[catName][indName];
+            item.score = score;
+            item.reviewed = true;
+            
+            saveState();
+            
+            const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
+            const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
+            for (let s = 1; s <= 5; s++) {
+                const btn = document.getElementById(`btn-${catEscaped}-${indEscaped}-${s}`);
+                if (btn) {
+                    btn.className = `w-11 h-10 rounded-xl font-extrabold text-sm border flex items-center justify-center transition-all-custom cursor-pointer ${getScoreButtonClass(s, s === score)}`;
+                }
+            }
+            
+            updateLiveIndicatorsForCard(catName, indName);
+            updateCalculations();
+        }
+
+        function handleTextChange(catName, indName, field, value) {
+            const item = state.auditData[catName][indName];
+            item[field] = value;
+            
+            if (item.features !== "" || item.gaps !== "" || item.actions !== "" || item.score !== 3 || item.photoName !== "") {
+                item.reviewed = true;
+            }
+            
+            saveState();
+            updateCalculations();
+        }
+
+        function handlePhotoUpload(catName, indName, input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const item = state.auditData[catName][indName];
+                item.photoName = file.name;
+                item.reviewed = true;
+                
+                const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
+                const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
+                const objectUrl = URL.createObjectURL(file);
+                
+                if (!sessionPhotoUrls[catName]) sessionPhotoUrls[catName] = {};
+                sessionPhotoUrls[catName][indName] = objectUrl;
+                
+                saveState();
+                
+                const infoEl = document.getElementById(`photo-info-${catEscaped}-${indEscaped}`);
+                if (infoEl) {
+                    infoEl.innerHTML = `
+                        <span class="text-slate-500 dark:text-slate-400 italic font-medium">${file.name}</span>
+                        <button onclick="removePhoto('${catName}', '${indName}')" class="text-rose-500 hover:text-rose-700 font-bold p-1 cursor-pointer">✕</button>
+                    `;
+                }
+                
+                const previewContainer = document.getElementById(`photo-preview-${catEscaped}-${indEscaped}`);
+                const imgEl = document.getElementById(`img-preview-${catEscaped}-${indEscaped}`);
+                if (previewContainer && imgEl) {
+                    imgEl.src = objectUrl;
+                    previewContainer.classList.remove('hidden');
+                }
+                
+                updateLiveIndicatorsForCard(catName, indName);
+                updateCalculations();
+                showToast(`Mapped Photographic File: ${file.name}`);
+            }
+        }
+
+        function removePhoto(catName, indName) {
+            const item = state.auditData[catName][indName];
+            const oldName = item.photoName;
+            item.photoName = "";
+            
+            if (sessionPhotoUrls[catName] && sessionPhotoUrls[catName][indName]) {
+                URL.revokeObjectURL(sessionPhotoUrls[catName][indName]);
+                delete sessionPhotoUrls[catName][indName];
+            }
+            
+            saveState();
+            
+            const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
+            const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
+            
+            const infoEl = document.getElementById(`photo-info-${catEscaped}-${indEscaped}`);
+            if (infoEl) {
+                infoEl.innerHTML = `<span class="text-slate-400 dark:text-slate-600">No photo attached</span>`;
+            }
+            
+            const previewContainer = document.getElementById(`photo-preview-${catEscaped}-${indEscaped}`);
+            if (previewContainer) {
+                previewContainer.classList.add('hidden');
+            }
+            
+            updateLiveIndicatorsForCard(catName, indName);
+            updateCalculations();
+            showToast(`Removed linked photo: ${oldName}`, 'info');
+        }
+
+        function getPhotoPreviewSrc(catName, indName) {
+            if (sessionPhotoUrls[catName] && sessionPhotoUrls[catName][indName]) {
+                return sessionPhotoUrls[catName][indName];
+            }
+            return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="%2364748b"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>';
+        }
+
+        function handleSearch(query) {
+            state.searchQuery = query.trim().toLowerCase();
+            const clearBtn = document.getElementById('search-clear-btn');
+            
+            if (state.searchQuery) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+            
+            renderActiveCategoryIndicators();
+        }
+
+        function clearSearch() {
+            state.searchQuery = "";
+            document.getElementById('search-input').value = "";
+            document.getElementById('search-clear-btn').classList.add('hidden');
+            renderActiveCategoryIndicators();
+        }
+
+        // --- 9. RENDERING SYSTEM ---
+        function renderHistoryList(history) {
+            const listEl = document.getElementById('saved-audits-list');
+            if (!history || history.length === 0) {
+                listEl.innerHTML = `<span class="text-slate-400 dark:text-slate-600 italic">No saved audits in database</span>`;
+                return;
+            }
+            
+            listEl.innerHTML = history.map(item => {
+                const roundedScore = (item.score * 100).toFixed(1);
+                return `
+                    <div onclick="loadAuditFromDatabase('${item.school}', '${item.date}')" class="p-2.5 rounded-xl border border-slate-100 dark:border-[#1F2937] hover:border-brand-500/50 dark:hover:border-brand-500/50 hover:bg-slate-50 dark:hover:bg-[#1c273d]/50 cursor-pointer flex items-center justify-between gap-2 group transition-all-custom">
+                        <div class="flex flex-col gap-0.5 max-w-[70%]">
+                            <span class="font-bold text-slate-700 dark:text-slate-300 truncate">${item.school}</span>
+                            <span class="text-[9px] text-slate-400 dark:text-slate-500 font-medium">${item.date} | ${item.auditor || 'Unknown'}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-black text-brand-600 dark:text-brand-300 text-xs">${roundedScore}%</span>
+                            <button onclick="deleteAuditFromDatabase('${item.school}', '${item.date}', event)" class="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Audit">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderCategoryNavigation() {
+            const sidebar = document.getElementById('category-sidebar-list');
+            const mobilebar = document.getElementById('category-mobile-list');
+            
+            let sidebarHTML = '';
+            let mobileHTML = '';
+            
+            Object.entries(CATEGORIES).forEach(([catName, catData]) => {
+                const isActive = state.activeCategory === catName && !state.searchQuery;
+                
+                const indicatorsList = Object.keys(catData.indicators);
+                const total = indicatorsList.length;
+                const completed = indicatorsList.filter(ind => {
+                    const data = state.auditData[catName]?.[ind];
+                    return data && (data.reviewed || data.features || data.gaps || data.actions || data.score !== 3 || data.photoName);
+                }).length;
+                
+                const activeSidebarClass = "bg-brand-50 text-brand-600 dark:bg-brand-900/40 dark:text-brand-100 font-semibold border-l-4 border-brand-500";
+                const inactiveSidebarClass = "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#1F2937]/50 hover:text-slate-900 dark:hover:text-slate-100 border-l-4 border-transparent";
+                
+                sidebarHTML += `
+                    <button onclick="handleCategorySelect('${catName}')" class="w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between text-xs transition-all-custom cursor-pointer ${isActive ? activeSidebarClass : inactiveSidebarClass}">
+                        <div class="flex flex-col gap-0.5 max-w-[80%]">
+                            <span class="truncate font-medium">${catName}</span>
+                            <span class="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Weight: ${catData.weight * 100}%</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${completed === total ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}">
+                            ${completed}/${total}
+                        </span>
+                    </button>
+                `;
+                
+                const activeMobileClass = "bg-brand-500 text-white font-bold";
+                const inactiveMobileClass = "bg-slate-100 dark:bg-[#1F2937] text-slate-600 dark:text-slate-400 font-semibold";
+                
+                mobileHTML += `
+                    <button onclick="handleCategorySelect('${catName}')" class="shrink-0 px-3.5 py-1.5 rounded-full text-xs transition-all-custom cursor-pointer ${isActive ? activeMobileClass : inactiveMobileClass}">
+                        ${catName.split('. ')[1] || catName}
+                    </button>
+                `;
+            });
+            
+            sidebar.innerHTML = sidebarHTML;
+            mobilebar.innerHTML = mobileHTML;
+        }
+
+        function renderActiveCategoryIndicators() {
+            const grid = document.getElementById('indicators-grid');
+            const emptyState = document.getElementById('search-empty-state');
+            const headerTitle = document.getElementById('active-category-title');
+            const headerSubtitle = document.getElementById('active-category-subtitle');
+            
+            let html = '';
+            let matchCount = 0;
+            
+            if (state.searchQuery) {
+                headerTitle.innerHTML = `Search Results: "${state.searchQuery}"`;
+                headerSubtitle.innerHTML = "Filtering indicators across all categories";
+                
+                Object.entries(CATEGORIES).forEach(([catName, catData]) => {
+                    Object.entries(catData.indicators).forEach(([indName, multiplier]) => {
+                        if (indName.toLowerCase().includes(state.searchQuery) || catName.toLowerCase().includes(state.searchQuery)) {
+                            matchCount++;
+                            html += renderCardHTML(catName, indName, multiplier);
+                        }
+                    });
+                });
+            } else {
+                const catData = CATEGORIES[state.activeCategory];
+                headerTitle.innerHTML = state.activeCategory;
+                headerSubtitle.innerHTML = `Macro-Weight: ${catData.weight * 100}% of Total Audit`;
+                
+                Object.entries(catData.indicators).forEach(([indName, multiplier]) => {
+                    matchCount++;
+                    html += renderCardHTML(state.activeCategory, indName, multiplier);
+                });
+            }
+            
+            if (matchCount === 0) {
+                grid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                grid.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+                
+                const saveDraftBtnHTML = `
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 p-5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1F2937] rounded-2xl shadow-sm">
+                        <div class="text-xs text-slate-400 dark:text-slate-500 font-medium">All changes are auto-saved. Click to enforce manual draft checkpoint.</div>
+                        <button onclick="saveDraftAction()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-3 rounded-xl transition-all-custom cursor-pointer flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                            <span>Save Section Draft</span>
+                        </button>
+                    </div>
+                `;
+                
+                grid.innerHTML = html + saveDraftBtnHTML;
+            }
+        }
+
+        function renderCardHTML(catName, indName, multiplier) {
+            const data = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "", reviewed: false };
+            const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
+            const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
+
+            let badgeColorClass = "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300";
+            if (multiplier === 2) {
+                badgeColorClass = "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300";
+            } else if (multiplier === 3) {
+                badgeColorClass = "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300";
+            }
+            
+            const hasModifications = data.reviewed || data.features || data.gaps || data.actions || data.score !== 3 || data.photoName;
+            const borderAccentClass = hasModifications 
+                ? "border-emerald-500/30 dark:border-emerald-500/20" 
+                : "border-slate-200 dark:border-[#1F2937]";
+            
+            return `
+                <div class="glass-card rounded-2xl p-5 md:p-6 transition-all duration-300 border ${borderAccentClass} shadow-sm flex flex-col gap-4 relative overflow-hidden" id="card-${catEscaped}-${indEscaped}">
+                    
+                    <div class="absolute top-0 right-0 h-1.5 w-12 bg-emerald-500 rounded-bl-lg transition-transform duration-300 ${hasModifications ? 'scale-x-100' : 'scale-x-0'}"></div>
+                    
+                    <!-- Card Header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex flex-col gap-0.5">
+                            ${state.searchQuery ? `<span class="text-[10px] text-brand-500 dark:text-brand-300 font-bold uppercase tracking-wider">${catName}</span>` : ''}
+                            <h3 class="font-bold text-base text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                ${indName}
+                            </h3>
+                        </div>
+                        
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 ${badgeColorClass}">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                Risk Multiplier: ${multiplier}x
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Score Selection Pill Control -->
+                    <div class="flex flex-col gap-1.5">
+                        <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Compliance Rating (1 - 5)</span>
+                        <div class="flex flex-wrap items-center gap-2">
+                            ${[1,2,3,4,5].map(scoreNum => {
+                                const active = data.score === scoreNum;
+                                return `
+                                    <button id="btn-${catEscaped}-${indEscaped}-${scoreNum}" 
+                                            onclick="handleScoreChange('${catName}', '${indName}', ${scoreNum})" 
+                                            class="w-11 h-10 rounded-xl font-extrabold text-sm border flex items-center justify-center transition-all-custom cursor-pointer ${getScoreButtonClass(scoreNum, active)}">
+                                        ${scoreNum}
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                    
+                    <!-- Descriptive Input Areas -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1">
+                        <!-- Notable Features -->
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400">Notable Features</label>
+                            <textarea oninput="handleTextChange('${catName}', '${indName}', 'features', this.value)" 
+                                      placeholder="Highlights, achievements..." 
+                                      class="w-full bg-slate-50/50 dark:bg-[#172033] border border-slate-200 dark:border-[#2C3854] rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom h-20 resize-y">${data.features || ''}</textarea>
+                        </div>
+                        
+                        <!-- Gaps Identified -->
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                Gaps Identified <span class="text-amber-500">🚩</span>
+                            </label>
+                            <textarea oninput="handleTextChange('${catName}', '${indName}', 'gaps', this.value)" 
+                                      placeholder="Risks, gaps..." 
+                                      class="w-full bg-slate-50/50 dark:bg-[#172033] border border-slate-200 dark:border-[#2C3854] rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom h-20 resize-y">${data.gaps || ''}</textarea>
+                        </div>
+                        
+                        <!-- Actions Recommended -->
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                Actions Recommended <span class="text-emerald-500">🛠</span>
+                            </label>
+                            <textarea oninput="handleTextChange('${catName}', '${indName}', 'actions', this.value)" 
+                                      placeholder="Proposed corrective tasks..." 
+                                      class="w-full bg-slate-50/50 dark:bg-[#172033] border border-slate-200 dark:border-[#2C3854] rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom h-20 resize-y">${data.actions || ''}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Photographic Evidence Mapping Row -->
+                    <div class="flex flex-col gap-1.5 mt-2 border-t border-slate-100 dark:border-[#1F2937]/60 pt-3">
+                        <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400">Attached Photographic Evidence</label>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <label class="px-3 py-1.5 border border-slate-200 dark:border-[#2C3854] rounded-lg text-[10px] font-bold cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c273d] transition-all-custom flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                                <svg class="w-3.5 h-3.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                <span>Choose Image</span>
+                                <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload('${catName}', '${indName}', this)">
+                            </label>
+                            
+                            <div id="photo-info-${catEscaped}-${indEscaped}" class="flex items-center gap-1.5 text-[11px]">
+                                ${data.photoName 
+                                    ? `<span class="text-slate-500 dark:text-slate-400 italic font-medium">${data.photoName}</span>
+                                       <button onclick="removePhoto('${catName}', '${indName}')" class="text-rose-500 hover:text-rose-700 font-bold p-1 cursor-pointer">✕</button>`
+                                    : `<span class="text-slate-400 dark:text-slate-600">No photographic evidence attached</span>`
+                                }
+                            </div>
+                            
+                            <div id="photo-preview-${catEscaped}-${indEscaped}" class="w-10 h-10 rounded-lg border border-slate-200 dark:border-[#2C3854] overflow-hidden flex items-center justify-center bg-slate-100 dark:bg-[#172033] ${data.photoName ? '' : 'hidden'}">
+                                <img id="img-preview-${catEscaped}-${indEscaped}" src="${getPhotoPreviewSrc(catName, indName)}" class="object-cover w-full h-full">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getScoreButtonClass(score, active) {
+            const classes = {
+                1: active 
+                    ? "bg-rose-500 border-rose-500 text-white shadow-md shadow-rose-500/20" 
+                    : "border-rose-200 dark:border-rose-950/60 text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20",
+                2: active 
+                    ? "bg-orange-500 border-orange-500 text-white shadow-md shadow-orange-500/20" 
+                    : "border-orange-200 dark:border-orange-950/60 text-orange-500 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/20",
+                3: active 
+                    ? "bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-500/20" 
+                    : "border-amber-200 dark:border-amber-950/60 text-amber-500 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20",
+                4: active 
+                    ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20" 
+                    : "border-emerald-200 dark:border-emerald-950/60 text-emerald-500 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20",
+                5: active 
+                    ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/20" 
+                    : "border-indigo-200 dark:border-indigo-950/60 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
+            };
+            return classes[score];
+        }
+
+        function updateLiveIndicatorsForCard(catName, indName) {
+            const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
+            const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
+            
+            const card = document.getElementById(`card-${catEscaped}-${indEscaped}`);
+            if (card) {
+                card.className = card.className.replace(
+                    /border-(emerald-500\/30|slate-200|emerald-500\/20|#1F2937)/g, 
+                    'border-emerald-500/30'
+                );
+            }
+            renderCategoryNavigation();
+        }
+
+        // --- 10. CALCULATION ENGINE ---
+        function calculateScore() {
+            let finalWeightedScore = 0;
+            Object.entries(CATEGORIES).forEach(([catName, catData]) => {
+                let catEarned = 0;
+                let catMax = 0;
+                
+                Object.entries(catData.indicators).forEach(([indName, multiplier]) => {
+                    const item = state.auditData[catName]?.[indName] || { score: 3 };
+                    const score = Number(item.score) || 3;
+                    catEarned += (score * multiplier);
+                    catMax += (5 * multiplier);
+                });
+                
+                if (catMax > 0) {
+                    const catPercentage = catEarned / catMax;
+                    finalWeightedScore += (catPercentage * catData.weight);
+                }
+            });
+            return finalWeightedScore;
+        }
+
+        function updateCalculations() {
+            let finalWeightedScore = 0;
+            let totalIndicators = 0;
+            let reviewedIndicators = 0;
+            
+            Object.entries(CATEGORIES).forEach(([catName, catData]) => {
+                let catEarned = 0;
+                let catMax = 0;
+                
+                Object.entries(catData.indicators).forEach(([indName, multiplier]) => {
+                    const item = state.auditData[catName]?.[indName] || { score: 3, reviewed: false, features: "", gaps: "", actions: "", photoName: "" };
+                    
+                    totalIndicators++;
+                    if (item.reviewed || item.features || item.gaps || item.actions || item.score !== 3 || item.photoName) {
+                        reviewedIndicators++;
+                    }
+                    
+                    const score = Number(item.score) || 3;
+                    catEarned += (score * multiplier);
+                    catMax += (5 * multiplier);
+                });
+                
+                if (catMax > 0) {
+                    const catPercentage = catEarned / catMax;
+                    finalWeightedScore += (catPercentage * catData.weight);
+                }
+            });
+            
+            document.getElementById('score-display').innerHTML = `${(finalWeightedScore * 100).toFixed(2)}%`;
+            document.getElementById('reviewed-count').innerHTML = `${reviewedIndicators} / ${totalIndicators} Indicators`;
+            
+            const progressPercent = Math.round((reviewedIndicators / totalIndicators) * 100);
+            document.getElementById('overall-progress-bar').style.width = `${progressPercent}%`;
+        }
+
+        // --- 11. EXPORT ENGINE (SPREADSHEET CSV GENERATOR) ---
+        function exportToCSV() {
+            const headers = [
+                "School",
+                "Auditor",
+                "Date",
+                "Category",
+                "Indicator",
+                "Risk Multiplier",
+                "Score",
+                "Notable Features",
+                "Gaps Identified",
+                "Actions Recommended",
+                "Photo Attachment"
+            ];
+            
+            const escapeCSV = (val) => {
+                const str = String(val === undefined || val === null ? "" : val);
+                return `"${str.replace(/"/g, '""')}"`;
+            };
+            
+            let csvRows = [headers.map(h => escapeCSV(h)).join(",")];
+            
+            const school = state.school || "";
+            const auditor = state.auditor || "";
+            const date = state.date || "";
+            
+            Object.entries(CATEGORIES).forEach(([catName, catData]) => {
+                Object.entries(catData.indicators).forEach(([indName, multiplier]) => {
+                    const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "" };
+                    
+                    const row = [
+                        school,
+                        auditor,
+                        date,
+                        catName,
+                        indName,
+                        `${multiplier}x`,
+                        item.score,
+                        item.features || "",
+                        item.gaps || "",
+                        item.actions || "",
+                        item.photoName || ""
+                    ];
+                    
+                    csvRows.push(row.map(escapeCSV).join(","));
+                });
+            });
+            
+            const csvContent = "\ufeff" + csvRows.join("\r\n");
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            
+            const formattedSchool = school.replace(/\s+/g, '_');
+            const fileName = `Excelsis_Audit_${formattedSchool}_${date}.csv`;
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", fileName);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+        }
+
+        // --- 12. PDF BOARD REPORT GENERATOR ---
+        function generatePDFReport() {
+            const printContainer = document.getElementById('print-report-container');
+            
+            let finalWeightedScore = 0;
+            const categoryScores = [];
+            const auditGapsList = [];
+            
+            Object.entries(CATEGORIES).forEach(([catName, catData]) => {
+                let catEarned = 0;
+                let catMax = 0;
+                let catIssues = [];
+                
+                Object.entries(catData.indicators).forEach(([indName, multiplier]) => {
+                    const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "" };
+                    const score = Number(item.score) || 3;
+                    
+                    catEarned += (score * multiplier);
+                    catMax += (5 * multiplier);
+                    
+                    if (item.features || item.gaps || item.actions || item.photoName) {
+                        catIssues.push({
+                            indName,
+                            score,
+                            multiplier,
+                            features: item.features,
+                            gaps: item.gaps,
+                            actions: item.actions,
+                            photoName: item.photoName
+                        });
+                    }
+                });
+                
+                const catPercentage = catMax > 0 ? (catEarned / catMax) : 0;
+                finalWeightedScore += (catPercentage * catData.weight);
+                
+                categoryScores.push({
+                    catName,
+                    weight: catData.weight,
+                    percentage: catPercentage * 100,
+                    earned: catEarned,
+                    max: catMax
+                });
+                
+                if (catIssues.length > 0) {
+                    auditGapsList.push({
+                        catName,
+                        items: catIssues
+                    });
+                }
+            });
+            
+            const reportHTML = `
+                <div class="flex flex-col gap-6 max-w-4xl mx-auto font-sans text-slate-800">
+                    <div class="border-b-4 border-indigo-700 pb-4 flex justify-between items-end">
+                        <div>
+                            <h1 class="text-2xl font-black tracking-tight text-indigo-900 uppercase">Excelsis Advisors</h1>
+                            <p class="text-xs font-bold text-slate-500 tracking-wider">COMPLIANCE & SAFETY AUDIT REPORT</p>
+                        </div>
+                        <div class="text-right text-xs text-slate-500 font-semibold leading-relaxed">
+                            <p>Date: ${state.date}</p>
+                            <p>Auditor: ${state.auditor || "Not Specified"}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <span class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest block mb-0.5">Audited Campus</span>
+                            <h2 class="text-xl font-bold text-slate-900">${state.school}</h2>
+                        </div>
+                        <div class="text-left sm:text-right">
+                            <span class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest block mb-0.5">Final Risk-Adjusted Score</span>
+                            <h2 class="text-3xl font-black text-indigo-700">${(finalWeightedScore * 100).toFixed(2)}%</h2>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col gap-3">
+                        <h3 class="text-xs font-extrabold text-indigo-900 uppercase tracking-wider">1. Category Scores Summary</h3>
+                        <table class="w-full text-xs text-left border-collapse border border-slate-200">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700 uppercase">
+                                    <th class="p-2.5 border border-slate-200 font-bold">Category</th>
+                                    <th class="p-2.5 border border-slate-200 font-bold text-center">Macro-Weight</th>
+                                    <th class="p-2.5 border border-slate-200 font-bold text-center">Weighted Ratio</th>
+                                    <th class="p-2.5 border border-slate-200 font-bold text-right">Performance Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${categoryScores.map(cs => `
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="p-2.5 border border-slate-200 font-semibold">${cs.catName}</td>
+                                        <td class="p-2.5 border border-slate-200 text-center font-medium text-slate-500">${(cs.weight * 100).toFixed(0)}%</td>
+                                        <td class="p-2.5 border border-slate-200 text-center font-medium text-slate-500">${cs.earned} / ${cs.max}</td>
+                                        <td class="p-2.5 border border-slate-200 text-right font-bold text-indigo-700">${cs.percentage.toFixed(2)}%</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="flex flex-col gap-5 mt-4 print-page-break">
+                        <h3 class="text-xs font-extrabold text-indigo-900 uppercase tracking-wider border-b-2 border-indigo-200 pb-1.5">
+                            2. Gap Assessment & Recommended Remedial Actions
+                        </h3>
+                        
+                        ${auditGapsList.length === 0 
+                            ? `<p class="text-xs text-slate-500 italic py-4">No gaps, features, or actions documented in this audit session.</p>`
+                            : auditGapsList.map(dg => `
+                                <div class="flex flex-col gap-3 print-avoid-break mb-6">
+                                    <h4 class="text-xs font-bold text-indigo-700 uppercase tracking-wide bg-indigo-50/50 px-2 py-1.5 rounded">${dg.catName}</h4>
+                                    
+                                    <div class="flex flex-col gap-5 pl-3 border-l-2 border-slate-200">
+                                        ${dg.items.map(item => `
+                                            <div class="flex flex-col gap-2">
+                                                <div class="flex justify-between items-center bg-slate-50 p-2 rounded">
+                                                    <span class="text-xs font-bold text-slate-800">${item.indName}</span>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-[10px] font-semibold text-slate-500">Rating: ${item.score}/5</span>
+                                                        <span class="text-[10px] font-semibold text-slate-500">(Multiplier: ${item.multiplier}x)</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-[11px] pl-1 leading-relaxed">
+                                                    ${item.features ? `
+                                                        <div>
+                                                            <span class="font-extrabold text-[9px] uppercase text-indigo-700 tracking-wider block mb-0.5">Notable Features</span>
+                                                            <p class="text-slate-600">${item.features}</p>
+                                                        </div>
+                                                    ` : ''}
+                                                    ${item.gaps ? `
+                                                        <div>
+                                                            <span class="font-extrabold text-[9px] uppercase text-rose-600 tracking-wider block mb-0.5">Gaps Identified 🚩</span>
+                                                            <p class="text-slate-700 font-medium">${item.gaps}</p>
+                                                        </div>
+                                                    ` : ''}
+                                                    ${item.actions ? `
+                                                        <div>
+                                                            <span class="font-extrabold text-[9px] uppercase text-emerald-600 tracking-wider block mb-0.5">Actions Recommended 🛠</span>
+                                                            <p class="text-slate-700 font-medium">${item.actions}</p>
+                                                        </div>
+                                                    ` : ''}
+                                                </div>
+                                                
+                                                ${item.photoName ? `
+                                                    <div class="text-[9px] font-bold text-indigo-700/80 bg-indigo-50/30 px-2 py-1 rounded w-fit mt-1 flex items-center gap-1.5">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                        <span>Photographic Evidence Filename: <strong>${item.photoName}</strong></span>
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `).join('')
+                        }
+                    </div>
+                    
+                    <div class="mt-14 pt-8 border-t border-slate-200 grid grid-cols-2 gap-8 print-avoid-break">
+                        <div class="flex flex-col gap-12">
+                            <div class="border-b border-slate-300 w-48 h-8"></div>
+                            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Auditor Signature</p>
+                        </div>
+                        <div class="flex flex-col gap-12 text-right items-end">
+                            <div class="border-b border-slate-300 w-48 h-8"></div>
+                            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Campus Management Signature</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            printContainer.innerHTML = reportHTML;
+            window.print();
+        }
+    </script>
+</body>
+</html>
