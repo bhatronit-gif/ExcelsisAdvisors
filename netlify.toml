@@ -1,0 +1,6 @@
+# netlify.toml
+# This tells Netlify to serve the repository root as static files and skip Python build pipelines.
+
+[build]
+  publish = "."
+  command = ""
