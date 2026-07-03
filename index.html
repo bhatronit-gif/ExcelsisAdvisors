@@ -359,41 +359,43 @@
                     <span>Generate PDF Report</span>
                 </button>
                 
-                <div class="grid grid-cols-2 gap-2 mt-1">
-                    <!-- Download CSV -->
-                    <button onclick="exportToCSV()" class="bg-transparent border border-slate-200 dark:border-[#2C3854] text-slate-500 dark:text-slate-400 font-semibold text-xs px-2 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                        <span>CSV Export</span>
+                <!-- Compact Data & Backups Dropdown -->
+                <div class="relative w-full mt-1" id="data-dropdown-container">
+                    <button onclick="toggleDataDropdown()" class="w-full bg-slate-50 hover:bg-slate-100 dark:bg-[#1F2937]/40 dark:hover:bg-[#1F2937]/80 border border-slate-200 dark:border-[#2C3854] text-slate-600 dark:text-slate-300 font-bold text-xs px-3 py-2.5 rounded-xl transition-all-custom flex items-center justify-between cursor-pointer">
+                        <span class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-brand-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.58 4 8 4s8-1.79 8-4M4 7c0-2.21 3.58-4 8-4s8 1.79 8 4m0 5c0 2.21-3.58 4-8 4s-8-1.79-8-4"/></svg>
+                            <span>Data & Backups</span>
+                        </span>
+                        <svg class="w-3.5 h-3.5 transition-transform duration-300" id="data-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
                     </button>
-
-                    <!-- Export JSON Backup -->
-                    <button onclick="exportToJSON()" class="bg-transparent border border-slate-200 dark:border-[#2C3854] text-slate-500 dark:text-slate-400 font-semibold text-xs px-2 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer" title="Export local backup file">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                        <span>JSON Save</span>
-                    </button>
+                    
+                    <div id="data-dropdown-menu" class="absolute left-0 right-0 bottom-full mb-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#2C3854] rounded-xl shadow-xl z-50 flex flex-col gap-1 p-1.5 hidden">
+                        <button onclick="exportToCSV(); toggleDataDropdown();" class="w-full text-left font-bold text-xs px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1F2937] transition-all-custom flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <span>Export CSV Spreadsheet</span>
+                        </button>
+                        <button onclick="exportToJSON(); toggleDataDropdown();" class="w-full text-left font-bold text-xs px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1F2937] transition-all-custom flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                            <span>Save JSON Backup</span>
+                        </button>
+                        <hr class="border-slate-100 dark:border-[#1F2937]/80 my-0.5">
+                        <button onclick="document.getElementById('import-json-file').click(); toggleDataDropdown();" class="w-full text-left font-bold text-xs px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1F2937] transition-all-custom flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                            <span>Load JSON Backup</span>
+                        </button>
+                        <button onclick="document.getElementById('import-csv-file').click(); toggleDataDropdown();" class="w-full text-left font-bold text-xs px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1F2937] transition-all-custom flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                            <span>Load CSV Spreadsheet</span>
+                        </button>
+                        <hr class="border-slate-100 dark:border-[#1F2937]/80 my-0.5">
+                        <button onclick="downloadCSVTemplate(); toggleDataDropdown();" class="w-full text-left font-bold text-xs px-3 py-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#1F2937] transition-all-custom flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            <span>Download CSV Template</span>
+                        </button>
+                    </div>
                 </div>
-
-                <div class="grid grid-cols-2 gap-2 mt-1">
-                    <!-- Import JSON Backup -->
-                    <button onclick="document.getElementById('import-json-file').click()" class="bg-transparent border border-dashed border-slate-200 dark:border-[#2C3854] text-slate-400 dark:text-slate-500 hover:text-brand-500 hover:border-brand-500 font-bold text-xs px-2 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                        <span>JSON Load</span>
-                    </button>
-                    <input type="file" id="import-json-file" accept=".json" class="hidden" onchange="importFromJSON(this)">
-
-                    <!-- Import CSV Backup -->
-                    <button onclick="document.getElementById('import-csv-file').click()" class="bg-transparent border border-dashed border-slate-200 dark:border-[#2C3854] text-slate-400 dark:text-slate-500 hover:text-brand-500 hover:border-brand-500 font-bold text-xs px-2 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                        <span>CSV Load</span>
-                    </button>
-                    <input type="file" id="import-csv-file" accept=".csv" class="hidden" onchange="importFromCSV(this)">
-                </div>
-
-                <!-- Download Excel/CSV Template -->
-                <button onclick="downloadCSVTemplate()" class="w-full bg-transparent border border-slate-200 dark:border-[#2C3854] text-slate-500 dark:text-slate-400 font-semibold text-xs px-4 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer mt-1" title="Download empty CSV template for Excel editing">
-                    <svg class="w-3.5 h-3.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    <span>Download Excel CSV Template</span>
-                </button>
+                <input type="file" id="import-json-file" accept=".json" class="hidden" onchange="importFromJSON(this)">
+                <input type="file" id="import-csv-file" accept=".csv" class="hidden" onchange="importFromCSV(this)">
 
                 <div class="flex items-center justify-between border-t border-slate-100 dark:border-[#1F2937]/60 pt-2">
                     <button onclick="logOutAuditor()" class="text-rose-500 hover:text-rose-700 font-extrabold text-[10px] uppercase tracking-wider flex items-center gap-1 cursor-pointer">
@@ -1088,6 +1090,24 @@
             await fetchHistory();
             showToast(`File "${state.filename}" saved securely to local browser drafts!`);
         }
+
+        function toggleDataDropdown() {
+            const menu = document.getElementById('data-dropdown-menu');
+            const chevron = document.getElementById('data-chevron');
+            if (menu) menu.classList.toggle('hidden');
+            if (chevron) chevron.classList.toggle('rotate-180');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const container = document.getElementById('data-dropdown-container');
+            const menu = document.getElementById('data-dropdown-menu');
+            const chevron = document.getElementById('data-chevron');
+            if (container && !container.contains(event.target) && menu && !menu.classList.contains('hidden')) {
+                menu.classList.add('hidden');
+                chevron.classList.remove('rotate-180');
+            }
+        });
 
         // --- 10. EVENT HANDLERS ---
         function handleFilenameChange(val) {
