@@ -1598,6 +1598,10 @@
                 return;
             }
 
+            const scriptTailwind = '<' + 'script src="https://cdn.tailwindcss.com"><' + '/script>';
+            const scriptConfigOpen = '<' + 'script>';
+            const scriptConfigClose = '<' + '/script>';
+
             const reportHTML = `
                 <!DOCTYPE html>
                 <html lang="en">
@@ -1607,8 +1611,8 @@
                     <!-- Google Fonts: Inter -->
                     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
                     <!-- Tailwind CSS CDN -->
-                    <script src="https://cdn.tailwindcss.com"></script>
-                    <script>
+                    ${scriptTailwind}
+                    ${scriptConfigOpen}
                         tailwind.config = {
                             theme: {
                                 extend: {
@@ -1631,7 +1635,7 @@
                                 }
                             }
                         }
-                    </script>
+                    ${scriptConfigClose}
                     <style>
                         @media print {
                             body {
@@ -1780,13 +1784,13 @@
                         </div>
                     </div>
 
-                    <script>
+                    ${scriptConfigOpen}
                         window.onload = function() {
                             setTimeout(function() {
                                 window.print();
                             }, 500);
                         };
-                    </script>
+                    ${scriptConfigClose}
                 </body>
                 </html>
             `;
