@@ -50,7 +50,7 @@
             background: transparent;
         }
         .dark ::-webkit-scrollbar-thumb {
-            background: #242f4d;
+            background: #1e293b;
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb {
@@ -58,7 +58,7 @@
             border-radius: 4px;
         }
         .dark ::-webkit-scrollbar-thumb:hover {
-            background: #313e63;
+            background: #334155;
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #cbd5e1;
@@ -66,25 +66,112 @@
         
         /* Smooth transitions for interactive elements */
         .transition-all-custom {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Radial background ambient glows */
+        .ambient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+            background-color: #f8fafc; /* Slate 50 default */
+            transition: background-color 0.5s ease;
+        }
+        .dark .ambient-bg {
+            background-color: #080c14; /* Deep dark blue-black background */
+        }
+        .ambient-glow-1 {
+            position: absolute;
+            top: -20%;
+            left: -20%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(circle, rgba(200, 55, 40, 0.04) 0%, rgba(200, 55, 40, 0) 70%);
+            border-radius: 50%;
+            filter: blur(100px);
+            animation: floatGlow1 20s infinite alternate ease-in-out;
+        }
+        .dark .ambient-glow-1 {
+            background: radial-gradient(circle, rgba(200, 55, 40, 0.1) 0%, rgba(200, 55, 40, 0) 70%);
+        }
+        .ambient-glow-2 {
+            position: absolute;
+            bottom: -20%;
+            right: -20%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(circle, rgba(160, 205, 240, 0.06) 0%, rgba(160, 205, 240, 0) 70%);
+            border-radius: 50%;
+            filter: blur(100px);
+            animation: floatGlow2 25s infinite alternate ease-in-out;
+        }
+        .dark .ambient-glow-2 {
+            background: radial-gradient(circle, rgba(120, 150, 200, 0.12) 0%, rgba(120, 150, 200, 0) 70%);
+        }
+
+        @keyframes floatGlow1 {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(8%, 8%) scale(1.15); }
+        }
+        @keyframes floatGlow2 {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(-8%, -8%) scale(1.2); }
         }
 
         /* Glassmorphism utility */
         .glass-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.03);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .dark .glass-card {
-            background: rgba(22, 29, 48, 0.8);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(36, 47, 77, 0.6);
+            background: rgba(17, 24, 39, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 25px -2px rgba(0, 0, 0, 0.25);
         }
 
+        /* Audit Indicator Card interactive states */
+        .audit-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .audit-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(200, 55, 40, 0.25) !important;
+            box-shadow: 0 12px 30px -4px rgba(200, 55, 40, 0.05) !important;
+        }
+        .dark .audit-card:hover {
+            border-color: rgba(200, 55, 40, 0.3) !important;
+            box-shadow: 0 12px 35px -4px rgba(0, 0, 0, 0.4) !important;
+        }
 
+        /* If the card is modified, give it an emerald glow on hover */
+        .audit-card-modified:hover {
+            border-color: rgba(16, 185, 129, 0.35) !important;
+            box-shadow: 0 12px 30px -4px rgba(16, 185, 129, 0.06) !important;
+        }
+        .dark .audit-card-modified:hover {
+            border-color: rgba(16, 185, 129, 0.4) !important;
+            box-shadow: 0 12px 35px -4px rgba(0, 0, 0, 0.4) !important;
+        }
     </style>
 </head>
-<body class="bg-slate-50 dark:bg-[#0B0F19] text-slate-800 dark:text-slate-200 min-h-screen font-sans antialiased transition-colors duration-300">
+<body class="text-slate-800 dark:text-slate-200 min-h-screen font-sans antialiased transition-colors duration-300 bg-transparent">
+
+    <!-- Radial Background Ambient Glows -->
+    <div class="ambient-bg">
+        <div class="ambient-glow-1"></div>
+        <div class="ambient-glow-2"></div>
+    </div>
 
     <!-- Login Authentication Overlay -->
     <div id="login-overlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-955/85 backdrop-blur-md transition-opacity duration-300">
@@ -159,20 +246,30 @@
                     <div class="absolute -right-6 -bottom-6 w-32 h-32 rounded-full bg-white/5 pointer-events-none"></div>
                     <div class="absolute -left-6 -top-6 w-24 h-24 rounded-full bg-white/5 pointer-events-none"></div>
 
-                    <div class="flex flex-col gap-1 relative z-10">
-                        <span class="text-xs font-semibold text-brand-100 uppercase tracking-wider">Risk-Adjusted Audit Score</span>
-                        <div class="flex items-baseline gap-2">
-                            <span id="score-display" class="text-4xl font-black tracking-tight">60.00%</span>
+                    <div class="flex items-center justify-between gap-4 relative z-10">
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[10px] font-bold text-brand-100 uppercase tracking-wider">Risk-Adjusted Score</span>
+                            <span id="score-display" class="text-3xl font-black tracking-tight">60.00%</span>
+                            
+                            <span class="text-[9px] font-bold text-brand-100 bg-white/10 px-2.5 py-1 rounded-lg backdrop-blur-sm w-fit mt-1.5" id="reviewed-count">
+                                0 / 56 Indicators
+                            </span>
                         </div>
-                        
-                        <div class="mt-4 flex items-center justify-between text-xs text-brand-100 bg-white/10 px-3 py-2 rounded-xl backdrop-blur-sm">
-                            <span class="font-medium">Total Reviewed:</span>
-                            <span id="reviewed-count" class="font-bold">0 / 56 Indicators</span>
+
+                        <!-- Animated SVG Score Progress Ring -->
+                        <div class="relative w-16 h-16 shrink-0 bg-white/10 rounded-full p-2 backdrop-blur-sm border border-white/15">
+                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                                <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="3" />
+                                <circle id="sidebar-score-ring" cx="18" cy="18" r="15.915" fill="none" stroke="#34D399" stroke-width="3" stroke-dasharray="60, 100" stroke-linecap="round" class="transition-all duration-700 ease-out" />
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <span class="text-[8px] font-bold text-white uppercase tracking-wider" id="sidebar-score-rating">NeedImp</span>
+                            </div>
                         </div>
-                        
-                        <div class="w-full bg-white/20 h-1.5 rounded-full mt-3 overflow-hidden">
-                            <div id="overall-progress-bar" class="bg-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-                        </div>
+                    </div>
+                    
+                    <div class="w-full bg-white/20 h-1.5 rounded-full mt-4 overflow-hidden relative z-10">
+                        <div id="overall-progress-bar" class="bg-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
                     </div>
                 </div>
 
@@ -365,8 +462,69 @@
         </main>
     </div>
 
+    <!-- PDF Report Settings Modal Overlay -->
+    <div id="pdf-modal-overlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-955/85 backdrop-blur-md transition-opacity duration-300 hidden">
+        <div class="glass-card rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl flex flex-col gap-6 border border-slate-200/10 text-slate-800 dark:text-slate-200">
+            <div class="flex flex-col gap-2">
+                <h2 class="font-extrabold text-xl tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <svg class="w-6 h-6 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span>Report Settings</span>
+                </h2>
+                <p class="text-xs text-slate-400 dark:text-slate-500">Configure layout and options for your board report.</p>
+            </div>
+
+            <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-1">
+                    <label for="pdf-report-type" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Report Type</label>
+                    <select id="pdf-report-type" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom text-slate-800 dark:text-slate-200">
+                        <option value="detailed">Detailed Report (Complete audit details)</option>
+                        <option value="summary">Executive Summary (Summary & critical gaps only)</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label for="pdf-confidentiality" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Confidentiality Stamp</label>
+                    <select id="pdf-confidentiality" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom text-slate-800 dark:text-slate-200">
+                        <option value="STRICTLY CONFIDENTIAL">Strictly Confidential</option>
+                        <option value="INTERNAL USE ONLY">Internal Use Only</option>
+                        <option value="CONFIDENTIAL">Confidential</option>
+                        <option value="NONE">None</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center justify-between p-1 border-b border-slate-100 dark:border-[#1F2937] pb-3">
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Include Photographic Evidence</span>
+                        <span class="text-[9px] text-slate-400 dark:text-slate-500">Render Base64 images directly inside the report.</span>
+                    </div>
+                    <input type="checkbox" id="pdf-include-photos" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer w-4 h-4" checked>
+                </div>
+
+                <div class="flex items-center justify-between p-1">
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Include Page Headers & Stamp</span>
+                        <span class="text-[9px] text-slate-400 dark:text-slate-500">Include Auditor, Date, and File ID metadata.</span>
+                    </div>
+                    <input type="checkbox" id="pdf-include-headers" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer w-4 h-4" checked>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-2">
+                <button onclick="closePDFModal()" class="w-1/2 bg-slate-100 dark:bg-[#1F2937]/50 dark:hover:bg-[#1F2937] text-slate-700 dark:text-slate-300 font-bold text-xs px-3 py-3 rounded-xl transition-all-custom cursor-pointer text-center">
+                    Cancel
+                </button>
+                <button onclick="submitPDFReport()" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3 py-3 rounded-xl shadow-lg shadow-indigo-600/10 active:scale-[0.98] transition-all-custom cursor-pointer text-center">
+                    Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
+        // Inline base64 converted asset for Excelsis Advisors logo (logo.webp)
+        const LOGO_BASE64 = "data:image/webp;base64,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";
+
         // --- 1. DATA CONFIGURATION ---
         const SCHOOLS = [
             "Children's Academy Bachani Nagar",
@@ -453,14 +611,17 @@
             activeCategory: Object.keys(CATEGORIES)[0],
             searchQuery: "",
             loggedInUser: null,
-            auditData: {}
+            auditData: {},
+            useLocalStorageFallback: false
         };
 
         const STORAGE_KEY = "excelsis_audit_v2_state";
 
         // --- 4. SYSTEM INITIALIZATION ---
-        window.addEventListener('DOMContentLoaded', () => {
-            loadState();
+        window.addEventListener('DOMContentLoaded', async () => {
+            await initIndexedDB();
+            await migrateLocalStorageToIndexedDB();
+            await loadState();
             initializeMetadataSelectors();
             setupTheme();
             renderCategoryNavigation();
@@ -468,7 +629,7 @@
             updateCalculations();
             
             // Render Auth Screen Overlay if not logged in
-            checkAuthentication();
+            await checkAuthentication();
         });
 
         function initializeMetadataSelectors() {
@@ -485,14 +646,14 @@
         }
 
         // --- 5. AUTHENTICATION HANDLERS ---
-        function checkAuthentication() {
+        async function checkAuthentication() {
             const user = localStorage.getItem("excelsis_logged_in_user");
             if (user && AUDITOR_LOGINS[user]) {
                 state.loggedInUser = user;
                 state.auditor = user;
                 document.getElementById('login-overlay').classList.add('hidden');
                 document.getElementById('active-auditor-label').innerHTML = user;
-                fetchHistory(); // Fetch local drafts filtered by this user
+                await fetchHistory(); // Fetch local drafts filtered by this user
             } else {
                 showLoginOverlay();
             }
@@ -506,7 +667,7 @@
             document.getElementById('login-pass').value = "";
         }
 
-        function handleLoginSubmit() {
+        async function handleLoginSubmit() {
             const userSelect = document.getElementById('login-user');
             const passInput = document.getElementById('login-pass');
             
@@ -521,8 +682,8 @@
                 document.getElementById('login-overlay').classList.add('hidden');
                 document.getElementById('active-auditor-label').innerHTML = selectedUser;
                 
-                saveState();
-                fetchHistory(); // Reload history for this user
+                await saveState();
+                await fetchHistory(); // Reload history for this user
                 showToast(`Welcome back, ${selectedUser}!`);
             } else {
                 showToast("Invalid credentials. Please try again.", "error");
@@ -593,21 +754,161 @@
             }, 3000);
         }
 
-        // --- 8. CLIENT-SIDE LOCAL STORAGE SYSTEM (NO SERVER) ---
-        function getLocalDraftsDB() {
-            const db = localStorage.getItem("excelsis_local_db_drafts");
-            if (!db) return {};
-            try {
-                return JSON.parse(db);
-            } catch(e) {
-                return {};
+        // --- 8. CLIENT-SIDE DATABASE SYSTEM (INDEXEDDB WITH LOCALSTORAGE FALLBACK) ---
+        const DB_NAME = "ExcelsisAuditDB";
+        const DB_VERSION = 1;
+        let dbInstance = null;
+
+        function initIndexedDB() {
+            return new Promise((resolve) => {
+                if (!window.indexedDB) {
+                    console.warn("IndexedDB not supported. Falling back to localStorage.");
+                    state.useLocalStorageFallback = true;
+                    resolve(null);
+                    return;
+                }
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains("active_state")) {
+                        db.createObjectStore("active_state");
+                    }
+                    if (!db.objectStoreNames.contains("drafts")) {
+                        db.createObjectStore("drafts");
+                    }
+                };
+                request.onsuccess = (e) => {
+                    dbInstance = e.target.result;
+                    resolve(dbInstance);
+                };
+                request.onerror = (e) => {
+                    console.error("IndexedDB blocked or failed to initialize:", e.target.error);
+                    state.useLocalStorageFallback = true;
+                    resolve(null);
+                };
+            });
+        }
+
+        function dbGet(storeName, key) {
+            if (state.useLocalStorageFallback) {
+                const item = localStorage.getItem(storeName === "active_state" ? key : `excelsis_draft_${key}`);
+                return Promise.resolve(item ? JSON.parse(item) : null);
+            }
+            return new Promise((resolve, reject) => {
+                if (!dbInstance) return resolve(null);
+                const transaction = dbInstance.transaction(storeName, "readonly");
+                const store = transaction.objectStore(storeName);
+                const request = store.get(key);
+                request.onsuccess = () => resolve(request.result || null);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        function dbSet(storeName, key, value) {
+            if (state.useLocalStorageFallback) {
+                localStorage.setItem(storeName === "active_state" ? key : `excelsis_draft_${key}`, JSON.stringify(value));
+                return Promise.resolve();
+            }
+            return new Promise((resolve, reject) => {
+                if (!dbInstance) return resolve();
+                const transaction = dbInstance.transaction(storeName, "readwrite");
+                const store = transaction.objectStore(storeName);
+                const request = store.put(value, key);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        function dbDelete(storeName, key) {
+            if (state.useLocalStorageFallback) {
+                localStorage.removeItem(storeName === "active_state" ? key : `excelsis_draft_${key}`);
+                return Promise.resolve();
+            }
+            return new Promise((resolve, reject) => {
+                if (!dbInstance) return resolve();
+                const transaction = dbInstance.transaction(storeName, "readwrite");
+                const store = transaction.objectStore(storeName);
+                const request = store.delete(key);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        function dbGetAll(storeName) {
+            if (state.useLocalStorageFallback) {
+                if (storeName === "active_state") {
+                    const item = localStorage.getItem(STORAGE_KEY);
+                    return Promise.resolve(item ? [JSON.parse(item)] : []);
+                } else {
+                    const drafts = [];
+                    const oldDbStr = localStorage.getItem("excelsis_local_db_drafts");
+                    if (oldDbStr) {
+                        try {
+                            const oldDb = JSON.parse(oldDbStr);
+                            Object.values(oldDb).forEach(val => drafts.push(val));
+                        } catch(e) {}
+                    }
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key.startsWith("excelsis_draft_")) {
+                            try {
+                                drafts.push(JSON.parse(localStorage.getItem(key)));
+                            } catch(e) {}
+                        }
+                    }
+                    return Promise.resolve(drafts);
+                }
+            }
+            return new Promise((resolve, reject) => {
+                if (!dbInstance) return resolve([]);
+                const transaction = dbInstance.transaction(storeName, "readonly");
+                const store = transaction.objectStore(storeName);
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Automatic one-time migration from localStorage to IndexedDB
+        async function migrateLocalStorageToIndexedDB() {
+            if (state.useLocalStorageFallback) return;
+
+            // 1. Migrate drafts
+            const oldDbStr = localStorage.getItem("excelsis_local_db_drafts");
+            if (oldDbStr) {
+                try {
+                    const oldDb = JSON.parse(oldDbStr);
+                    const keys = Object.keys(oldDb);
+                    if (keys.length > 0) {
+                        showToast(`Migrating ${keys.length} drafts from localStorage to IndexedDB...`, "info");
+                        for (const key of keys) {
+                            const draft = oldDb[key];
+                            await dbSet("drafts", key, draft);
+                        }
+                        localStorage.removeItem("excelsis_local_db_drafts");
+                        showToast(`Successfully migrated ${keys.length} drafts!`);
+                    }
+                } catch(e) {
+                    console.error("Migration of drafts failed:", e);
+                }
+            }
+
+            // 2. Migrate current active state
+            const activeStateStr = localStorage.getItem(STORAGE_KEY);
+            if (activeStateStr) {
+                try {
+                    const activeState = JSON.parse(activeStateStr);
+                    await dbSet("active_state", "state", activeState);
+                    localStorage.removeItem(STORAGE_KEY);
+                } catch(e) {
+                    console.error("Migration of active state failed:", e);
+                }
             }
         }
 
-        function saveLocalDraftToDB(filename, auditor, data) {
-            const db = getLocalDraftsDB();
+        async function saveLocalDraftToDB(filename, auditor, data) {
             const key = `${filename}|${auditor}`;
-            db[key] = {
+            const draft = {
                 filename: filename,
                 school: data.school,
                 auditor: auditor,
@@ -616,25 +917,22 @@
                 audit_data: data.auditData,
                 last_updated: new Date().toISOString()
             };
-            localStorage.setItem("excelsis_local_db_drafts", JSON.stringify(db));
+            await dbSet("drafts", key, draft);
         }
 
-        function deleteLocalDraftFromDB(filename, auditor) {
-            const db = getLocalDraftsDB();
+        async function deleteLocalDraftFromDB(filename, auditor) {
             const key = `${filename}|${auditor}`;
-            delete db[key];
-            localStorage.setItem("excelsis_local_db_drafts", JSON.stringify(db));
+            await dbDelete("drafts", key);
         }
 
         // --- 9. STATE MANAGEMENT (LOAD / SAVE / FILES) ---
-        function loadState() {
-            const stored = localStorage.getItem(STORAGE_KEY);
+        async function loadState() {
+            const stored = await dbGet("active_state", "state");
             if (stored) {
                 try {
-                    const parsed = JSON.parse(stored);
-                    state = { ...state, ...parsed };
+                    state = { ...state, ...stored };
                 } catch(e) {
-                    console.error("Failed to parse local storage draft.");
+                    console.error("Failed to load active state.");
                 }
             }
             
@@ -658,16 +956,16 @@
             }
         }
 
-        function saveState() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        async function saveState() {
+            await dbSet("active_state", "state", state);
         }
 
         // Fetch drafts filtering by auditor (or show all for Superadmin)
-        function fetchHistory() {
+        async function fetchHistory() {
             if (!state.loggedInUser) return;
-            const db = getLocalDraftsDB();
+            const drafts = await dbGetAll("drafts");
             
-            const history = Object.values(db).filter(item => {
+            const history = drafts.filter(item => {
                 if (state.loggedInUser === "Superadmin") return true; // Superadmin sees all
                 return item.auditor === state.loggedInUser; // Regular auditor isolation
             });
@@ -678,18 +976,17 @@
         }
 
         // Load specific audit draft from local storage DB
-        function loadAuditFromDatabase(filename) {
-            loadAuditFromDatabaseForAuditor(filename, state.loggedInUser);
+        async function loadAuditFromDatabase(filename) {
+            await loadAuditFromDatabaseForAuditor(filename, state.loggedInUser);
         }
 
-        function loadAuditFromDatabaseForSuperadmin(filename, auditor) {
-            loadAuditFromDatabaseForAuditor(filename, auditor);
+        async function loadAuditFromDatabaseForSuperadmin(filename, auditor) {
+            await loadAuditFromDatabaseForAuditor(filename, auditor);
         }
 
-        function loadAuditFromDatabaseForAuditor(filename, auditor) {
-            const db = getLocalDraftsDB();
+        async function loadAuditFromDatabaseForAuditor(filename, auditor) {
             const key = `${filename}|${auditor}`;
-            const data = db[key];
+            const data = await dbGet("drafts", key);
             
             if (!data) {
                 showToast("Draft file not found in browser database.", "error");
@@ -708,7 +1005,7 @@
             document.getElementById('meta-date').value = data.date;
             document.getElementById('active-auditor-label').innerHTML = auditor;
             
-            saveState();
+            await saveState();
             renderCategoryNavigation();
             renderActiveCategoryIndicators();
             updateCalculations();
@@ -716,29 +1013,29 @@
         }
 
         // Delete audit record from local storage DB
-        function deleteAuditFromDatabase(filename, event) {
-            deleteAuditFromDatabaseForAuditor(filename, state.loggedInUser, event);
+        async function deleteAuditFromDatabase(filename, event) {
+            await deleteAuditFromDatabaseForAuditor(filename, state.loggedInUser, event);
         }
 
-        function deleteAuditFromDatabaseForSuperadmin(filename, auditor, event) {
-            deleteAuditFromDatabaseForAuditor(filename, auditor, event);
+        async function deleteAuditFromDatabaseForSuperadmin(filename, auditor, event) {
+            await deleteAuditFromDatabaseForAuditor(filename, auditor, event);
         }
 
-        function deleteAuditFromDatabaseForAuditor(filename, auditor, event) {
+        async function deleteAuditFromDatabaseForAuditor(filename, auditor, event) {
             if (event) event.stopPropagation();
             if (!confirm(`Are you sure you want to delete "${filename}" from your local browser database?`)) return;
             
-            deleteLocalDraftFromDB(filename, auditor);
-            fetchHistory();
+            await deleteLocalDraftFromDB(filename, auditor);
+            await fetchHistory();
             showToast(`File "${filename}" deleted.`);
             
             if (state.filename === filename && state.auditor === auditor) {
-                startNewAudit(true);
+                await startNewAudit(true);
             }
         }
 
         // Save As Copy workflow
-        function saveAsAction() {
+        async function saveAsAction() {
             if (!state.loggedInUser) return;
             const newName = prompt("Save As (Enter new Audit File Name):", state.filename + "_copy");
             if (newName === null) return;
@@ -752,26 +1049,30 @@
             state.filename = cleanName;
             document.getElementById('meta-filename').value = cleanName;
             
-            saveState();
-            saveDraftAction();
+            await saveState();
+            await saveDraftAction();
         }
 
         // Reset to Blank audit
-        function startNewAudit(force = false) {
+        async function startNewAudit(force = false) {
             if (!force && !confirm("Discard current view and open a new blank audit? Ensure you have saved your draft first.")) return;
             
             // Clear current active storage state first
-            localStorage.removeItem(STORAGE_KEY);
+            if (state.useLocalStorageFallback) {
+                localStorage.removeItem(STORAGE_KEY);
+            } else {
+                await dbDelete("active_state", "state");
+            }
             
             state.filename = "Untitled_Audit_" + new Date().toISOString().split('T')[0];
             state.school = SCHOOLS[0];
             state.date = new Date().toISOString().split('T')[0];
             state.auditData = {};
             
-            loadState(); // This will now initialize fresh default structures because STORAGE_KEY is empty!
+            await loadState(); // This will now initialize fresh default structures because STORAGE_KEY is empty!
             initializeMetadataSelectors();
             
-            saveState(); // Writes the default fresh values back to local storage
+            await saveState(); // Writes the default fresh values back to local storage
             renderCategoryNavigation();
             renderActiveCategoryIndicators();
             updateCalculations();
@@ -779,12 +1080,12 @@
         }
 
         // Save Checkpoint trigger (Write to Local Database)
-        function saveDraftAction() {
+        async function saveDraftAction() {
             if (!state.loggedInUser) return;
             
-            saveLocalDraftToDB(state.filename, state.loggedInUser, state);
-            saveState();
-            fetchHistory();
+            await saveLocalDraftToDB(state.filename, state.loggedInUser, state);
+            await saveState();
+            await fetchHistory();
             showToast(`File "${state.filename}" saved securely to local browser drafts!`);
         }
 
@@ -1041,14 +1342,17 @@
             if (!confirm(`Are you sure you want to consolidate these ${checkedBoxes.length} audits?`)) return;
             
             const selectedKeys = Array.from(checkedBoxes).map(box => box.value);
-            const db = getLocalDraftsDB();
             
             try {
-                const loadedAudits = selectedKeys.map(key => {
-                    const data = db[key];
-                    if (data) return data;
-                    throw new Error(`Failed to load ${key}`);
-                });
+                const loadedAudits = [];
+                for (const key of selectedKeys) {
+                    const data = await dbGet("drafts", key);
+                    if (data) {
+                        loadedAudits.push(data);
+                    } else {
+                        throw new Error(`Failed to load ${key}`);
+                    }
+                }
                 
                 const consolidatedData = {};
                 for (const [catName, catData] of Object.entries(CATEGORIES)) {
@@ -1132,7 +1436,7 @@
                 document.getElementById('meta-date').value = state.date;
                 document.getElementById('active-auditor-label').innerHTML = "Superadmin";
                 
-                saveState();
+                await saveState();
                 
                 renderCategoryNavigation();
                 renderActiveCategoryIndicators();
@@ -1263,8 +1567,9 @@
                 ? "border-emerald-500/30 dark:border-emerald-500/20" 
                 : "border-slate-200 dark:border-[#1F2937]";
             
+            const modifiedClass = hasModifications ? "audit-card-modified" : "";
             return `
-                <div class="glass-card rounded-2xl p-5 md:p-6 transition-all duration-300 border ${borderAccentClass} shadow-sm flex flex-col gap-4 relative overflow-hidden" id="card-${catEscaped}-${indEscaped}">
+                <div class="glass-card audit-card ${modifiedClass} rounded-2xl p-5 md:p-6 transition-all duration-300 border ${borderAccentClass} shadow-sm flex flex-col gap-4 relative overflow-hidden" id="card-${catEscaped}-${indEscaped}">
                     
                     <div class="absolute top-0 right-0 h-1.5 w-12 bg-emerald-500 rounded-bl-lg transition-transform duration-300 ${hasModifications ? 'scale-x-100' : 'scale-x-0'}"></div>
                     
@@ -1448,11 +1753,42 @@
                 }
             });
             
-            document.getElementById('score-display').innerHTML = `${(finalWeightedScore * 100).toFixed(2)}%`;
+            const finalPercent = finalWeightedScore * 100;
+            document.getElementById('score-display').innerHTML = `${finalPercent.toFixed(2)}%`;
             document.getElementById('reviewed-count').innerHTML = `${reviewedIndicators} / ${totalIndicators} Indicators`;
             
             const progressPercent = Math.round((reviewedIndicators / totalIndicators) * 100);
             document.getElementById('overall-progress-bar').style.width = `${progressPercent}%`;
+
+            // Dynamic Sidebar Score Progress Ring animation
+            const ringEl = document.getElementById('sidebar-score-ring');
+            if (ringEl) {
+                ringEl.setAttribute('stroke-dasharray', `${finalPercent.toFixed(1)}, 100`);
+                
+                // Color adjust based on score range
+                if (finalPercent >= 90) {
+                    ringEl.setAttribute('stroke', '#10B981'); // Emerald
+                } else if (finalPercent >= 75) {
+                    ringEl.setAttribute('stroke', '#3B82F6'); // Blue
+                } else if (finalPercent >= 60) {
+                    ringEl.setAttribute('stroke', '#F59E0B'); // Amber
+                } else {
+                    ringEl.setAttribute('stroke', '#EF4444'); // Red
+                }
+            }
+            
+            const ratingLabelEl = document.getElementById('sidebar-score-rating');
+            if (ratingLabelEl) {
+                if (finalPercent >= 90) {
+                    ratingLabelEl.innerText = "Outstnd";
+                } else if (finalPercent >= 75) {
+                    ratingLabelEl.innerText = "Complnt";
+                } else if (finalPercent >= 60) {
+                    ratingLabelEl.innerText = "NeedImp";
+                } else {
+                    ratingLabelEl.innerText = "CritRsk";
+                }
+            }
         }
 
         // --- 13. EXPORT ENGINE (SPREADSHEET CSV GENERATOR) ---
@@ -1528,7 +1864,44 @@
 
         // --- 14. PDF BOARD REPORT GENERATOR ---
         // --- 14. PDF BOARD REPORT GENERATOR (Prints via beautiful new window template) ---
-        function generatePDFReport() {
+        function closePDFModal() {
+            document.getElementById('pdf-modal-overlay').classList.add('hidden');
+        }
+
+        function submitPDFReport() {
+            const reportType = document.getElementById('pdf-report-type').value;
+            const confidentiality = document.getElementById('pdf-confidentiality').value;
+            const includePhotos = document.getElementById('pdf-include-photos').checked;
+            const includeHeaders = document.getElementById('pdf-include-headers').checked;
+            
+            closePDFModal();
+            
+            generatePDFReport({
+                reportType,
+                confidentiality,
+                includePhotos,
+                includeHeaders
+            });
+        }
+
+        function getPDFScoreBadge(score) {
+            const badges = {
+                1: '<span class="px-2 py-0.5 rounded text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200">1 - Critical</span>',
+                2: '<span class="px-2 py-0.5 rounded text-[10px] font-bold text-orange-700 bg-orange-50 border border-orange-200">2 - Major</span>',
+                3: '<span class="px-2 py-0.5 rounded text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200">3 - Moderate</span>',
+                4: '<span class="px-2 py-0.5 rounded text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200">4 - Compliant</span>',
+                5: '<span class="px-2 py-0.5 rounded text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200">5 - Exemplary</span>'
+            };
+            return badges[score] || score;
+        }
+
+        function generatePDFReport(options) {
+            if (!options) {
+                // Open Settings Modal
+                document.getElementById('pdf-modal-overlay').classList.remove('hidden');
+                return;
+            }
+
             let finalWeightedScore = 0;
             const categoryScores = [];
             const auditGapsList = [];
@@ -1545,16 +1918,22 @@
                     catEarned += (score * multiplier);
                     catMax += (5 * multiplier);
                     
-                    if (item.features || item.gaps || item.actions || item.photoName) {
+                    const isGap = score === 1 || score === 2;
+                    const hasModifications = item.features || item.gaps || item.actions || item.photoName;
+                    
+                    // In summary mode, only include gaps (score 1 or 2). In detailed mode, include anything with comments/photos/scores changed.
+                    const shouldInclude = options.reportType === 'summary' ? isGap : hasModifications;
+                    
+                    if (shouldInclude) {
                         catIssues.push({
                             indName,
                             score,
                             multiplier,
-                            features: item.features,
+                            features: options.reportType === 'summary' ? "" : item.features, // Hide features in summary mode
                             gaps: item.gaps,
                             actions: item.actions,
-                            photoName: item.photoName,
-                            photoData: item.photoData
+                            photoName: options.includePhotos ? item.photoName : "",
+                            photoData: options.includePhotos ? item.photoData : ""
                         });
                     }
                 });
@@ -1650,15 +2029,31 @@
                                 page-break-before: always;
                                 break-before: page;
                             }
+                            @page {
+                                margin: 1.5cm;
+                            }
                         }
                     </style>
                 </head>
-                <body class="bg-white p-8 md:p-12 font-sans antialiased text-slate-800 leading-relaxed max-w-4xl mx-auto">
+                <body class="bg-white p-6 md:p-10 font-sans antialiased text-slate-800 leading-relaxed max-w-4xl mx-auto">
                     
+                    ${options.includeHeaders && options.confidentiality !== 'NONE' ? `
+                    <!-- Confidentiality Running Header -->
+                    <div class="fixed top-0 left-0 right-0 text-center text-[10px] font-bold text-rose-600 uppercase tracking-widest border-b border-rose-100/50 pb-1 mb-6 pointer-events-none hidden print:block">
+                        ${options.confidentiality}
+                    </div>
+                    ` : ''}
+
+                    <!-- Confidentiality Running Footer -->
+                    <div class="fixed bottom-0 left-0 right-0 border-t border-slate-100 pt-2 text-[8px] text-slate-400 font-semibold flex justify-between pointer-events-none hidden print:flex">
+                        <span>Excelsis Advisors - Campus Audit Report</span>
+                        <span>${options.confidentiality !== 'NONE' ? options.confidentiality : ''}</span>
+                    </div>
+
                     <!-- Cover Header -->
                     <div class="border-b-4 border-brand-500 pb-6 flex flex-row items-center justify-between gap-4">
                         <div class="flex flex-col gap-2">
-                            <img src="logo.webp" alt="Excelsis Advisors" class="h-14 w-auto self-start object-contain">
+                            <img src="${LOGO_BASE64}" alt="Excelsis Advisors" class="h-14 w-auto self-start object-contain">
                             <p class="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Compliance & School Safety Audit</p>
                         </div>
                         <div class="text-right text-[11px] text-slate-500 font-semibold leading-relaxed border-l-2 border-slate-200 pl-4">
@@ -1669,22 +2064,40 @@
                     </div>
 
                     <!-- Executive Summary Badge -->
-                    <div class="mt-8 bg-slate-50 border border-slate-200/80 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                        <div>
+                    <div class="mt-8 bg-slate-50 border border-slate-200/80 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 print-avoid-break">
+                        <div class="flex flex-col gap-1">
                             <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block mb-1">Audited Campus</span>
                             <h2 class="text-2xl font-black text-slate-900 leading-tight">${state.school}</h2>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mt-1.5 flex items-center gap-1.5">
+                                <span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded text-[9px] capitalize">${options.reportType} Report</span>
+                                ${options.confidentiality !== 'NONE' ? `<span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-[9px]">${options.confidentiality}</span>` : ''}
+                            </p>
                         </div>
-                        <div class="flex flex-col sm:items-end">
-                            <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block mb-1">Weighted Compliance Rating</span>
-                            <div class="flex items-center gap-3">
-                                <span class="text-3xl font-black text-brand-500">${finalPercent.toFixed(2)}%</span>
-                                <span class="text-xs font-bold px-3 py-1 rounded-full border ${ratingColor}">${ratingText}</span>
+                        
+                        <div class="flex items-center gap-6">
+                            <!-- Circular SVG Gauge Chart -->
+                            <div class="relative w-20 h-20 shrink-0">
+                                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                                    <path class="text-slate-100" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path class="text-brand-500" stroke-width="3.5" stroke-dasharray="${finalPercent.toFixed(1)}, 100" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span class="text-xs font-black text-brand-600 leading-none">${finalPercent.toFixed(1)}%</span>
+                                    <span class="text-[8px] font-bold text-slate-400 mt-0.5">Score</span>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col sm:items-end">
+                                <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block mb-1">Compliance Rating</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold px-3 py-1 rounded-full border ${ratingColor}">${ratingText}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Category Scores Table -->
-                    <div class="flex flex-col gap-3 mt-8">
+                    <div class="flex flex-col gap-3 mt-8 print-avoid-break">
                         <h3 class="text-xs font-extrabold text-brand-700 uppercase tracking-wider">1. Category Scores Performance</h3>
                         <table class="w-full text-xs text-left border-collapse border border-slate-200">
                             <thead>
@@ -1721,7 +2134,7 @@
                         </h3>
                         
                         ${auditGapsList.length === 0 
-                            ? `<p class="text-xs text-slate-500 italic py-6 text-center bg-slate-50 rounded-xl border border-slate-100">No items with gap observations, notable features, or actions recommended were saved in this audit report.</p>`
+                            ? `<p class="text-xs text-slate-500 italic py-8 text-center bg-slate-50 rounded-xl border border-slate-100">No matching audit details were found based on the selected report filters.</p>`
                             : auditGapsList.map(dg => `
                                 <div class="flex flex-col gap-4 print-avoid-break mb-8">
                                     <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider bg-slate-100 px-3 py-2 rounded-lg border border-slate-200">${dg.catName}</h4>
@@ -1731,9 +2144,9 @@
                                             <div class="flex flex-col gap-3 print-avoid-break pb-4 border-b border-slate-100 last:border-b-0">
                                                 <div class="flex justify-between items-center bg-slate-50 border border-slate-200/60 p-2.5 rounded-lg">
                                                     <span class="text-xs font-bold text-slate-900">${item.indName}</span>
-                                                    <div class="flex items-center gap-3">
-                                                        <span class="text-[10px] font-bold text-slate-500">Rating: <b class="text-slate-800">${item.score}/5</b></span>
-                                                        <span class="text-[10px] font-bold text-slate-500">Multiplier: <b class="text-slate-800">${item.multiplier}x</b></span>
+                                                    <div class="flex items-center gap-2">
+                                                        ${getPDFScoreBadge(item.score)}
+                                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">Weight: ${item.multiplier}x</span>
                                                     </div>
                                                 </div>
                                                 
@@ -1826,7 +2239,7 @@
                 const file = input.files[0];
                 const reader = new FileReader();
                 
-                reader.onload = function(e) {
+                reader.onload = async function(e) {
                     try {
                         const imported = JSON.parse(e.target.result);
                         
@@ -1845,8 +2258,8 @@
                         document.getElementById('meta-school').value = state.school;
                         document.getElementById('meta-date').value = state.date;
                         
-                        saveState();
-                        fetchHistory();
+                        await saveState();
+                        await fetchHistory();
                         
                         renderCategoryNavigation();
                         renderActiveCategoryIndicators();
@@ -1903,7 +2316,7 @@
                 const file = input.files[0];
                 const reader = new FileReader();
                 
-                reader.onload = function(e) {
+                reader.onload = async function(e) {
                     try {
                         const csvText = e.target.result;
                         const parsed = parseCSV(csvText);
@@ -1981,8 +2394,8 @@
                         document.getElementById('meta-date').value = state.date;
                         document.getElementById('active-auditor-label').innerHTML = state.auditor || state.loggedInUser;
                         
-                        saveState();
-                        fetchHistory();
+                        await saveState();
+                        await fetchHistory();
                         
                         renderCategoryNavigation();
                         renderActiveCategoryIndicators();
