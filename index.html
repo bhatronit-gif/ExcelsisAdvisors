@@ -297,12 +297,21 @@
                     </button>
                 </div>
 
-                <!-- Import JSON Backup -->
-                <button onclick="document.getElementById('import-json-file').click()" class="w-full bg-transparent border border-dashed border-slate-200 dark:border-[#2C3854] text-slate-400 dark:text-slate-500 hover:text-brand-500 hover:border-brand-500 font-bold text-xs px-4 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                    <span>Upload JSON Backup</span>
-                </button>
-                <input type="file" id="import-json-file" accept=".json" class="hidden" onchange="importFromJSON(this)">
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <!-- Import JSON Backup -->
+                    <button onclick="document.getElementById('import-json-file').click()" class="bg-transparent border border-dashed border-slate-200 dark:border-[#2C3854] text-slate-400 dark:text-slate-500 hover:text-brand-500 hover:border-brand-500 font-bold text-xs px-2 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                        <span>JSON Load</span>
+                    </button>
+                    <input type="file" id="import-json-file" accept=".json" class="hidden" onchange="importFromJSON(this)">
+
+                    <!-- Import CSV Backup -->
+                    <button onclick="document.getElementById('import-csv-file').click()" class="bg-transparent border border-dashed border-slate-200 dark:border-[#2C3854] text-slate-400 dark:text-slate-500 hover:text-brand-500 hover:border-brand-500 font-bold text-xs px-2 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                        <span>CSV Load</span>
+                    </button>
+                    <input type="file" id="import-csv-file" accept=".csv" class="hidden" onchange="importFromCSV(this)">
+                </div>
 
                 <div class="flex items-center justify-between border-t border-slate-100 dark:border-[#1F2937]/60 pt-2">
                     <button onclick="logOutAuditor()" class="text-rose-500 hover:text-rose-700 font-extrabold text-[10px] uppercase tracking-wider flex items-center gap-1 cursor-pointer">
@@ -1766,6 +1775,143 @@
                 
                 reader.readAsText(file);
                 input.value = ""; // Reset
+            }
+        }
+
+        // RFC 4180 compliant CSV Parser supporting multiline and escaped quotes
+        function parseCSV(text) {
+            const lines = [];
+            let row = [""];
+            let inQuotes = false;
+            
+            for (let i = 0; i < text.length; i++) {
+                const c = text[i];
+                const next = text[i+1];
+                
+                if (c === '"') {
+                    if (inQuotes && next === '"') {
+                        row[row.length - 1] += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (c === ',' && !inQuotes) {
+                    row.push('');
+                } else if ((c === '\r' || c === '\n') && !inQuotes) {
+                    if (c === '\r' && next === '\n') {
+                        i++;
+                    }
+                    lines.push(row);
+                    row = [''];
+                } else {
+                    row[row.length - 1] += c;
+                }
+            }
+            if (row.length > 1 || row[0] !== '') {
+                lines.push(row);
+            }
+            return lines;
+        }
+
+        function importFromCSV(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const csvText = e.target.result;
+                        const parsed = parseCSV(csvText);
+                        
+                        if (parsed.length < 2) {
+                            showToast("Empty CSV file uploaded.", "error");
+                            return;
+                        }
+                        
+                        const headers = parsed[0].map(h => h.trim().replace(/^"|"$/g, ''));
+                        
+                        const filenameIdx = headers.indexOf("File Name");
+                        const schoolIdx = headers.indexOf("School");
+                        const auditorIdx = headers.indexOf("Auditor");
+                        const dateIdx = headers.indexOf("Date");
+                        const catIdx = headers.indexOf("Category");
+                        const indIdx = headers.indexOf("Indicator");
+                        const scoreIdx = headers.indexOf("Score");
+                        const featuresIdx = headers.indexOf("Notable Features");
+                        const gapsIdx = headers.indexOf("Gaps Identified");
+                        const actionsIdx = headers.indexOf("Actions Recommended");
+                        const photoNameIdx = headers.indexOf("Photo Attachment");
+                        
+                        if (catIdx === -1 || indIdx === -1 || scoreIdx === -1) {
+                            showToast("Invalid CSV headers. Must contain Category, Indicator, and Score.", "error");
+                            return;
+                        }
+                        
+                        const firstDataRow = parsed[1];
+                        if (filenameIdx !== -1 && firstDataRow[filenameIdx]) state.filename = firstDataRow[filenameIdx];
+                        if (schoolIdx !== -1 && firstDataRow[schoolIdx]) {
+                            const csvSchool = firstDataRow[schoolIdx];
+                            if (SCHOOLS.includes(csvSchool)) {
+                                state.school = csvSchool;
+                            }
+                        }
+                        if (dateIdx !== -1 && firstDataRow[dateIdx]) state.date = firstDataRow[dateIdx];
+                        
+                        if (auditorIdx !== -1 && firstDataRow[auditorIdx]) {
+                            const csvAuditor = firstDataRow[auditorIdx];
+                            if (AUDITOR_LOGINS[csvAuditor]) {
+                                state.auditor = csvAuditor;
+                            }
+                        }
+                        
+                        for (let i = 1; i < parsed.length; i++) {
+                            const row = parsed[i];
+                            if (row.length < headers.length) continue;
+                            
+                            const category = row[catIdx];
+                            const indicator = row[indIdx];
+                            
+                            if (CATEGORIES[category] && CATEGORIES[category].indicators.hasOwnProperty(indicator)) {
+                                const scoreVal = Math.max(1, Math.min(5, parseInt(row[scoreIdx]) || 3));
+                                
+                                const existingData = state.auditData[category][indicator] || {};
+                                const csvPhotoName = photoNameIdx !== -1 ? row[photoNameIdx] : "";
+                                const photoDataVal = (existingData.photoName === csvPhotoName) ? (existingData.photoData || "") : "";
+                                
+                                state.auditData[category][indicator] = {
+                                    score: scoreVal,
+                                    features: featuresIdx !== -1 ? row[featuresIdx] : "",
+                                    gaps: gapsIdx !== -1 ? row[gapsIdx] : "",
+                                    actions: actionsIdx !== -1 ? row[actionsIdx] : "",
+                                    photoName: csvPhotoName,
+                                    photoData: photoDataVal,
+                                    reviewed: true
+                                };
+                            }
+                        }
+                        
+                        // Sync inputs
+                        document.getElementById('meta-filename').value = state.filename;
+                        document.getElementById('meta-school').value = state.school;
+                        document.getElementById('meta-date').value = state.date;
+                        document.getElementById('active-auditor-label').innerHTML = state.auditor || state.loggedInUser;
+                        
+                        saveState();
+                        fetchHistory();
+                        
+                        renderCategoryNavigation();
+                        renderActiveCategoryIndicators();
+                        updateCalculations();
+                        
+                        showToast(`Successfully loaded CSV audit draft: "${state.filename}"`);
+                    } catch(err) {
+                        console.error(err);
+                        showToast("Failed to parse CSV file content.", "error");
+                    }
+                };
+                
+                reader.readAsText(file);
+                input.value = "";
             }
         }
 
