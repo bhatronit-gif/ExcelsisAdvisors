@@ -81,29 +81,7 @@
             border: 1px solid rgba(36, 47, 77, 0.6);
         }
 
-        /* PRINT STYLES FOR THE PDF REPORT */
-        @media print {
-            body {
-                background: white !important;
-                color: #0f172a !important;
-            }
-            /* Hide the main UI app screens entirely */
-            body > :not(#print-report-container) {
-                display: none !important;
-            }
-            #print-report-container {
-                display: block !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 10px !important;
-            }
-            .print-page-break {
-                page-break-before: always;
-            }
-            .print-avoid-break {
-                page-break-inside: avoid;
-            }
-        }
+
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-[#0B0F19] text-slate-800 dark:text-slate-200 min-h-screen font-sans antialiased transition-colors duration-300">
@@ -145,8 +123,7 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Hidden Print Report Container -->
-    <div id="print-report-container" class="hidden print:block bg-white text-slate-900 p-8 min-h-screen"></div>
+
 
     <div class="flex flex-col lg:flex-row min-h-screen">
         
@@ -1550,9 +1527,8 @@
         }
 
         // --- 14. PDF BOARD REPORT GENERATOR ---
+        // --- 14. PDF BOARD REPORT GENERATOR (Prints via beautiful new window template) ---
         function generatePDFReport() {
-            const printContainer = document.getElementById('print-report-container');
-            
             let finalWeightedScore = 0;
             const categoryScores = [];
             const auditGapsList = [];
@@ -1601,104 +1577,187 @@
                     });
                 }
             });
-            
+
+            const finalPercent = finalWeightedScore * 100;
+            let ratingText = "Critical Risk";
+            let ratingColor = "text-rose-600 bg-rose-50 border-rose-200";
+            if (finalPercent >= 90) {
+                ratingText = "Outstanding";
+                ratingColor = "text-emerald-600 bg-emerald-50 border-emerald-200";
+            } else if (finalPercent >= 75) {
+                ratingText = "Good / Compliant";
+                ratingColor = "text-blue-600 bg-blue-50 border-blue-200";
+            } else if (finalPercent >= 60) {
+                ratingText = "Needs Improvement";
+                ratingColor = "text-amber-600 bg-amber-50 border-amber-200";
+            }
+
+            const printWindow = window.open("", "_blank");
+            if (!printWindow) {
+                showToast("Popup blocked! Please allow popups to open/print reports.", "error");
+                return;
+            }
+
             const reportHTML = `
-                <div class="flex flex-col gap-6 max-w-4xl mx-auto font-sans text-slate-800">
-                    <div class="border-b-4 border-indigo-700 pb-4 flex justify-between items-end">
-                        <div>
-                            <h1 class="text-2xl font-black tracking-tight text-indigo-900 uppercase">Excelsis Advisors</h1>
-                            <p class="text-xs font-bold text-slate-500 tracking-wider">COMPLIANCE & SAFETY AUDIT REPORT</p>
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <title>Excelsis Advisors Audit Report - ${state.school}</title>
+                    <meta charset="UTF-8">
+                    <!-- Google Fonts: Inter -->
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+                    <!-- Tailwind CSS CDN -->
+                    <script src="https://cdn.tailwindcss.com"></script>
+                    <script>
+                        tailwind.config = {
+                            theme: {
+                                extend: {
+                                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                                    colors: {
+                                        brand: {
+                                            50: '#fff5f5',
+                                            100: '#ffe3e3',
+                                            500: '#C83728',
+                                            600: '#A9261B',
+                                            700: '#8E1C12',
+                                            900: '#680E07',
+                                        },
+                                        excelsisBlue: {
+                                            100: '#f0f9ff',
+                                            500: '#A0CDF0',
+                                            600: '#7896C8',
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    </script>
+                    <style>
+                        @media print {
+                            body {
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
+                            .print-avoid-break {
+                                page-break-inside: avoid;
+                                break-inside: avoid;
+                            }
+                            .print-page-break {
+                                page-break-before: always;
+                                break-before: page;
+                            }
+                        }
+                    </style>
+                </head>
+                <body class="bg-white p-8 md:p-12 font-sans antialiased text-slate-800 leading-relaxed max-w-4xl mx-auto">
+                    
+                    <!-- Cover Header -->
+                    <div class="border-b-4 border-brand-500 pb-6 flex flex-row items-center justify-between gap-4">
+                        <div class="flex flex-col gap-2">
+                            <img src="logo.webp" alt="Excelsis Advisors" class="h-14 w-auto self-start object-contain">
+                            <p class="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Compliance & School Safety Audit</p>
                         </div>
-                        <div class="text-right text-xs text-slate-500 font-semibold leading-relaxed">
-                            <p>File Name: ${state.filename}</p>
-                            <p>Date: ${state.date}</p>
-                            <p>Auditor: ${state.loggedInUser || "Not Authenticated"}</p>
+                        <div class="text-right text-[11px] text-slate-500 font-semibold leading-relaxed border-l-2 border-slate-200 pl-4">
+                            <p class="font-bold text-slate-800">FILE ID: ${state.filename}</p>
+                            <p>DATE: ${state.date}</p>
+                            <p>AUDITOR: ${state.loggedInUser || "Not Authenticated"}</p>
                         </div>
                     </div>
-                    
-                    <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
+                    <!-- Executive Summary Badge -->
+                    <div class="mt-8 bg-slate-50 border border-slate-200/80 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                         <div>
-                            <span class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest block mb-0.5">Audited Campus</span>
-                            <h2 class="text-xl font-bold text-slate-900">${state.school}</h2>
+                            <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block mb-1">Audited Campus</span>
+                            <h2 class="text-2xl font-black text-slate-900 leading-tight">${state.school}</h2>
                         </div>
-                        <div class="text-left sm:text-right">
-                            <span class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest block mb-0.5">Final Risk-Adjusted Score</span>
-                            <h2 class="text-3xl font-black text-indigo-700">${(finalWeightedScore * 100).toFixed(2)}%</h2>
+                        <div class="flex flex-col sm:items-end">
+                            <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block mb-1">Weighted Compliance Rating</span>
+                            <div class="flex items-center gap-3">
+                                <span class="text-3xl font-black text-brand-500">${finalPercent.toFixed(2)}%</span>
+                                <span class="text-xs font-bold px-3 py-1 rounded-full border ${ratingColor}">${ratingText}</span>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="flex flex-col gap-3">
-                        <h3 class="text-xs font-extrabold text-indigo-900 uppercase tracking-wider">1. Category Scores Summary</h3>
+
+                    <!-- Category Scores Table -->
+                    <div class="flex flex-col gap-3 mt-8">
+                        <h3 class="text-xs font-extrabold text-brand-700 uppercase tracking-wider">1. Category Scores Performance</h3>
                         <table class="w-full text-xs text-left border-collapse border border-slate-200">
                             <thead>
-                                <tr class="bg-slate-100 text-slate-700 uppercase">
-                                    <th class="p-2.5 border border-slate-200 font-bold">Category</th>
-                                    <th class="p-2.5 border border-slate-200 font-bold text-center">Macro-Weight</th>
-                                    <th class="p-2.5 border border-slate-200 font-bold text-center">Weighted Ratio</th>
-                                    <th class="p-2.5 border border-slate-200 font-bold text-right">Performance Score</th>
+                                <tr class="bg-slate-50 text-slate-600 uppercase border-b border-slate-200">
+                                    <th class="p-3 font-extrabold">Macro Category</th>
+                                    <th class="p-3 font-extrabold text-center">Weight</th>
+                                    <th class="p-3 font-extrabold text-center">Score Ratio</th>
+                                    <th class="p-3 font-extrabold text-center w-1/3">Visual Progress</th>
+                                    <th class="p-3 font-extrabold text-right">Performance</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${categoryScores.map(cs => `
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="p-2.5 border border-slate-200 font-semibold">${cs.catName}</td>
-                                        <td class="p-2.5 border border-slate-200 text-center font-medium text-slate-500">${(cs.weight * 100).toFixed(0)}%</td>
-                                        <td class="p-2.5 border border-slate-200 text-center font-medium text-slate-500">${cs.earned} / ${cs.max}</td>
-                                        <td class="p-2.5 border border-slate-200 text-right font-bold text-indigo-700">${cs.percentage.toFixed(2)}%</td>
+                                    <tr class="border-b border-slate-100 hover:bg-slate-50/50">
+                                        <td class="p-3 font-bold text-slate-800">${cs.catName}</td>
+                                        <td class="p-3 text-center font-semibold text-slate-500">${(cs.weight * 100).toFixed(0)}%</td>
+                                        <td class="p-3 text-center font-semibold text-slate-500">${cs.earned} / ${cs.max}</td>
+                                        <td class="p-3">
+                                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                                <div class="bg-brand-500 h-full rounded-full" style="width: ${cs.percentage}%"></div>
+                                            </div>
+                                        </td>
+                                        <td class="p-3 text-right font-extrabold text-brand-500">${cs.percentage.toFixed(2)}%</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
                         </table>
                     </div>
-                    
-                    <div class="flex flex-col gap-5 mt-4 print-page-break">
-                        <h3 class="text-xs font-extrabold text-indigo-900 uppercase tracking-wider border-b-2 border-indigo-200 pb-1.5">
-                            2. Gap Assessment & Recommended Remedial Actions
+
+                    <!-- Details Sections -->
+                    <div class="flex flex-col gap-5 mt-10 print-page-break">
+                        <h3 class="text-xs font-extrabold text-brand-700 uppercase tracking-wider border-b-2 border-slate-200 pb-2">
+                            2. Gap Assessments & Remedial Actions
                         </h3>
                         
                         ${auditGapsList.length === 0 
-                            ? `<p class="text-xs text-slate-500 italic py-4">No gaps, features, or actions documented in this audit session.</p>`
+                            ? `<p class="text-xs text-slate-500 italic py-6 text-center bg-slate-50 rounded-xl border border-slate-100">No items with gap observations, notable features, or actions recommended were saved in this audit report.</p>`
                             : auditGapsList.map(dg => `
-                                <div class="flex flex-col gap-3 print-avoid-break mb-6">
-                                    <h4 class="text-xs font-bold text-indigo-700 uppercase tracking-wide bg-indigo-50/50 px-2 py-1.5 rounded">${dg.catName}</h4>
+                                <div class="flex flex-col gap-4 print-avoid-break mb-8">
+                                    <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider bg-slate-100 px-3 py-2 rounded-lg border border-slate-200">${dg.catName}</h4>
                                     
-                                    <div class="flex flex-col gap-5 pl-3 border-l-2 border-slate-200">
+                                    <div class="flex flex-col gap-6 pl-4 border-l-2 border-slate-200">
                                         ${dg.items.map(item => `
-                                            <div class="flex flex-col gap-2">
-                                                <div class="flex justify-between items-center bg-slate-50 p-2 rounded">
-                                                    <span class="text-xs font-bold text-slate-800">${item.indName}</span>
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="text-[10px] font-semibold text-slate-500">Rating: ${item.score}/5</span>
-                                                        <span class="text-[10px] font-semibold text-slate-500">(Multiplier: ${item.multiplier}x)</span>
+                                            <div class="flex flex-col gap-3 print-avoid-break pb-4 border-b border-slate-100 last:border-b-0">
+                                                <div class="flex justify-between items-center bg-slate-50 border border-slate-200/60 p-2.5 rounded-lg">
+                                                    <span class="text-xs font-bold text-slate-900">${item.indName}</span>
+                                                    <div class="flex items-center gap-3">
+                                                        <span class="text-[10px] font-bold text-slate-500">Rating: <b class="text-slate-800">${item.score}/5</b></span>
+                                                        <span class="text-[10px] font-bold text-slate-500">Multiplier: <b class="text-slate-800">${item.multiplier}x</b></span>
                                                     </div>
                                                 </div>
                                                 
-                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-[11px] pl-1 leading-relaxed">
+                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-[11px] leading-relaxed">
                                                     ${item.features ? `
-                                                        <div>
-                                                            <span class="font-extrabold text-[9px] uppercase text-indigo-700 tracking-wider block mb-0.5">Notable Features</span>
-                                                            <p class="text-slate-600">${item.features}</p>
+                                                        <div class="bg-indigo-50/40 border border-indigo-100/60 p-3 rounded-lg">
+                                                            <span class="font-extrabold text-[8px] uppercase text-indigo-700 tracking-wider block mb-1">Notable Features</span>
+                                                            <p class="text-slate-600 font-medium">${item.features}</p>
                                                         </div>
                                                     ` : ''}
                                                     ${item.gaps ? `
-                                                        <div>
-                                                            <span class="font-extrabold text-[9px] uppercase text-rose-600 tracking-wider block mb-0.5">Gaps Identified 🚩</span>
-                                                            <p class="text-slate-700 font-medium">${item.gaps}</p>
+                                                        <div class="bg-rose-50/40 border border-rose-100/60 p-3 rounded-lg">
+                                                            <span class="font-extrabold text-[8px] uppercase text-rose-600 tracking-wider block mb-1">Gaps Identified 🚩</span>
+                                                            <p class="text-slate-700 font-semibold">${item.gaps}</p>
                                                         </div>
                                                     ` : ''}
                                                     ${item.actions ? `
-                                                        <div>
-                                                            <span class="font-extrabold text-[9px] uppercase text-emerald-600 tracking-wider block mb-0.5">Actions Recommended 🛠</span>
-                                                            <p class="text-slate-700 font-medium">${item.actions}</p>
+                                                        <div class="bg-emerald-50/40 border border-emerald-100/60 p-3 rounded-lg">
+                                                            <span class="font-extrabold text-[8px] uppercase text-emerald-600 tracking-wider block mb-1">Actions Recommended 🛠</span>
+                                                            <p class="text-slate-700 font-semibold">${item.actions}</p>
                                                         </div>
                                                     ` : ''}
                                                 </div>
                                                 
-                                                <!-- Embedded Base64 Photo inside printable PDF -->
                                                 ${item.photoData ? `
-                                                    <div class="mt-2.5 print-avoid-break">
-                                                        <span class="font-extrabold text-[9px] uppercase text-indigo-700 tracking-wider block mb-1">Evidence Photo: ${item.photoName}</span>
-                                                        <img src="${item.photoData}" class="max-w-xs max-h-48 object-cover rounded-lg border border-slate-300 shadow-sm">
+                                                    <div class="mt-2 flex flex-col gap-1.5 print-avoid-break">
+                                                        <span class="font-extrabold text-[8px] uppercase text-slate-400 tracking-wider block">Evidence Photo: ${item.photoName}</span>
+                                                        <img src="${item.photoData}" class="max-w-md max-h-64 object-cover rounded-lg border border-slate-200 shadow-sm self-start">
                                                     </div>
                                                 ` : ''}
                                             </div>
@@ -1709,21 +1768,32 @@
                         }
                     </div>
                     
-                    <div class="mt-14 pt-8 border-t border-slate-200 grid grid-cols-2 gap-8 print-avoid-break">
-                        <div class="flex flex-col gap-12">
-                            <div class="border-b border-slate-300 w-48 h-8"></div>
-                            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Auditor Signature</p>
+                    <!-- Sign-off Block -->
+                    <div class="mt-16 pt-8 border-t border-slate-200 grid grid-cols-2 gap-12 print-avoid-break">
+                        <div class="flex flex-col gap-14">
+                            <div class="border-b border-slate-300 w-full h-8"></div>
+                            <p class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Auditor Signature</p>
                         </div>
-                        <div class="flex flex-col gap-12 text-right items-end">
-                            <div class="border-b border-slate-300 w-48 h-8"></div>
-                            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Campus Management Signature</p>
+                        <div class="flex flex-col gap-14 text-right items-end">
+                            <div class="border-b border-slate-300 w-full h-8"></div>
+                            <p class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Campus Management Signature</p>
                         </div>
                     </div>
-                </div>
+
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                            }, 500);
+                        };
+                    </script>
+                </body>
+                </html>
             `;
-            
-            printContainer.innerHTML = reportHTML;
-            window.print();
+
+            printWindow.document.open();
+            printWindow.document.write(reportHTML);
+            printWindow.document.close();
         }
 
         // --- 15. JSON DRAFT IMPORT / EXPORT BACKUPS (Base64 Photos Integrated) ---
