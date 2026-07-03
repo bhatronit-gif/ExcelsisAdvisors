@@ -313,6 +313,12 @@
                     <input type="file" id="import-csv-file" accept=".csv" class="hidden" onchange="importFromCSV(this)">
                 </div>
 
+                <!-- Download Excel/CSV Template -->
+                <button onclick="downloadCSVTemplate()" class="w-full bg-transparent border border-slate-200 dark:border-[#2C3854] text-slate-500 dark:text-slate-400 font-semibold text-xs px-4 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer mt-1" title="Download empty CSV template for Excel editing">
+                    <svg class="w-3.5 h-3.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    <span>Download Excel CSV Template</span>
+                </button>
+
                 <div class="flex items-center justify-between border-t border-slate-100 dark:border-[#1F2937]/60 pt-2">
                     <button onclick="logOutAuditor()" class="text-rose-500 hover:text-rose-700 font-extrabold text-[10px] uppercase tracking-wider flex items-center gap-1 cursor-pointer">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
@@ -775,15 +781,18 @@
         function startNewAudit(force = false) {
             if (!force && !confirm("Discard current view and open a new blank audit? Ensure you have saved your draft first.")) return;
             
+            // Clear current active storage state first
+            localStorage.removeItem(STORAGE_KEY);
+            
             state.filename = "Untitled_Audit_" + new Date().toISOString().split('T')[0];
             state.school = SCHOOLS[0];
             state.date = new Date().toISOString().split('T')[0];
             state.auditData = {};
             
-            loadState();
+            loadState(); // This will now initialize fresh default structures because STORAGE_KEY is empty!
             initializeMetadataSelectors();
             
-            saveState();
+            saveState(); // Writes the default fresh values back to local storage
             renderCategoryNavigation();
             renderActiveCategoryIndicators();
             updateCalculations();
@@ -1919,6 +1928,40 @@
         function confirmReset() {
             if (!confirm("Reset active view back to blank defaults? (Saved drafts remain in history)")) return;
             startNewAudit(true);
+        }
+
+        // CSV Template downloader for offline Excel editing
+        function downloadCSVTemplate() {
+            const headers = ["Category", "Indicator", "Score (1-5)", "Notable Features", "Gaps Identified", "Actions Recommended", "Photo Filename"];
+            let csvRows = [headers.join(",")];
+            
+            Object.entries(CATEGORIES).forEach(([catName, catData]) => {
+                Object.keys(catData.indicators).forEach(indName => {
+                    const row = [
+                        `"${catName.replace(/"/g, '""')}"`,
+                        `"${indName.replace(/"/g, '""')}"`,
+                        "3", // Default score
+                        "",  // Notable Features
+                        "",  // Gaps
+                        "",  // Actions
+                        ""   // Photo
+                    ];
+                    csvRows.push(row.join(","));
+                });
+            });
+            
+            const csvContent = "\ufeff" + csvRows.join("\r\n");
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "Excelsis_Audit_Template.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+            showToast("CSV Template downloaded! Open in Excel to fill offline.");
         }
     </script>
 </body>
