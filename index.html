@@ -101,6 +101,40 @@
 </head>
 <body class="bg-slate-50 dark:bg-[#0B0F19] text-slate-800 dark:text-slate-200 min-h-screen font-sans antialiased transition-colors duration-300">
 
+    <!-- Login Authentication Overlay -->
+    <div id="login-overlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/85 backdrop-blur-md transition-opacity duration-300">
+        <div class="glass-card rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl flex flex-col gap-6 border border-slate-200/10">
+            <div class="flex flex-col items-center text-center gap-2">
+                <div class="bg-brand-500 text-white p-3 rounded-2xl shadow-lg shadow-brand-500/20">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                </div>
+                <h2 class="font-extrabold text-xl tracking-tight text-slate-800 dark:text-slate-100">Portal Authentication</h2>
+                <p class="text-xs text-slate-400 dark:text-slate-500">Sign in to access your compliance drafts.</p>
+            </div>
+            
+            <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-1">
+                    <label for="login-user" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Auditor</label>
+                    <select id="login-user" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom">
+                        <option value="Ronit Bhat">Ronit Bhat</option>
+                        <option value="Rohit Bhat">Rohit Bhat</option>
+                        <option value="Sangeeta Puri">Sangeeta Puri</option>
+                        <option value="Monica Bhat">Monica Bhat</option>
+                        <option value="Superadmin">Superadmin</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label for="login-pass" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Password</label>
+                    <input type="password" id="login-pass" placeholder="••••••••" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom">
+                </div>
+            </div>
+            
+            <button onclick="handleLoginSubmit()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm px-4 py-3.5 rounded-xl shadow-lg shadow-brand-500/10 active:scale-[0.98] transition-all-custom cursor-pointer flex items-center justify-center gap-1">
+                <span>Sign In</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -110,7 +144,7 @@
     <div class="flex flex-col lg:flex-row min-h-screen">
         
         <!-- ================= SIDEBAR / METADATA & CONTROL PANEL ================= -->
-        <aside class="w-full lg:w-96 bg-white dark:bg-[#111827] border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-[#1F2937] p-6 flex flex-col justify-between shrink-0 lg:h-screen lg:sticky lg:top-0">
+        <aside class="w-full lg:w-96 bg-white dark:bg-[#111827] border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-[#1F2937] p-6 flex flex-col justify-between shrink-0 lg:h-screen lg:overflow-hidden lg:sticky lg:top-0">
             <div class="flex flex-col gap-5 overflow-y-auto pr-1">
                 <!-- Branding Header -->
                 <div class="flex flex-col gap-2">
@@ -167,18 +201,27 @@
                 <div class="flex flex-col gap-4">
                     <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Metadata Details</h2>
                     
+                    <!-- Audit Filename Input -->
+                    <div class="flex flex-col gap-1">
+                        <label for="meta-filename" class="text-xs font-semibold text-slate-500 dark:text-slate-400">Audit File Name</label>
+                        <input type="text" id="meta-filename" oninput="handleFilenameChange(this.value)" placeholder="e.g. Q1_Safety_Audit" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom">
+                    </div>
+
+                    <!-- Locked Active Auditor Display -->
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Active Auditor</label>
+                        <div class="w-full bg-slate-100 dark:bg-[#1F2937]/50 border border-slate-200/60 dark:border-[#374151]/50 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-5.618 3.03A5.002 5.002 0 003 12c0 2.76 1.91 5.07 4.5 5.753m.002 0a11.953 11.953 0 01-4.5-5.753M12 21.003c2.76 0 5.07-1.91 5.753-4.5m0 0a11.954 11.954 0 01-5.753 4.5M12 21.003V12"/></svg>
+                            <span id="active-auditor-label">Not Authenticated</span>
+                        </div>
+                    </div>
+
                     <!-- School Campus Selector -->
                     <div class="flex flex-col gap-1">
                         <label for="meta-school" class="text-xs font-semibold text-slate-500 dark:text-slate-400">School Campus</label>
                         <select id="meta-school" onchange="handleMetaChange('school', this.value)" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom">
                             <!-- Populated dynamically -->
                         </select>
-                    </div>
-
-                    <!-- Auditor Input -->
-                    <div class="flex flex-col gap-1">
-                        <label for="meta-auditor" class="text-xs font-semibold text-slate-500 dark:text-slate-400">Auditor Name</label>
-                        <input type="text" id="meta-auditor" oninput="handleMetaChange('auditor', this.value)" placeholder="e.g., Rohit Bhat" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom">
                     </div>
 
                     <!-- Date Picker -->
@@ -199,17 +242,22 @@
                     </div>
                 </div>
 
-                <!-- Database Audits History Panel -->
+                <!-- Database Audits History Panel (Isolated per auditor) -->
                 <div class="flex flex-col gap-2 border-t border-slate-100 dark:border-[#1F2937] pt-4" id="database-history-panel">
                     <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-between">
-                        <span>Database Audits</span>
+                        <span>Your Saved Drafts</span>
                         <button onclick="fetchHistory()" class="text-[10px] text-brand-500 hover:underline hover:text-brand-600 font-bold flex items-center gap-0.5 cursor-pointer">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17"/></svg>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17"/></svg>
                             Refresh
                         </button>
                     </h2>
+                    <!-- Consolidate Button (Only visible for Superadmin) -->
+                    <button id="consolidate-btn" onclick="consolidateSelectedAudits()" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer mb-2">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                        <span>Consolidate Selected (0)</span>
+                    </button>
                     <div id="saved-audits-list" class="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1 text-[11px] scrollbar-none">
-                        <span class="text-slate-400 dark:text-slate-600 italic">Checking for database connection...</span>
+                        <span class="text-slate-400 dark:text-slate-600 italic">No saved drafts in database</span>
                     </div>
                 </div>
 
@@ -224,23 +272,63 @@
 
             <!-- Footer Action Buttons -->
             <div class="flex flex-col gap-2 mt-6 pt-4 border-t border-slate-200 dark:border-[#1F2937]">
-                <!-- Generate PDF Board Report -->
-                <button onclick="generatePDFReport()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-3 rounded-xl shadow-lg shadow-indigo-600/10 active:scale-[0.98] transition-all-custom flex items-center justify-center gap-2 cursor-pointer">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    <span>Generate PDF Board Report</span>
-                </button>
-                
-                <!-- Download Spreadsheet CSV -->
-                <button onclick="exportToCSV()" class="w-full bg-slate-100 hover:bg-slate-200 dark:bg-[#1F2937] dark:hover:bg-[#2b3547] text-slate-700 dark:text-slate-300 font-semibold text-xs px-4 py-2.5 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    <span>Download CSV Spreadsheet</span>
+                <!-- Save File (Update Database Entry) -->
+                <button onclick="saveDraftAction()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm px-4 py-3 rounded-xl shadow-lg shadow-brand-500/10 active:scale-[0.98] transition-all-custom flex items-center justify-center gap-2 cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                    <span>Save Draft File</span>
                 </button>
 
-                <!-- Reset Button -->
-                <button onclick="confirmReset()" class="w-full bg-transparent hover:bg-red-500/10 hover:text-red-500 text-slate-400 dark:text-slate-500 font-semibold text-[10px] px-4 py-1.5 rounded-lg transition-all-custom flex items-center justify-center gap-1 cursor-pointer">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                    <span>Reset All Fields</span>
+                <div class="grid grid-cols-2 gap-2">
+                    <!-- Save As copy -->
+                    <button onclick="saveAsAction()" class="bg-slate-100 hover:bg-slate-200 dark:bg-[#1F2937] dark:hover:bg-[#2b3547] text-slate-700 dark:text-slate-300 font-semibold text-xs px-2 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1 cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                        <span>Save As...</span>
+                    </button>
+
+                    <!-- Start Blank New Audit -->
+                    <button onclick="startNewAudit()" class="bg-slate-100 hover:bg-slate-200 dark:bg-[#1F2937] dark:hover:bg-[#2b3547] text-slate-700 dark:text-slate-300 font-semibold text-xs px-2 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1 cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span>New Audit</span>
+                    </button>
+                </div>
+
+                <!-- Generate PDF Board Report -->
+                <button onclick="generatePDFReport()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-600/10 active:scale-[0.98] transition-all-custom flex items-center justify-center gap-2 cursor-pointer mt-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span>Generate PDF Report</span>
                 </button>
+                
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <!-- Download CSV -->
+                    <button onclick="exportToCSV()" class="bg-transparent border border-slate-200 dark:border-[#2C3854] text-slate-500 dark:text-slate-400 font-semibold text-xs px-2 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>CSV Export</span>
+                    </button>
+
+                    <!-- Export JSON Backup -->
+                    <button onclick="exportToJSON()" class="bg-transparent border border-slate-200 dark:border-[#2C3854] text-slate-500 dark:text-slate-400 font-semibold text-xs px-2 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer" title="Export local backup file">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>JSON Save</span>
+                    </button>
+                </div>
+
+                <!-- Import JSON Backup -->
+                <button onclick="document.getElementById('import-json-file').click()" class="w-full bg-transparent border border-dashed border-slate-200 dark:border-[#2C3854] text-slate-400 dark:text-slate-500 hover:text-brand-500 hover:border-brand-500 font-bold text-xs px-4 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    <span>Upload JSON Backup</span>
+                </button>
+                <input type="file" id="import-json-file" accept=".json" class="hidden" onchange="importFromJSON(this)">
+
+                <div class="flex items-center justify-between border-t border-slate-100 dark:border-[#1F2937]/60 pt-2">
+                    <button onclick="logOutAuditor()" class="text-rose-500 hover:text-rose-700 font-extrabold text-[10px] uppercase tracking-wider flex items-center gap-1 cursor-pointer">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                        <span>Log Out</span>
+                    </button>
+                    
+                    <button onclick="confirmReset()" class="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400 font-semibold text-[10px] cursor-pointer">
+                        Reset Local View
+                    </button>
+                </div>
             </div>
         </aside>
 
@@ -300,7 +388,7 @@
 
     <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
-        // --- 1. DATA CONFIGURATION (MATCHING config.py) ---
+        // --- 1. DATA CONFIGURATION ---
         const SCHOOLS = [
             "Children's Academy Bachani Nagar",
             "Children's Academy Ashok Nagar",
@@ -368,24 +456,23 @@
             }
         };
 
-        // --- 2. BACKEND API SETTINGS & CONNECTION ---
+        // --- 2. HARDCODED AUDITOR CREDENTIALS ---
+        const AUDITOR_LOGINS = {
+            "Ronit Bhat": "ronit2026",
+            "Rohit Bhat": "rohit2026",
+            "Sangeeta Puri": "sangeeta2026",
+            "Monica Bhat": "monica2026",
+            "Superadmin": "admin2026"
+        };
+
+        // --- 3. BACKEND API SETTINGS & CONNECTION ---
         let API_BASE = localStorage.getItem("excelsis_api_url") || "https://excelsisadvisors.onrender.com";
         let isServerOnline = false;
-
-        function handleAPIUrlChange(url) {
-            let cleanUrl = url.trim();
-            if (cleanUrl.endsWith("/")) {
-                cleanUrl = cleanUrl.slice(0, -1);
-            }
-            API_BASE = cleanUrl || "http://127.0.0.1:8000";
-            localStorage.setItem("excelsis_api_url", API_BASE);
-            checkServerConnection();
-        }
 
         async function checkServerConnection() {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout
+                const timeoutId = setTimeout(() => controller.abort(), 2000);
                 const res = await fetch(`${API_BASE}/`, { signal: controller.signal });
                 clearTimeout(timeoutId);
                 
@@ -413,24 +500,36 @@
                 el.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span><span>Offline Mode (Local Backup)</span>`;
                 
                 const historyList = document.getElementById('saved-audits-list');
-                historyList.innerHTML = `<span class="text-slate-400 dark:text-slate-600 italic">Database audits history unavailable offline</span>`;
+                historyList.innerHTML = `<span class="text-slate-400 dark:text-slate-600 italic">Database drafts unavailable offline</span>`;
             }
         }
 
-        // --- 3. APPLICATION STATE ---
+        function handleAPIUrlChange(url) {
+            let cleanUrl = url.trim();
+            if (cleanUrl.endsWith("/")) {
+                cleanUrl = cleanUrl.slice(0, -1);
+            }
+            API_BASE = cleanUrl || "https://excelsisadvisors.onrender.com";
+            localStorage.setItem("excelsis_api_url", API_BASE);
+            checkServerConnection();
+        }
+
+        // --- 4. APPLICATION STATE ---
         let state = {
+            filename: "Untitled_Audit_" + new Date().toISOString().split('T')[0],
             school: SCHOOLS[0],
             auditor: "",
             date: new Date().toISOString().split('T')[0],
             activeCategory: Object.keys(CATEGORIES)[0],
             searchQuery: "",
+            loggedInUser: null,
             auditData: {}
         };
 
         const sessionPhotoUrls = {};
         const STORAGE_KEY = "excelsis_audit_v2_state";
 
-        // --- 4. SYSTEM INITIALIZATION ---
+        // --- 5. SYSTEM INITIALIZATION ---
         window.addEventListener('DOMContentLoaded', () => {
             loadState();
             initializeMetadataSelectors();
@@ -439,10 +538,10 @@
             renderActiveCategoryIndicators();
             updateCalculations();
             
-            // Initial server handshake
-            checkServerConnection();
+            // Render Auth Screen Overlay if not logged in
+            checkAuthentication();
             
-            // Poll server connection state every 10 seconds
+            checkServerConnection();
             setInterval(checkServerConnection, 10000);
         });
 
@@ -451,12 +550,69 @@
             selectEl.innerHTML = SCHOOLS.map(s => `<option value="${s}">${s}</option>`).join('');
             
             selectEl.value = state.school;
-            document.getElementById('meta-auditor').value = state.auditor;
             document.getElementById('meta-date').value = state.date;
+            document.getElementById('meta-filename').value = state.filename;
             document.getElementById('meta-api-url').value = API_BASE;
+            
+            if (state.loggedInUser) {
+                document.getElementById('active-auditor-label').innerHTML = state.loggedInUser;
+            }
         }
 
-        // --- 5. THEME CONTROLLER ---
+        // --- 6. AUTHENTICATION HANDLERS ---
+        function checkAuthentication() {
+            const user = localStorage.getItem("excelsis_logged_in_user");
+            if (user && AUDITOR_LOGINS[user]) {
+                state.loggedInUser = user;
+                state.auditor = user;
+                document.getElementById('login-overlay').classList.add('hidden');
+                document.getElementById('active-auditor-label').innerHTML = user;
+                fetchHistory(); // Fetch drafts filtered by this user
+            } else {
+                showLoginOverlay();
+            }
+        }
+
+        function showLoginOverlay() {
+            state.loggedInUser = null;
+            state.auditor = "";
+            document.getElementById('active-auditor-label').innerHTML = "Not Authenticated";
+            document.getElementById('login-overlay').classList.remove('hidden');
+            document.getElementById('login-pass').value = "";
+        }
+
+        function handleLoginSubmit() {
+            const userSelect = document.getElementById('login-user');
+            const passInput = document.getElementById('login-pass');
+            
+            const selectedUser = userSelect.value;
+            const enteredPass = passInput.value;
+            
+            if (AUDITOR_LOGINS[selectedUser] && AUDITOR_LOGINS[selectedUser] === enteredPass) {
+                localStorage.setItem("excelsis_logged_in_user", selectedUser);
+                state.loggedInUser = selectedUser;
+                state.auditor = selectedUser;
+                
+                document.getElementById('login-overlay').classList.add('hidden');
+                document.getElementById('active-auditor-label').innerHTML = selectedUser;
+                
+                saveState();
+                checkServerConnection(); // Reload history for this user
+                showToast(`Welcome back, ${selectedUser}!`);
+            } else {
+                showToast("Invalid credentials. Please try again.", "error");
+                passInput.value = "";
+                passInput.focus();
+            }
+        }
+
+        function logOutAuditor() {
+            if (!confirm("Are you sure you want to log out? Unsaved changes will remain in local database drafts.")) return;
+            localStorage.removeItem("excelsis_logged_in_user");
+            showLoginOverlay();
+        }
+
+        // --- 7. THEME CONTROLLER ---
         function setupTheme() {
             const isDark = localStorage.getItem('theme') === 'dark' || 
                 (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -485,7 +641,7 @@
             }
         }
 
-        // --- 6. TOAST UTILITY ---
+        // --- 8. TOAST UTILITY ---
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -512,7 +668,7 @@
             }, 3000);
         }
 
-        // --- 7. STATE PERSISTENCE (LOCALSTORAGE & FASTAPI SYNCS) ---
+        // --- 9. STATE MANAGEMENT (LOAD / SAVE / FILES) ---
         function loadState() {
             const stored = localStorage.getItem(STORAGE_KEY);
             if (stored) {
@@ -547,23 +703,23 @@
         function saveState() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
             
-            // Debounce database calls to prevent write spam while typing notes
-            if (isServerOnline) {
+            if (isServerOnline && state.loggedInUser) {
                 clearTimeout(dbSaveTimeout);
                 dbSaveTimeout = setTimeout(syncStateToDatabase, 1500);
             }
         }
 
         async function syncStateToDatabase() {
-            if (!isServerOnline) return;
+            if (!isServerOnline || !state.loggedInUser) return;
             const score = calculateScore();
             try {
                 const res = await fetch(`${API_BASE}/api/save`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
+                        filename: state.filename,
                         school: state.school,
-                        auditor: state.auditor,
+                        auditor: state.loggedInUser,
                         date: state.date,
                         score: score,
                         audit_data: state.auditData
@@ -577,11 +733,11 @@
             }
         }
 
-        // Fetch list of saved audits from SQLite
+        // Fetch saved audits, filtering by active logged-in auditor (Isolation)
         async function fetchHistory() {
-            if (!isServerOnline) return;
+            if (!isServerOnline || !state.loggedInUser) return;
             try {
-                const res = await fetch(`${API_BASE}/api/history`);
+                const res = await fetch(`${API_BASE}/api/history?auditor=${encodeURIComponent(state.loggedInUser)}`);
                 if (res.ok) {
                     const history = await res.json();
                     renderHistoryList(history);
@@ -591,25 +747,35 @@
             }
         }
 
-        // Retrieve specific audit from SQLite
-        async function loadAuditFromDatabase(school, date) {
+        // Load specific audit draft (Agnostic to active user role)
+        async function loadAuditFromDatabase(filename) {
+            await loadAuditFromDatabaseForAuditor(filename, state.loggedInUser);
+        }
+
+        async function loadAuditFromDatabaseForSuperadmin(filename, auditor) {
+            await loadAuditFromDatabaseForAuditor(filename, auditor);
+        }
+
+        async function loadAuditFromDatabaseForAuditor(filename, auditor) {
             if (!isServerOnline) return;
             try {
-                const res = await fetch(`${API_BASE}/api/load?school=${encodeURIComponent(school)}&date=${encodeURIComponent(date)}`);
+                const res = await fetch(`${API_BASE}/api/load?filename=${encodeURIComponent(filename)}&auditor=${encodeURIComponent(auditor)}`);
                 if (res.ok) {
                     const data = await res.json();
                     
-                    state.school = school;
-                    state.date = date;
-                    state.auditor = data.auditor;
+                    state.filename = filename;
+                    state.school = data.school;
+                    state.date = data.date;
+                    state.auditor = auditor;
                     state.auditData = data.audit_data;
                     
-                    // Sync HTML elements
-                    document.getElementById('meta-school').value = school;
-                    document.getElementById('meta-auditor').value = data.auditor;
-                    document.getElementById('meta-date').value = date;
+                    // Sync UI inputs
+                    document.getElementById('meta-filename').value = filename;
+                    document.getElementById('meta-school').value = data.school;
+                    document.getElementById('meta-date').value = data.date;
+                    document.getElementById('active-auditor-label').innerHTML = auditor;
                     
-                    // Revoke old session preview photos
+                    // Clear out-of-session object URLs
                     Object.keys(sessionPhotoUrls).forEach(cat => {
                         Object.keys(sessionPhotoUrls[cat]).forEach(ind => {
                             URL.revokeObjectURL(sessionPhotoUrls[cat][ind]);
@@ -620,70 +786,85 @@
                     renderCategoryNavigation();
                     renderActiveCategoryIndicators();
                     updateCalculations();
-                    showToast(`Audit for ${school} (${date}) loaded successfully!`, 'info');
+                    showToast(`Draft file "${filename}" loaded successfully!`, 'info');
                 }
             } catch(e) {
-                showToast("Error loading audit data from database.", "error");
+                showToast("Error loading file from database.", "error");
             }
         }
 
-        // Delete audit record from SQLite
-        async function deleteAuditFromDatabase(school, date, event) {
-            if (event) event.stopPropagation(); // Avoid triggering card loading click
-            if (!confirm(`Are you sure you want to delete the audit record for ${school} on ${date} from the database?`)) return;
+        // Delete audit record (Agnostic to active user role)
+        async function deleteAuditFromDatabase(filename, event) {
+            await deleteAuditFromDatabaseForAuditor(filename, state.loggedInUser, event);
+        }
+
+        async function deleteAuditFromDatabaseForSuperadmin(filename, auditor, event) {
+            await deleteAuditFromDatabaseForAuditor(filename, auditor, event);
+        }
+
+        async function deleteAuditFromDatabaseForAuditor(filename, auditor, event) {
+            if (event) event.stopPropagation();
+            if (!confirm(`Are you sure you want to delete the file "${filename}" from the database?`)) return;
             
             try {
-                const res = await fetch(`${API_BASE}/api/delete?school=${encodeURIComponent(school)}&date=${encodeURIComponent(date)}`, {
+                const res = await fetch(`${API_BASE}/api/delete?filename=${encodeURIComponent(filename)}&auditor=${encodeURIComponent(auditor)}`, {
                     method: "DELETE"
                 });
                 if (res.ok) {
                     fetchHistory();
-                    showToast(`Audit record deleted.`);
+                    showToast(`File "${filename}" deleted.`);
                     
-                    // If the currently open audit was the deleted one, reset state to clear fields
-                    if (state.school === school && state.date === date) {
-                        state.auditor = "";
-                        state.auditData = {};
-                        loadState();
-                        initializeMetadataSelectors();
-                        renderCategoryNavigation();
-                        renderActiveCategoryIndicators();
-                        updateCalculations();
+                    if (state.filename === filename && state.auditor === auditor) {
+                        startNewAudit(true);
                     }
                 }
             } catch(e) {
-                showToast("Failed to delete record.", "error");
+                showToast("Failed to delete file.", "error");
             }
         }
 
-        function confirmReset() {
-            if (confirm("Are you sure you want to reset all scores, notes, and metadata? This action cannot be undone.")) {
-                localStorage.removeItem(STORAGE_KEY);
-                state.auditor = "";
-                state.date = new Date().toISOString().split('T')[0];
-                state.school = SCHOOLS[0];
-                state.activeCategory = Object.keys(CATEGORIES)[0];
-                state.searchQuery = "";
-                state.auditData = {};
-                
-                Object.keys(sessionPhotoUrls).forEach(cat => {
-                    Object.keys(sessionPhotoUrls[cat]).forEach(ind => {
-                        URL.revokeObjectURL(sessionPhotoUrls[cat][ind]);
-                    });
-                });
-                
-                loadState();
-                initializeMetadataSelectors();
-                clearSearch();
-                renderCategoryNavigation();
-                renderActiveCategoryIndicators();
-                updateCalculations();
-                showToast("All fields cleared.");
+        // Save As Copy workflow
+        function saveAsAction() {
+            if (!state.loggedInUser) return;
+            const newName = prompt("Save As (Enter new Audit File Name):", state.filename + "_copy");
+            if (newName === null) return;
+            
+            const cleanName = newName.trim();
+            if (!cleanName) {
+                showToast("Invalid filename.", "error");
+                return;
             }
+            
+            state.filename = cleanName;
+            document.getElementById('meta-filename').value = cleanName;
+            
+            saveState();
+            syncStateToDatabase();
+            showToast(`Created new copy: "${cleanName}"`);
         }
 
-        // Section save checkpoint button trigger
+        // Reset to Blank audit
+        function startNewAudit(force = false) {
+            if (!force && !confirm("Discard current view and open a new blank audit? Ensure you have saved your draft first.")) return;
+            
+            state.filename = "Untitled_Audit_" + new Date().toISOString().split('T')[0];
+            state.school = SCHOOLS[0];
+            state.date = new Date().toISOString().split('T')[0];
+            state.auditData = {};
+            
+            loadState();
+            initializeMetadataSelectors();
+            
+            saveState();
+            renderCategoryNavigation();
+            renderActiveCategoryIndicators();
+            updateCalculations();
+            if (!force) showToast("Started blank audit session.");
+        }
+
+        // Save Checkpoint trigger
         async function saveDraftAction() {
+            if (!state.loggedInUser) return;
             saveState();
             if (isServerOnline) {
                 const score = calculateScore();
@@ -692,8 +873,9 @@
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
+                            filename: state.filename,
                             school: state.school,
-                            auditor: state.auditor,
+                            auditor: state.loggedInUser,
                             date: state.date,
                             score: score,
                             audit_data: state.auditData
@@ -701,9 +883,9 @@
                     });
                     if (res.ok) {
                         fetchHistory();
-                        showToast("Audit checkpoint written to server database!");
+                        showToast(`File "${state.filename}" saved securely to database!`);
                     } else {
-                        showToast("Local backup saved, server error.", "error");
+                        showToast("Local backup updated, server sync error.", "error");
                     }
                 } catch(e) {
                     showToast("Server offline. Local browser backup updated.", "error");
@@ -713,7 +895,12 @@
             }
         }
 
-        // --- 8. EVENT HANDLERS ---
+        // --- 10. EVENT HANDLERS ---
+        function handleFilenameChange(val) {
+            state.filename = val.trim() || "Untitled_Audit";
+            saveState();
+        }
+
         function handleMetaChange(field, val) {
             state[field] = val;
             saveState();
@@ -797,7 +984,7 @@
                 
                 updateLiveIndicatorsForCard(catName, indName);
                 updateCalculations();
-                showToast(`Mapped Photographic File: ${file.name}`);
+                showToast(`Attached evidence: ${file.name}`);
             }
         }
 
@@ -828,7 +1015,7 @@
             
             updateLiveIndicatorsForCard(catName, indName);
             updateCalculations();
-            showToast(`Removed linked photo: ${oldName}`, 'info');
+            showToast(`Removed attached photo: ${oldName}`, 'info');
         }
 
         function getPhotoPreviewSrc(catName, indName) {
@@ -858,31 +1045,195 @@
             renderActiveCategoryIndicators();
         }
 
-        // --- 9. RENDERING SYSTEM ---
+        // --- 11. RENDERING SYSTEM ---
         function renderHistoryList(history) {
             const listEl = document.getElementById('saved-audits-list');
             if (!history || history.length === 0) {
-                listEl.innerHTML = `<span class="text-slate-400 dark:text-slate-600 italic">No saved audits in database</span>`;
+                listEl.innerHTML = `<span class="text-slate-400 dark:text-slate-600 italic">No saved drafts in database</span>`;
                 return;
             }
             
-            listEl.innerHTML = history.map(item => {
-                const roundedScore = (item.score * 100).toFixed(1);
-                return `
-                    <div onclick="loadAuditFromDatabase('${item.school}', '${item.date}')" class="p-2.5 rounded-xl border border-slate-100 dark:border-[#1F2937] hover:border-brand-500/50 dark:hover:border-brand-500/50 hover:bg-slate-50 dark:hover:bg-[#1c273d]/50 cursor-pointer flex items-center justify-between gap-2 group transition-all-custom">
-                        <div class="flex flex-col gap-0.5 max-w-[70%]">
-                            <span class="font-bold text-slate-700 dark:text-slate-300 truncate">${item.school}</span>
-                            <span class="text-[9px] text-slate-400 dark:text-slate-500 font-medium">${item.date} | ${item.auditor || 'Unknown'}</span>
+            if (state.loggedInUser === "Superadmin") {
+                document.getElementById('consolidate-btn').classList.remove('hidden');
+                
+                listEl.innerHTML = history.map(item => {
+                    const roundedScore = (item.score * 100).toFixed(1);
+                    return `
+                        <div onclick="loadAuditFromDatabaseForSuperadmin('${item.filename}', '${item.auditor}')" class="p-2.5 rounded-xl border border-slate-100 dark:border-[#1F2937] hover:border-brand-500/50 dark:hover:border-brand-500/50 hover:bg-slate-50 dark:hover:bg-[#1c273d]/50 cursor-pointer flex items-center justify-between gap-2 group transition-all-custom">
+                            <div class="flex items-center gap-2 max-w-[75%] min-w-0">
+                                <input type="checkbox" 
+                                       class="consolidate-checkbox rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer w-4 h-4 shrink-0" 
+                                       value="${item.filename}|${item.auditor}" 
+                                       onclick="handleConsolidateCheckboxClick(event)"
+                                />
+                                <div class="flex flex-col gap-0.5 min-w-0">
+                                    <span class="font-bold text-slate-700 dark:text-slate-300 truncate">${item.filename}</span>
+                                    <span class="text-[9px] text-slate-400 dark:text-slate-500 font-medium truncate">${item.auditor} | ${item.school}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <span class="font-black text-brand-600 dark:text-brand-300 text-xs">${roundedScore}%</span>
+                                <button onclick="deleteAuditFromDatabaseForSuperadmin('${item.filename}', '${item.auditor}', event)" class="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Draft">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="font-black text-brand-600 dark:text-brand-300 text-xs">${roundedScore}%</span>
-                            <button onclick="deleteAuditFromDatabase('${item.school}', '${item.date}', event)" class="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Audit">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                            </button>
+                    `;
+                }).join('');
+            } else {
+                document.getElementById('consolidate-btn').classList.add('hidden');
+                
+                listEl.innerHTML = history.map(item => {
+                    const roundedScore = (item.score * 100).toFixed(1);
+                    return `
+                        <div onclick="loadAuditFromDatabase('${item.filename}')" class="p-2.5 rounded-xl border border-slate-100 dark:border-[#1F2937] hover:border-brand-500/50 dark:hover:border-brand-500/50 hover:bg-slate-50 dark:hover:bg-[#1c273d]/50 cursor-pointer flex items-center justify-between gap-2 group transition-all-custom">
+                            <div class="flex flex-col gap-0.5 max-w-[70%]">
+                                <span class="font-bold text-slate-700 dark:text-slate-300 truncate">${item.filename}</span>
+                                <span class="text-[9px] text-slate-400 dark:text-slate-500 font-medium">${item.school} | ${item.date}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-black text-brand-600 dark:text-brand-300 text-xs">${roundedScore}%</span>
+                                <button onclick="deleteAuditFromDatabase('${item.filename}', event)" class="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Draft">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                }).join('');
+            }
+        }
+
+        function handleConsolidateCheckboxClick(event) {
+            event.stopPropagation();
+            
+            const checkedBoxes = document.querySelectorAll('.consolidate-checkbox:checked');
+            const btn = document.getElementById('consolidate-btn');
+            if (btn) {
+                btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg> <span>Consolidate Selected (${checkedBoxes.length})</span>`;
+            }
+        }
+
+        async function consolidateSelectedAudits() {
+            if (!isServerOnline) {
+                showToast("Database server offline. Consolidation requires database connection.", "error");
+                return;
+            }
+            
+            const checkedBoxes = document.querySelectorAll('.consolidate-checkbox:checked');
+            if (checkedBoxes.length < 2) {
+                showToast("Please select at least 2 audits to consolidate.", "error");
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to consolidate these ${checkedBoxes.length} audits?`)) return;
+            
+            const selectedFiles = Array.from(checkedBoxes).map(box => {
+                const parts = box.value.split('|');
+                return { filename: parts[0], auditor: parts[1] };
+            });
+            
+            showToast("Fetching drafts for consolidation...", "info");
+            
+            try {
+                const loadedAudits = await Promise.all(selectedFiles.map(async f => {
+                    const res = await fetch(`${API_BASE}/api/load?filename=${encodeURIComponent(f.filename)}&auditor=${encodeURIComponent(f.auditor)}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        data.filename = f.filename;
+                        data.auditor = f.auditor;
+                        return data;
+                    }
+                    throw new Error(`Failed to load ${f.filename}`);
+                }));
+                
+                const consolidatedData = {};
+                for (const [catName, catData] of Object.entries(CATEGORIES)) {
+                    consolidatedData[catName] = {};
+                    for (const indName of Object.keys(catData.indicators)) {
+                        consolidatedData[catName][indName] = {
+                            score: 3,
+                            features: [],
+                            gaps: [],
+                            actions: [],
+                            photos: []
+                        };
+                    }
+                }
+                
+                loadedAudits.forEach(audit => {
+                    const auditorName = audit.auditor || "Unknown";
+                    
+                    Object.entries(audit.audit_data).forEach(([catName, indicators]) => {
+                        Object.entries(indicators).forEach(([indName, item]) => {
+                            const target = consolidatedData[catName]?.[indName];
+                            if (target) {
+                                const scoreVal = Number(item.score);
+                                if (!isNaN(scoreVal)) {
+                                    if (!target.rawScores) target.rawScores = [];
+                                    target.rawScores.push(scoreVal);
+                                }
+                                
+                                if (item.features && item.features.trim()) {
+                                    target.features.push(`[${auditorName}]: ${item.features.trim()}`);
+                                }
+                                if (item.gaps && item.gaps.trim()) {
+                                    target.gaps.push(`[${auditorName}]: ${item.gaps.trim()}`);
+                                }
+                                if (item.actions && item.actions.trim()) {
+                                    target.actions.push(`[${auditorName}]: ${item.actions.trim()}`);
+                                }
+                                if (item.photoName && item.photoName.trim()) {
+                                    target.photos.push(`${auditorName}: ${item.photoName.trim()}`);
+                                }
+                            }
+                        });
+                    });
+                });
+                
+                const finalAuditData = {};
+                for (const [catName, indicators] of Object.entries(consolidatedData)) {
+                    finalAuditData[catName] = {};
+                    for (const [indName, merged] of Object.entries(indicators)) {
+                        let avgScore = 3;
+                        if (merged.rawScores && merged.rawScores.length > 0) {
+                            const sum = merged.rawScores.reduce((a, b) => a + b, 0);
+                            avgScore = Math.round(sum / merged.rawScores.length);
+                        }
+                        
+                        finalAuditData[catName][indName] = {
+                            score: avgScore,
+                            features: merged.features.join("\n"),
+                            gaps: merged.gaps.join("\n"),
+                            actions: merged.actions.join("\n"),
+                            photoName: merged.photos.join(", "),
+                            reviewed: merged.features.length > 0 || merged.gaps.length > 0 || merged.actions.length > 0 || merged.photos.length > 0 || avgScore !== 3
+                        };
+                    }
+                }
+                
+                state.filename = "Consolidated_" + new Date().toISOString().split('T')[0];
+                state.school = loadedAudits[0].school;
+                state.date = new Date().toISOString().split('T')[0];
+                state.auditor = "Superadmin";
+                state.auditData = finalAuditData;
+                
+                // Sync UI inputs
+                document.getElementById('meta-filename').value = state.filename;
+                document.getElementById('meta-school').value = state.school;
+                document.getElementById('meta-date').value = state.date;
+                document.getElementById('active-auditor-label').innerHTML = "Superadmin";
+                
+                saveState();
+                
+                renderCategoryNavigation();
+                renderActiveCategoryIndicators();
+                updateCalculations();
+                
+                showToast(`Consolidated draft loaded: "${state.filename}"`, "success");
+            } catch(e) {
+                console.error("Consolidation error:", e);
+                showToast("Failed to consolidate selected files.", "error");
+            }
         }
 
         function renderCategoryNavigation() {
@@ -974,10 +1325,10 @@
                 
                 const saveDraftBtnHTML = `
                     <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 p-5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1F2937] rounded-2xl shadow-sm">
-                        <div class="text-xs text-slate-400 dark:text-slate-500 font-medium">All changes are auto-saved. Click to enforce manual draft checkpoint.</div>
+                        <div class="text-xs text-slate-400 dark:text-slate-500 font-medium">Draft modifications auto-sync dynamically. Press checkpoint to force manual save.</div>
                         <button onclick="saveDraftAction()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-3 rounded-xl transition-all-custom cursor-pointer flex items-center justify-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-                            <span>Save Section Draft</span>
+                            <span>Save Draft File</span>
                         </button>
                     </div>
                 `;
@@ -1135,7 +1486,7 @@
             renderCategoryNavigation();
         }
 
-        // --- 10. CALCULATION ENGINE ---
+        // --- 12. CALCULATION ENGINE ---
         function calculateScore() {
             let finalWeightedScore = 0;
             Object.entries(CATEGORIES).forEach(([catName, catData]) => {
@@ -1192,9 +1543,10 @@
             document.getElementById('overall-progress-bar').style.width = `${progressPercent}%`;
         }
 
-        // --- 11. EXPORT ENGINE (SPREADSHEET CSV GENERATOR) ---
+        // --- 13. EXPORT ENGINE (SPREADSHEET CSV GENERATOR) ---
         function exportToCSV() {
             const headers = [
+                "File Name",
                 "School",
                 "Auditor",
                 "Date",
@@ -1215,8 +1567,9 @@
             
             let csvRows = [headers.map(h => escapeCSV(h)).join(",")];
             
+            const filename = state.filename || "Untitled_Audit";
             const school = state.school || "";
-            const auditor = state.auditor || "";
+            const auditor = state.loggedInUser || "";
             const date = state.date || "";
             
             Object.entries(CATEGORIES).forEach(([catName, catData]) => {
@@ -1224,6 +1577,7 @@
                     const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "" };
                     
                     const row = [
+                        filename,
                         school,
                         auditor,
                         date,
@@ -1246,8 +1600,8 @@
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             
-            const formattedSchool = school.replace(/\s+/g, '_');
-            const fileName = `Excelsis_Audit_${formattedSchool}_${date}.csv`;
+            const formattedName = filename.replace(/\s+/g, '_');
+            const fileName = `Excelsis_Audit_${formattedName}_${date}.csv`;
             
             link.setAttribute("href", url);
             link.setAttribute("download", fileName);
@@ -1260,7 +1614,7 @@
             setTimeout(() => URL.revokeObjectURL(url), 100);
         }
 
-        // --- 12. PDF BOARD REPORT GENERATOR ---
+        // --- 14. PDF BOARD REPORT GENERATOR ---
         function generatePDFReport() {
             const printContainer = document.getElementById('print-report-container');
             
@@ -1320,8 +1674,9 @@
                             <p class="text-xs font-bold text-slate-500 tracking-wider">COMPLIANCE & SAFETY AUDIT REPORT</p>
                         </div>
                         <div class="text-right text-xs text-slate-500 font-semibold leading-relaxed">
+                            <p>File Name: ${state.filename}</p>
                             <p>Date: ${state.date}</p>
-                            <p>Auditor: ${state.auditor || "Not Specified"}</p>
+                            <p>Auditor: ${state.loggedInUser || "Not Authenticated"}</p>
                         </div>
                     </div>
                     
@@ -1432,6 +1787,72 @@
             
             printContainer.innerHTML = reportHTML;
             window.print();
+        }
+
+        // --- 15. JSON DRAFT IMPORT / EXPORT BACKUPS ---
+        function exportToJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+                version: "2.0",
+                filename: state.filename,
+                school: state.school,
+                date: state.date,
+                auditData: state.auditData
+            }, null, 2));
+            
+            const link = document.createElement('a');
+            link.setAttribute("href", dataStr);
+            const cleanName = state.filename.replace(/\s+/g, '_');
+            link.setAttribute("download", `Excelsis_Backup_${cleanName}_${state.date}.json`);
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("JSON Backup downloaded successfully!");
+        }
+
+        function importFromJSON(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const imported = JSON.parse(e.target.result);
+                        
+                        if (!imported.filename || !imported.school || !imported.auditData) {
+                            showToast("Invalid JSON backup structure.", "error");
+                            return;
+                        }
+                        
+                        state.filename = imported.filename;
+                        state.school = imported.school;
+                        if (imported.date) state.date = imported.date;
+                        state.auditData = imported.auditData;
+                        
+                        // Sync UI inputs
+                        document.getElementById('meta-filename').value = state.filename;
+                        document.getElementById('meta-school').value = state.school;
+                        document.getElementById('meta-date').value = state.date;
+                        
+                        saveState();
+                        
+                        if (isServerOnline) {
+                            syncStateToDatabase();
+                        }
+                        
+                        renderCategoryNavigation();
+                        renderActiveCategoryIndicators();
+                        updateCalculations();
+                        
+                        showToast(`Successfully loaded draft file: "${state.filename}"`);
+                    } catch (err) {
+                        showToast("Failed to parse JSON file.", "error");
+                    }
+                };
+                
+                reader.readAsText(file);
+                input.value = ""; // Reset
+            }
         }
     </script>
 </body>

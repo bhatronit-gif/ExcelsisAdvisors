@@ -32,34 +32,51 @@ def get_db_connection():
         DATABASE_FILE = os.path.join(DATABASE_DIR, "audit_database.db")
         return sqlite3.connect(DATABASE_FILE)
 
-# Initialize database schema dynamically
+# Initialize database schema dynamically with automated migrations
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
+    
+    # Check if table schema is outdated (does not have filename column)
+    schema_outdated = False
+    try:
+        cursor.execute("SELECT filename FROM audits LIMIT 1")
+        cursor.fetchone()
+    except Exception:
+        # Table exists but fails when selecting filename => schema outdated
+        schema_outdated = True
+        
+    if schema_outdated:
+        print("Upgrading database: Dropping old schema to apply filename & auditor separation...")
+        cursor.execute("DROP TABLE IF EXISTS audits")
+        conn.commit()
+        
     if IS_POSTGRES:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS audits (
                 id SERIAL PRIMARY KEY,
+                filename TEXT,
                 school TEXT,
                 auditor TEXT,
                 date TEXT,
                 score REAL,
                 audit_data TEXT,
                 last_updated TEXT,
-                UNIQUE(school, date)
+                UNIQUE(filename, auditor)
             )
         """)
     else:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS audits (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                filename TEXT,
                 school TEXT,
                 auditor TEXT,
                 date TEXT,
                 score REAL,
                 audit_data TEXT,
                 last_updated TEXT,
-                UNIQUE(school, date)
+                UNIQUE(filename, auditor)
             )
         """)
     conn.commit()
@@ -69,6 +86,7 @@ init_db()
 
 # Pydantic schema for audit payloads
 class AuditPayload(BaseModel):
+    filename: str
     school: str
     auditor: str
     date: str
@@ -80,82 +98,93 @@ def read_root():
     db_type = "PostgreSQL (Cloud)" if IS_POSTGRES else "SQLite (Local File)"
     return {"status": "Excelsis Audit Server is running", "database_type": db_type}
 
-# Get list of all saved audits (history)
+# Get list of all saved audits for a specific auditor (auditor separation)
 @app.get("/api/history")
-def get_history():
+def get_history(auditor: str):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT school, auditor, date, score, last_updated 
-            FROM audits 
-            ORDER BY last_updated DESC
-        """)
+        if auditor == "Superadmin":
+            query = """
+                SELECT filename, school, auditor, date, score, last_updated 
+                FROM audits 
+                ORDER BY last_updated DESC
+            """
+            cursor.execute(query)
+        else:
+            query = f"""
+                SELECT filename, school, auditor, date, score, last_updated 
+                FROM audits 
+                WHERE auditor = {PLACEHOLDER}
+                ORDER BY last_updated DESC
+            """
+            cursor.execute(query, (auditor,))
         rows = cursor.fetchall()
         conn.close()
         
         history = []
         for r in rows:
             history.append({
-                "school": r[0],
-                "auditor": r[1],
-                "date": r[2],
-                "score": r[3],
-                "last_updated": r[4]
+                "filename": r[0],
+                "school": r[1],
+                "auditor": r[2],
+                "date": r[3],
+                "score": r[4],
+                "last_updated": r[5]
             })
         return history
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Save or update an audit (upsert)
+# Save or update an audit (upsert by filename and auditor)
 @app.post("/api/save")
 def save_audit(payload: AuditPayload):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
         data_json = json.dumps(payload.audit_data)
         
         query = f"""
-            INSERT INTO audits (school, auditor, date, score, audit_data, last_updated)
-            VALUES ({PLACEHOLDER}, {PLACEHOLDER}, {PLACEHOLDER}, {PLACEHOLDER}, {PLACEHOLDER}, {PLACEHOLDER})
-            ON CONFLICT(school, date) DO UPDATE SET
-                auditor=EXCLUDED.auditor,
+            INSERT INTO audits (filename, school, auditor, date, score, audit_data, last_updated)
+            VALUES ({PLACEHOLDER}, {PLACEHOLDER}, {PLACEHOLDER}, {PLACEHOLDER}, {PLACEHOLDER}, {PLACEHOLDER}, {PLACEHOLDER})
+            ON CONFLICT(filename, auditor) DO UPDATE SET
+                school=EXCLUDED.school,
+                date=EXCLUDED.date,
                 score=EXCLUDED.score,
                 audit_data=EXCLUDED.audit_data,
                 last_updated=EXCLUDED.last_updated
         """
-        cursor.execute(query, (payload.school, payload.auditor, payload.date, payload.score, data_json, now_str))
-        
+        cursor.execute(query, (payload.filename, payload.school, payload.auditor, payload.date, payload.score, data_json, now_str))
         conn.commit()
         conn.close()
-        return {"status": "success", "message": f"Audit for {payload.school} on {payload.date} saved successfully."}
+        return {"status": "success", "message": f"Audit file '{payload.filename}' saved successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # Load a specific audit record
 @app.get("/api/load")
-def load_audit(school: str, date: str):
+def load_audit(filename: str, auditor: str):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         query = f"""
-            SELECT auditor, score, audit_data 
+            SELECT school, date, score, audit_data 
             FROM audits 
-            WHERE school = {PLACEHOLDER} AND date = {PLACEHOLDER}
+            WHERE filename = {PLACEHOLDER} AND auditor = {PLACEHOLDER}
         """
-        cursor.execute(query, (school, date))
+        cursor.execute(query, (filename, auditor))
         row = cursor.fetchone()
         conn.close()
         
         if not row:
-            raise HTTPException(status_code=404, detail="Audit record not found")
+            raise HTTPException(status_code=404, detail="Audit file not found")
             
         return {
-            "auditor": row[0],
-            "score": row[1],
-            "audit_data": json.loads(row[2])
+            "school": row[0],
+            "date": row[1],
+            "score": row[2],
+            "audit_data": json.loads(row[3])
         }
     except Exception as e:
         if isinstance(e, HTTPException):
@@ -164,24 +193,23 @@ def load_audit(school: str, date: str):
 
 # Delete a specific audit record
 @app.delete("/api/delete")
-def delete_audit(school: str, date: str):
+def delete_audit(filename: str, auditor: str):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         query = f"""
             DELETE FROM audits 
-            WHERE school = {PLACEHOLDER} AND date = {PLACEHOLDER}
+            WHERE filename = {PLACEHOLDER} AND auditor = {PLACEHOLDER}
         """
-        cursor.execute(query, (school, date))
+        cursor.execute(query, (filename, auditor))
         conn.commit()
-        
         deleted_count = cursor.rowcount
         conn.close()
         
         if deleted_count == 0:
             raise HTTPException(status_code=404, detail="Audit record not found to delete")
             
-        return {"status": "success", "message": f"Audit for {school} on {date} deleted."}
+        return {"status": "success", "message": f"Audit file '{filename}' deleted."}
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
