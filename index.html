@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Excelsis Advisors - Smart Audit Portal</title>
     <meta name="description" content="A premium, highly responsive real-time audit scoring application for school campuses.">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="favicon.png">
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,12 +23,17 @@
                     },
                     colors: {
                         brand: {
-                            50: '#eef2ff',
-                            100: '#e0e7ff',
-                            500: '#6366f1',
-                            600: '#4f46e5',
-                            700: '#4338ca',
-                            900: '#312e81',
+                            50: '#fff5f5',
+                            100: '#ffe3e3',
+                            500: '#C83728',
+                            600: '#A9261B',
+                            700: '#8E1C12',
+                            900: '#680E07',
+                        },
+                        excelsisBlue: {
+                            100: '#f0f9ff',
+                            500: '#A0CDF0',
+                            600: '#7896C8',
                         }
                     }
                 }
@@ -150,14 +157,9 @@
                 <div class="flex flex-col gap-2">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
-                            <div class="bg-brand-500 text-white p-2.5 rounded-xl shadow-lg shadow-brand-500/20 flex items-center justify-center">
-                                <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <h1 class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-brand-500 to-indigo-500 dark:from-brand-100 dark:to-indigo-300 bg-clip-text text-transparent">Excelsis Advisors</h1>
-                                <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Audit Portal v2.0</p>
+                            <div class="flex flex-col gap-0.5">
+                                <img src="logo.webp" alt="Excelsis Advisors" class="h-10 w-auto self-start dark:brightness-110 object-contain">
+                                <p class="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">Audit Portal v2.0</p>
                             </div>
                         </div>
                         
@@ -176,7 +178,7 @@
                 </div>
 
                 <!-- Total Score Summary Card -->
-                <div class="bg-gradient-to-br from-brand-600 to-indigo-700 text-white rounded-2xl p-5 shadow-xl shadow-brand-500/20 relative overflow-hidden">
+                <div class="bg-gradient-to-br from-brand-600 to-excelsisBlue-600 text-white rounded-2xl p-5 shadow-xl shadow-brand-500/20 relative overflow-hidden">
                     <div class="absolute -right-6 -bottom-6 w-32 h-32 rounded-full bg-white/5 pointer-events-none"></div>
                     <div class="absolute -left-6 -top-6 w-24 h-24 rounded-full bg-white/5 pointer-events-none"></div>
 
