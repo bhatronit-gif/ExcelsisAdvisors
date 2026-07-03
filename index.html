@@ -1976,6 +1976,76 @@
                 ratingColor = "text-amber-600 bg-amber-50 border-amber-200";
             }
 
+            // Generate Detailed Categories Content for Detailed Report
+            let detailedCategoriesHTML = "";
+            if (options.reportType === 'detailed') {
+                detailedCategoriesHTML = `
+                    <div class="flex flex-col gap-8 mt-10 print-page-break">
+                        <h3 class="text-xs font-extrabold text-brand-700 uppercase tracking-wider border-b-2 border-slate-200 pb-2">
+                            2. Detailed Category &amp; Indicator Assessments
+                        </h3>
+                        
+                        ${Object.entries(CATEGORIES).map(([catName, catData]) => {
+                            const indicatorsHTML = Object.entries(catData.indicators).map(([indName, multiplier]) => {
+                                const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "", photoData: "" };
+                                const score = Number(item.score) || 3;
+                                
+                                return `
+                                    <div class="flex flex-col gap-2.5 print-avoid-break pb-3 border-b border-slate-100 last:border-b-0">
+                                        <div class="flex justify-between items-center bg-slate-50 border border-slate-200/50 p-2.5 rounded-lg">
+                                            <span class="text-xs font-bold text-slate-800">${indName}</span>
+                                            <div class="flex items-center gap-2">
+                                                ${getPDFScoreBadge(score)}
+                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">Weight: ${multiplier}x</span>
+                                            </div>
+                                        </div>
+                                        
+                                        ${item.features || item.gaps || item.actions ? `
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-[10px] leading-relaxed pl-2">
+                                            ${item.features ? `
+                                                <div class="bg-indigo-50/30 border border-indigo-100/50 p-2.5 rounded-lg">
+                                                    <span class="font-extrabold text-[8px] uppercase text-indigo-700 tracking-wider block mb-0.5">Notable Features</span>
+                                                    <p class="text-slate-600 font-medium">${item.features}</p>
+                                                </div>
+                                            ` : ''}
+                                            ${item.gaps ? `
+                                                <div class="bg-rose-50/30 border border-rose-100/50 p-2.5 rounded-lg">
+                                                    <span class="font-extrabold text-[8px] uppercase text-rose-600 tracking-wider block mb-0.5">Gaps Identified 🚩</span>
+                                                    <p class="text-slate-700 font-semibold">${item.gaps}</p>
+                                                </div>
+                                            ` : ''}
+                                            ${item.actions ? `
+                                                <div class="bg-emerald-50/30 border border-emerald-100/50 p-2.5 rounded-lg">
+                                                    <span class="font-extrabold text-[8px] uppercase text-emerald-600 tracking-wider block mb-0.5">Actions Recommended 🛠</span>
+                                                    <p class="text-slate-700 font-semibold">${item.actions}</p>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                        ` : ''}
+                                        
+                                        ${item.photoData && options.includePhotos ? `
+                                            <div class="mt-1.5 flex flex-col gap-1 pl-2 print-avoid-break">
+                                                <span class="font-extrabold text-[8px] uppercase text-slate-400 tracking-wider block">Evidence Photo: ${item.photoName}</span>
+                                                <img src="${item.photoData}" class="max-w-xs max-h-48 object-cover rounded-lg border border-slate-200 shadow-sm self-start">
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('');
+                            
+                            return `
+                                <div class="flex flex-col gap-4 print-avoid-break mb-6">
+                                    <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider bg-slate-100 px-3 py-2 rounded-lg border border-slate-200">${catName}</h4>
+                                    <div class="flex flex-col gap-4 pl-4 border-l-2 border-slate-200">
+                                        ${indicatorsHTML}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+
             const printWindow = window.open("", "_blank");
             if (!printWindow) {
                 showToast("Popup blocked! Please allow popups to open/print reports.", "error");
@@ -2133,7 +2203,7 @@
                     </div>
 
                     <!-- Details Sections -->
-                    ${options.reportType !== 'detailed' ? `
+                    ${options.reportType === 'summary' ? `
                     <div class="flex flex-col gap-5 mt-10 print-page-break">
                         <h3 class="text-xs font-extrabold text-brand-700 uppercase tracking-wider border-b-2 border-slate-200 pb-2">
                             2. Gap Assessments & Remedial Actions
@@ -2191,6 +2261,8 @@
                         }
                     </div>
                     ` : ''}
+
+                    ${detailedCategoriesHTML}
                     
                     <!-- Sign-off Block -->
                     <div class="mt-16 pt-8 border-t border-slate-200 grid grid-cols-2 gap-12 print-avoid-break">
