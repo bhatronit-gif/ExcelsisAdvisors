@@ -102,7 +102,7 @@
 <body class="bg-slate-50 dark:bg-[#0B0F19] text-slate-800 dark:text-slate-200 min-h-screen font-sans antialiased transition-colors duration-300">
 
     <!-- Login Authentication Overlay -->
-    <div id="login-overlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/85 backdrop-blur-md transition-opacity duration-300">
+    <div id="login-overlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-955/85 backdrop-blur-md transition-opacity duration-300">
         <div class="glass-card rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl flex flex-col gap-6 border border-slate-200/10">
             <div class="flex flex-col items-center text-center gap-2">
                 <div class="bg-brand-500 text-white p-3 rounded-2xl shadow-lg shadow-brand-500/20">
@@ -168,10 +168,10 @@
                         </button>
                     </div>
 
-                    <!-- Server Connection Status Badge -->
-                    <div id="server-status" class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-[#1F2937] dark:text-slate-500 px-2 py-1 rounded-lg w-fit transition-all-custom">
-                        <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-                        <span>Checking server connection...</span>
+                    <!-- Connection Status Badge (Always Active Client-Side) -->
+                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 px-2 py-1 rounded-lg w-fit">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>Offline Local Memory Mode</span>
                     </div>
                 </div>
 
@@ -231,25 +231,10 @@
                     </div>
                 </div>
 
-                <!-- Server API Settings Panel -->
-                <div class="flex flex-col gap-2 border-t border-slate-100 dark:border-[#1F2937] pt-4">
-                    <label for="meta-api-url" class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Server API URL</label>
-                    <div class="relative">
-                        <input type="text" id="meta-api-url" oninput="handleAPIUrlChange(this.value)" placeholder="http://127.0.0.1:8000" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl pl-3 pr-8 py-2 text-[11px] font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom">
-                        <span class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-slate-400">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Database Audits History Panel (Isolated per auditor) -->
+                <!-- Local Storage Drafts History Panel -->
                 <div class="flex flex-col gap-2 border-t border-slate-100 dark:border-[#1F2937] pt-4" id="database-history-panel">
                     <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 flex items-center justify-between">
-                        <span>Your Saved Drafts</span>
-                        <button onclick="fetchHistory()" class="text-[10px] text-brand-500 hover:underline hover:text-brand-600 font-bold flex items-center gap-0.5 cursor-pointer">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17"/></svg>
-                            Refresh
-                        </button>
+                        <span>Local Browser Drafts</span>
                     </h2>
                     <!-- Consolidate Button (Only visible for Superadmin) -->
                     <button id="consolidate-btn" onclick="consolidateSelectedAudits()" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer mb-2">
@@ -257,7 +242,7 @@
                         <span>Consolidate Selected (0)</span>
                     </button>
                     <div id="saved-audits-list" class="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1 text-[11px] scrollbar-none">
-                        <span class="text-slate-400 dark:text-slate-600 italic">No saved drafts in database</span>
+                        <span class="text-slate-400 dark:text-slate-600 italic">No saved drafts in browser cache</span>
                     </div>
                 </div>
 
@@ -272,7 +257,7 @@
 
             <!-- Footer Action Buttons -->
             <div class="flex flex-col gap-2 mt-6 pt-4 border-t border-slate-200 dark:border-[#1F2937]">
-                <!-- Save File (Update Database Entry) -->
+                <!-- Save File (Update Local Database Entry) -->
                 <button onclick="saveDraftAction()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm px-4 py-3 rounded-xl shadow-lg shadow-brand-500/10 active:scale-[0.98] transition-all-custom flex items-center justify-center gap-2 cursor-pointer">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
                     <span>Save Draft File</span>
@@ -465,56 +450,7 @@
             "Superadmin": "admin2026"
         };
 
-        // --- 3. BACKEND API SETTINGS & CONNECTION ---
-        let API_BASE = localStorage.getItem("excelsis_api_url") || "https://excelsisadvisors.onrender.com";
-        let isServerOnline = false;
-
-        async function checkServerConnection() {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 2000);
-                const res = await fetch(`${API_BASE}/`, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                
-                if (res.ok) {
-                    isServerOnline = true;
-                    updateServerStatusUI(true);
-                    fetchHistory();
-                } else {
-                    isServerOnline = false;
-                    updateServerStatusUI(false);
-                }
-            } catch (e) {
-                isServerOnline = false;
-                updateServerStatusUI(false);
-            }
-        }
-
-        function updateServerStatusUI(online) {
-            const el = document.getElementById('server-status');
-            if (online) {
-                el.className = "flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 px-2 py-1 rounded-lg w-fit";
-                el.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>Server: Connected</span>`;
-            } else {
-                el.className = "flex items-center gap-1.5 text-[10px] font-bold text-rose-500 bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 px-2 py-1 rounded-lg w-fit";
-                el.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span><span>Offline Mode (Local Backup)</span>`;
-                
-                const historyList = document.getElementById('saved-audits-list');
-                historyList.innerHTML = `<span class="text-slate-400 dark:text-slate-600 italic">Database drafts unavailable offline</span>`;
-            }
-        }
-
-        function handleAPIUrlChange(url) {
-            let cleanUrl = url.trim();
-            if (cleanUrl.endsWith("/")) {
-                cleanUrl = cleanUrl.slice(0, -1);
-            }
-            API_BASE = cleanUrl || "https://excelsisadvisors.onrender.com";
-            localStorage.setItem("excelsis_api_url", API_BASE);
-            checkServerConnection();
-        }
-
-        // --- 4. APPLICATION STATE ---
+        // --- 3. APPLICATION STATE ---
         let state = {
             filename: "Untitled_Audit_" + new Date().toISOString().split('T')[0],
             school: SCHOOLS[0],
@@ -526,10 +462,9 @@
             auditData: {}
         };
 
-        const sessionPhotoUrls = {};
         const STORAGE_KEY = "excelsis_audit_v2_state";
 
-        // --- 5. SYSTEM INITIALIZATION ---
+        // --- 4. SYSTEM INITIALIZATION ---
         window.addEventListener('DOMContentLoaded', () => {
             loadState();
             initializeMetadataSelectors();
@@ -540,9 +475,6 @@
             
             // Render Auth Screen Overlay if not logged in
             checkAuthentication();
-            
-            checkServerConnection();
-            setInterval(checkServerConnection, 10000);
         });
 
         function initializeMetadataSelectors() {
@@ -552,14 +484,13 @@
             selectEl.value = state.school;
             document.getElementById('meta-date').value = state.date;
             document.getElementById('meta-filename').value = state.filename;
-            document.getElementById('meta-api-url').value = API_BASE;
             
             if (state.loggedInUser) {
                 document.getElementById('active-auditor-label').innerHTML = state.loggedInUser;
             }
         }
 
-        // --- 6. AUTHENTICATION HANDLERS ---
+        // --- 5. AUTHENTICATION HANDLERS ---
         function checkAuthentication() {
             const user = localStorage.getItem("excelsis_logged_in_user");
             if (user && AUDITOR_LOGINS[user]) {
@@ -567,7 +498,7 @@
                 state.auditor = user;
                 document.getElementById('login-overlay').classList.add('hidden');
                 document.getElementById('active-auditor-label').innerHTML = user;
-                fetchHistory(); // Fetch drafts filtered by this user
+                fetchHistory(); // Fetch local drafts filtered by this user
             } else {
                 showLoginOverlay();
             }
@@ -597,7 +528,7 @@
                 document.getElementById('active-auditor-label').innerHTML = selectedUser;
                 
                 saveState();
-                checkServerConnection(); // Reload history for this user
+                fetchHistory(); // Reload history for this user
                 showToast(`Welcome back, ${selectedUser}!`);
             } else {
                 showToast("Invalid credentials. Please try again.", "error");
@@ -607,12 +538,12 @@
         }
 
         function logOutAuditor() {
-            if (!confirm("Are you sure you want to log out? Unsaved changes will remain in local database drafts.")) return;
+            if (!confirm("Are you sure you want to log out? Unsaved changes will remain in local drafts.")) return;
             localStorage.removeItem("excelsis_logged_in_user");
             showLoginOverlay();
         }
 
-        // --- 7. THEME CONTROLLER ---
+        // --- 6. THEME CONTROLLER ---
         function setupTheme() {
             const isDark = localStorage.getItem('theme') === 'dark' || 
                 (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -641,7 +572,7 @@
             }
         }
 
-        // --- 8. TOAST UTILITY ---
+        // --- 7. TOAST UTILITY ---
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -668,6 +599,39 @@
             }, 3000);
         }
 
+        // --- 8. CLIENT-SIDE LOCAL STORAGE SYSTEM (NO SERVER) ---
+        function getLocalDraftsDB() {
+            const db = localStorage.getItem("excelsis_local_db_drafts");
+            if (!db) return {};
+            try {
+                return JSON.parse(db);
+            } catch(e) {
+                return {};
+            }
+        }
+
+        function saveLocalDraftToDB(filename, auditor, data) {
+            const db = getLocalDraftsDB();
+            const key = `${filename}|${auditor}`;
+            db[key] = {
+                filename: filename,
+                school: data.school,
+                auditor: auditor,
+                date: data.date,
+                score: calculateScore(),
+                audit_data: data.auditData,
+                last_updated: new Date().toISOString()
+            };
+            localStorage.setItem("excelsis_local_db_drafts", JSON.stringify(db));
+        }
+
+        function deleteLocalDraftFromDB(filename, auditor) {
+            const db = getLocalDraftsDB();
+            const key = `${filename}|${auditor}`;
+            delete db[key];
+            localStorage.setItem("excelsis_local_db_drafts", JSON.stringify(db));
+        }
+
         // --- 9. STATE MANAGEMENT (LOAD / SAVE / FILES) ---
         function loadState() {
             const stored = localStorage.getItem(STORAGE_KEY);
@@ -692,6 +656,7 @@
                             gaps: "",
                             actions: "",
                             photoName: "",
+                            photoData: "",
                             reviewed: false
                         };
                     }
@@ -699,127 +664,82 @@
             }
         }
 
-        let dbSaveTimeout = null;
         function saveState() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        // Fetch drafts filtering by auditor (or show all for Superadmin)
+        function fetchHistory() {
+            if (!state.loggedInUser) return;
+            const db = getLocalDraftsDB();
             
-            if (isServerOnline && state.loggedInUser) {
-                clearTimeout(dbSaveTimeout);
-                dbSaveTimeout = setTimeout(syncStateToDatabase, 1500);
+            const history = Object.values(db).filter(item => {
+                if (state.loggedInUser === "Superadmin") return true; // Superadmin sees all
+                return item.auditor === state.loggedInUser; // Regular auditor isolation
+            });
+            
+            // Sort by last updated descending
+            history.sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated));
+            renderHistoryList(history);
+        }
+
+        // Load specific audit draft from local storage DB
+        function loadAuditFromDatabase(filename) {
+            loadAuditFromDatabaseForAuditor(filename, state.loggedInUser);
+        }
+
+        function loadAuditFromDatabaseForSuperadmin(filename, auditor) {
+            loadAuditFromDatabaseForAuditor(filename, auditor);
+        }
+
+        function loadAuditFromDatabaseForAuditor(filename, auditor) {
+            const db = getLocalDraftsDB();
+            const key = `${filename}|${auditor}`;
+            const data = db[key];
+            
+            if (!data) {
+                showToast("Draft file not found in browser database.", "error");
+                return;
             }
+            
+            state.filename = filename;
+            state.school = data.school;
+            state.date = data.date;
+            state.auditor = auditor;
+            state.auditData = data.audit_data;
+            
+            // Sync UI inputs
+            document.getElementById('meta-filename').value = filename;
+            document.getElementById('meta-school').value = data.school;
+            document.getElementById('meta-date').value = data.date;
+            document.getElementById('active-auditor-label').innerHTML = auditor;
+            
+            saveState();
+            renderCategoryNavigation();
+            renderActiveCategoryIndicators();
+            updateCalculations();
+            showToast(`Draft file "${filename}" loaded successfully!`, 'info');
         }
 
-        async function syncStateToDatabase() {
-            if (!isServerOnline || !state.loggedInUser) return;
-            const score = calculateScore();
-            try {
-                const res = await fetch(`${API_BASE}/api/save`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        filename: state.filename,
-                        school: state.school,
-                        auditor: state.loggedInUser,
-                        date: state.date,
-                        score: score,
-                        audit_data: state.auditData
-                    })
-                });
-                if (res.ok) {
-                    fetchHistory();
-                }
-            } catch(e) {
-                console.error("Failed to auto-sync with database server:", e);
-            }
+        // Delete audit record from local storage DB
+        function deleteAuditFromDatabase(filename, event) {
+            deleteAuditFromDatabaseForAuditor(filename, state.loggedInUser, event);
         }
 
-        // Fetch saved audits, filtering by active logged-in auditor (Isolation)
-        async function fetchHistory() {
-            if (!isServerOnline || !state.loggedInUser) return;
-            try {
-                const res = await fetch(`${API_BASE}/api/history?auditor=${encodeURIComponent(state.loggedInUser)}`);
-                if (res.ok) {
-                    const history = await res.json();
-                    renderHistoryList(history);
-                }
-            } catch (e) {
-                console.error("Failed to retrieve audit history:", e);
-            }
+        function deleteAuditFromDatabaseForSuperadmin(filename, auditor, event) {
+            deleteAuditFromDatabaseForAuditor(filename, auditor, event);
         }
 
-        // Load specific audit draft (Agnostic to active user role)
-        async function loadAuditFromDatabase(filename) {
-            await loadAuditFromDatabaseForAuditor(filename, state.loggedInUser);
-        }
-
-        async function loadAuditFromDatabaseForSuperadmin(filename, auditor) {
-            await loadAuditFromDatabaseForAuditor(filename, auditor);
-        }
-
-        async function loadAuditFromDatabaseForAuditor(filename, auditor) {
-            if (!isServerOnline) return;
-            try {
-                const res = await fetch(`${API_BASE}/api/load?filename=${encodeURIComponent(filename)}&auditor=${encodeURIComponent(auditor)}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    
-                    state.filename = filename;
-                    state.school = data.school;
-                    state.date = data.date;
-                    state.auditor = auditor;
-                    state.auditData = data.audit_data;
-                    
-                    // Sync UI inputs
-                    document.getElementById('meta-filename').value = filename;
-                    document.getElementById('meta-school').value = data.school;
-                    document.getElementById('meta-date').value = data.date;
-                    document.getElementById('active-auditor-label').innerHTML = auditor;
-                    
-                    // Clear out-of-session object URLs
-                    Object.keys(sessionPhotoUrls).forEach(cat => {
-                        Object.keys(sessionPhotoUrls[cat]).forEach(ind => {
-                            URL.revokeObjectURL(sessionPhotoUrls[cat][ind]);
-                        });
-                    });
-                    
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-                    renderCategoryNavigation();
-                    renderActiveCategoryIndicators();
-                    updateCalculations();
-                    showToast(`Draft file "${filename}" loaded successfully!`, 'info');
-                }
-            } catch(e) {
-                showToast("Error loading file from database.", "error");
-            }
-        }
-
-        // Delete audit record (Agnostic to active user role)
-        async function deleteAuditFromDatabase(filename, event) {
-            await deleteAuditFromDatabaseForAuditor(filename, state.loggedInUser, event);
-        }
-
-        async function deleteAuditFromDatabaseForSuperadmin(filename, auditor, event) {
-            await deleteAuditFromDatabaseForAuditor(filename, auditor, event);
-        }
-
-        async function deleteAuditFromDatabaseForAuditor(filename, auditor, event) {
+        function deleteAuditFromDatabaseForAuditor(filename, auditor, event) {
             if (event) event.stopPropagation();
-            if (!confirm(`Are you sure you want to delete the file "${filename}" from the database?`)) return;
+            if (!confirm(`Are you sure you want to delete "${filename}" from your local browser database?`)) return;
             
-            try {
-                const res = await fetch(`${API_BASE}/api/delete?filename=${encodeURIComponent(filename)}&auditor=${encodeURIComponent(auditor)}`, {
-                    method: "DELETE"
-                });
-                if (res.ok) {
-                    fetchHistory();
-                    showToast(`File "${filename}" deleted.`);
-                    
-                    if (state.filename === filename && state.auditor === auditor) {
-                        startNewAudit(true);
-                    }
-                }
-            } catch(e) {
-                showToast("Failed to delete file.", "error");
+            deleteLocalDraftFromDB(filename, auditor);
+            fetchHistory();
+            showToast(`File "${filename}" deleted.`);
+            
+            if (state.filename === filename && state.auditor === auditor) {
+                startNewAudit(true);
             }
         }
 
@@ -839,8 +759,7 @@
             document.getElementById('meta-filename').value = cleanName;
             
             saveState();
-            syncStateToDatabase();
-            showToast(`Created new copy: "${cleanName}"`);
+            saveDraftAction();
         }
 
         // Reset to Blank audit
@@ -862,37 +781,14 @@
             if (!force) showToast("Started blank audit session.");
         }
 
-        // Save Checkpoint trigger
-        async function saveDraftAction() {
+        // Save Checkpoint trigger (Write to Local Database)
+        function saveDraftAction() {
             if (!state.loggedInUser) return;
+            
+            saveLocalDraftToDB(state.filename, state.loggedInUser, state);
             saveState();
-            if (isServerOnline) {
-                const score = calculateScore();
-                try {
-                    const res = await fetch(`${API_BASE}/api/save`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            filename: state.filename,
-                            school: state.school,
-                            auditor: state.loggedInUser,
-                            date: state.date,
-                            score: score,
-                            audit_data: state.auditData
-                        })
-                    });
-                    if (res.ok) {
-                        fetchHistory();
-                        showToast(`File "${state.filename}" saved securely to database!`);
-                    } else {
-                        showToast("Local backup updated, server sync error.", "error");
-                    }
-                } catch(e) {
-                    showToast("Server offline. Local browser backup updated.", "error");
-                }
-            } else {
-                showToast("Saved to offline local browser database!");
-            }
+            fetchHistory();
+            showToast(`File "${state.filename}" saved securely to local browser drafts!`);
         }
 
         // --- 10. EVENT HANDLERS ---
@@ -951,40 +847,45 @@
             updateCalculations();
         }
 
+        // Photographic Evidence Base64 upload loader
         function handlePhotoUpload(catName, indName, input) {
             if (input.files && input.files[0]) {
                 const file = input.files[0];
-                const item = state.auditData[catName][indName];
-                item.photoName = file.name;
-                item.reviewed = true;
+                const reader = new FileReader();
                 
-                const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
-                const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
-                const objectUrl = URL.createObjectURL(file);
+                reader.onload = function(e) {
+                    const base64Data = e.target.result;
+                    const item = state.auditData[catName][indName];
+                    item.photoName = file.name;
+                    item.photoData = base64Data; // Embed actual photo data
+                    item.reviewed = true;
+                    
+                    saveState();
+                    
+                    const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
+                    const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
+                    
+                    const infoEl = document.getElementById(`photo-info-${catEscaped}-${indEscaped}`);
+                    if (infoEl) {
+                        infoEl.innerHTML = `
+                            <span class="text-slate-500 dark:text-slate-400 italic font-medium truncate max-w-[200px] block">${file.name}</span>
+                            <button onclick="removePhoto('${catName}', '${indName}')" class="text-rose-500 hover:text-rose-700 font-bold p-1 cursor-pointer">✕</button>
+                        `;
+                    }
+                    
+                    const previewContainer = document.getElementById(`photo-preview-${catEscaped}-${indEscaped}`);
+                    const imgEl = document.getElementById(`img-preview-${catEscaped}-${indEscaped}`);
+                    if (previewContainer && imgEl) {
+                        imgEl.src = base64Data;
+                        previewContainer.classList.remove('hidden');
+                    }
+                    
+                    updateLiveIndicatorsForCard(catName, indName);
+                    updateCalculations();
+                    showToast(`Attached evidence: ${file.name}`);
+                };
                 
-                if (!sessionPhotoUrls[catName]) sessionPhotoUrls[catName] = {};
-                sessionPhotoUrls[catName][indName] = objectUrl;
-                
-                saveState();
-                
-                const infoEl = document.getElementById(`photo-info-${catEscaped}-${indEscaped}`);
-                if (infoEl) {
-                    infoEl.innerHTML = `
-                        <span class="text-slate-500 dark:text-slate-400 italic font-medium">${file.name}</span>
-                        <button onclick="removePhoto('${catName}', '${indName}')" class="text-rose-500 hover:text-rose-700 font-bold p-1 cursor-pointer">✕</button>
-                    `;
-                }
-                
-                const previewContainer = document.getElementById(`photo-preview-${catEscaped}-${indEscaped}`);
-                const imgEl = document.getElementById(`img-preview-${catEscaped}-${indEscaped}`);
-                if (previewContainer && imgEl) {
-                    imgEl.src = objectUrl;
-                    previewContainer.classList.remove('hidden');
-                }
-                
-                updateLiveIndicatorsForCard(catName, indName);
-                updateCalculations();
-                showToast(`Attached evidence: ${file.name}`);
+                reader.readAsDataURL(file);
             }
         }
 
@@ -992,11 +893,7 @@
             const item = state.auditData[catName][indName];
             const oldName = item.photoName;
             item.photoName = "";
-            
-            if (sessionPhotoUrls[catName] && sessionPhotoUrls[catName][indName]) {
-                URL.revokeObjectURL(sessionPhotoUrls[catName][indName]);
-                delete sessionPhotoUrls[catName][indName];
-            }
+            item.photoData = ""; // Clear image data URL
             
             saveState();
             
@@ -1008,7 +905,7 @@
                 infoEl.innerHTML = `<span class="text-slate-400 dark:text-slate-600">No photo attached</span>`;
             }
             
-            const previewContainer = document.getElementById(`photo-preview-${catEscaped}-${indEscaped}`);
+            const previewContainer = document.getElementById('photo-preview-' + catEscaped + '-' + indEscaped);
             if (previewContainer) {
                 previewContainer.classList.add('hidden');
             }
@@ -1016,13 +913,6 @@
             updateLiveIndicatorsForCard(catName, indName);
             updateCalculations();
             showToast(`Removed attached photo: ${oldName}`, 'info');
-        }
-
-        function getPhotoPreviewSrc(catName, indName) {
-            if (sessionPhotoUrls[catName] && sessionPhotoUrls[catName][indName]) {
-                return sessionPhotoUrls[catName][indName];
-            }
-            return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="%2364748b"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>';
         }
 
         function handleSearch(query) {
@@ -1049,7 +939,7 @@
         function renderHistoryList(history) {
             const listEl = document.getElementById('saved-audits-list');
             if (!history || history.length === 0) {
-                listEl.innerHTML = `<span class="text-slate-400 dark:text-slate-600 italic">No saved drafts in database</span>`;
+                listEl.innerHTML = `<span class="text-slate-400 dark:text-slate-600 italic">No saved drafts in browser cache</span>`;
                 return;
             }
             
@@ -1114,11 +1004,6 @@
         }
 
         async function consolidateSelectedAudits() {
-            if (!isServerOnline) {
-                showToast("Database server offline. Consolidation requires database connection.", "error");
-                return;
-            }
-            
             const checkedBoxes = document.querySelectorAll('.consolidate-checkbox:checked');
             if (checkedBoxes.length < 2) {
                 showToast("Please select at least 2 audits to consolidate.", "error");
@@ -1127,24 +1012,15 @@
             
             if (!confirm(`Are you sure you want to consolidate these ${checkedBoxes.length} audits?`)) return;
             
-            const selectedFiles = Array.from(checkedBoxes).map(box => {
-                const parts = box.value.split('|');
-                return { filename: parts[0], auditor: parts[1] };
-            });
-            
-            showToast("Fetching drafts for consolidation...", "info");
+            const selectedKeys = Array.from(checkedBoxes).map(box => box.value);
+            const db = getLocalDraftsDB();
             
             try {
-                const loadedAudits = await Promise.all(selectedFiles.map(async f => {
-                    const res = await fetch(`${API_BASE}/api/load?filename=${encodeURIComponent(f.filename)}&auditor=${encodeURIComponent(f.auditor)}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        data.filename = f.filename;
-                        data.auditor = f.auditor;
-                        return data;
-                    }
-                    throw new Error(`Failed to load ${f.filename}`);
-                }));
+                const loadedAudits = selectedKeys.map(key => {
+                    const data = db[key];
+                    if (data) return data;
+                    throw new Error(`Failed to load ${key}`);
+                });
                 
                 const consolidatedData = {};
                 for (const [catName, catData] of Object.entries(CATEGORIES)) {
@@ -1155,7 +1031,8 @@
                             features: [],
                             gaps: [],
                             actions: [],
-                            photos: []
+                            photos: [],
+                            photoRaw: ""
                         };
                     }
                 }
@@ -1184,6 +1061,9 @@
                                 }
                                 if (item.photoName && item.photoName.trim()) {
                                     target.photos.push(`${auditorName}: ${item.photoName.trim()}`);
+                                    if (!target.photoRaw && item.photoData) {
+                                        target.photoRaw = item.photoData;
+                                    }
                                 }
                             }
                         });
@@ -1206,6 +1086,7 @@
                             gaps: merged.gaps.join("\n"),
                             actions: merged.actions.join("\n"),
                             photoName: merged.photos.join(", "),
+                            photoData: merged.photoRaw || "",
                             reviewed: merged.features.length > 0 || merged.gaps.length > 0 || merged.actions.length > 0 || merged.photos.length > 0 || avgScore !== 3
                         };
                     }
@@ -1325,7 +1206,7 @@
                 
                 const saveDraftBtnHTML = `
                     <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 p-5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1F2937] rounded-2xl shadow-sm">
-                        <div class="text-xs text-slate-400 dark:text-slate-500 font-medium">Draft modifications auto-sync dynamically. Press checkpoint to force manual save.</div>
+                        <div class="text-xs text-slate-400 dark:text-slate-500 font-medium">Draft modifications are kept in app memory. Press checkpoint to commit draft.</div>
                         <button onclick="saveDraftAction()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-3 rounded-xl transition-all-custom cursor-pointer flex items-center justify-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
                             <span>Save Draft File</span>
@@ -1338,7 +1219,7 @@
         }
 
         function renderCardHTML(catName, indName, multiplier) {
-            const data = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "", reviewed: false };
+            const data = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "", photoData: "", reviewed: false };
             const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
             const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
 
@@ -1424,26 +1305,29 @@
                         </div>
                     </div>
 
-                    <!-- Photographic Evidence Mapping Row -->
+                    <!-- Photographic Evidence Mapping Row (Embedded Images) -->
                     <div class="flex flex-col gap-1.5 mt-2 border-t border-slate-100 dark:border-[#1F2937]/60 pt-3">
                         <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400">Attached Photographic Evidence</label>
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <label class="px-3 py-1.5 border border-slate-200 dark:border-[#2C3854] rounded-lg text-[10px] font-bold cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c273d] transition-all-custom flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                                <svg class="w-3.5 h-3.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                <span>Choose Image</span>
-                                <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload('${catName}', '${indName}', this)">
-                            </label>
-                            
-                            <div id="photo-info-${catEscaped}-${indEscaped}" class="flex items-center gap-1.5 text-[11px]">
-                                ${data.photoName 
-                                    ? `<span class="text-slate-500 dark:text-slate-400 italic font-medium">${data.photoName}</span>
-                                       <button onclick="removePhoto('${catName}', '${indName}')" class="text-rose-500 hover:text-rose-700 font-bold p-1 cursor-pointer">✕</button>`
-                                    : `<span class="text-slate-400 dark:text-slate-600">No photographic evidence attached</span>`
-                                }
+                        <div class="flex flex-col gap-3">
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <label class="px-3 py-1.5 border border-slate-200 dark:border-[#2C3854] rounded-lg text-[10px] font-bold cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c273d] transition-all-custom flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                                    <svg class="w-3.5 h-3.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    <span>Choose Image</span>
+                                    <input type="file" accept="image/*" class="hidden" onchange="handlePhotoUpload('${catName}', '${indName}', this)">
+                                </label>
+                                
+                                <div id="photo-info-${catEscaped}-${indEscaped}" class="flex items-center gap-1.5 text-[11px]">
+                                    ${data.photoName 
+                                        ? `<span class="text-slate-500 dark:text-slate-400 italic font-medium truncate max-w-[200px] block">${data.photoName}</span>
+                                           <button onclick="removePhoto('${catName}', '${indName}')" class="text-rose-500 hover:text-rose-700 font-bold p-1 cursor-pointer">✕</button>`
+                                        : `<span class="text-slate-400 dark:text-slate-600">No photographic evidence attached</span>`
+                                    }
+                                </div>
                             </div>
                             
-                            <div id="photo-preview-${catEscaped}-${indEscaped}" class="w-10 h-10 rounded-lg border border-slate-200 dark:border-[#2C3854] overflow-hidden flex items-center justify-center bg-slate-100 dark:bg-[#172033] ${data.photoName ? '' : 'hidden'}">
-                                <img id="img-preview-${catEscaped}-${indEscaped}" src="${getPhotoPreviewSrc(catName, indName)}" class="object-cover w-full h-full">
+                            <!-- Medium Image Preview Block in Card -->
+                            <div id="photo-preview-${catEscaped}-${indEscaped}" class="w-full max-w-sm rounded-xl border border-slate-200 dark:border-[#2C3854] overflow-hidden bg-slate-100 dark:bg-[#172033] ${data.photoData ? '' : 'hidden'} mt-1">
+                                <img id="img-preview-${catEscaped}-${indEscaped}" src="${data.photoData || ''}" class="object-cover w-full max-h-48">
                             </div>
                         </div>
                     </div>
@@ -1628,7 +1512,7 @@
                 let catIssues = [];
                 
                 Object.entries(catData.indicators).forEach(([indName, multiplier]) => {
-                    const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "" };
+                    const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "", photoData: "" };
                     const score = Number(item.score) || 3;
                     
                     catEarned += (score * multiplier);
@@ -1642,7 +1526,8 @@
                             features: item.features,
                             gaps: item.gaps,
                             actions: item.actions,
-                            photoName: item.photoName
+                            photoName: item.photoName,
+                            photoData: item.photoData
                         });
                     }
                 });
@@ -1758,10 +1643,11 @@
                                                     ` : ''}
                                                 </div>
                                                 
-                                                ${item.photoName ? `
-                                                    <div class="text-[9px] font-bold text-indigo-700/80 bg-indigo-50/30 px-2 py-1 rounded w-fit mt-1 flex items-center gap-1.5">
-                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                                        <span>Photographic Evidence Filename: <strong>${item.photoName}</strong></span>
+                                                <!-- Embedded Base64 Photo inside printable PDF -->
+                                                ${item.photoData ? `
+                                                    <div class="mt-2.5 print-avoid-break">
+                                                        <span class="font-extrabold text-[9px] uppercase text-indigo-700 tracking-wider block mb-1">Evidence Photo: ${item.photoName}</span>
+                                                        <img src="${item.photoData}" class="max-w-xs max-h-48 object-cover rounded-lg border border-slate-300 shadow-sm">
                                                     </div>
                                                 ` : ''}
                                             </div>
@@ -1789,7 +1675,7 @@
             window.print();
         }
 
-        // --- 15. JSON DRAFT IMPORT / EXPORT BACKUPS ---
+        // --- 15. JSON DRAFT IMPORT / EXPORT BACKUPS (Base64 Photos Integrated) ---
         function exportToJSON() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
                 version: "2.0",
@@ -1835,10 +1721,7 @@
                         document.getElementById('meta-date').value = state.date;
                         
                         saveState();
-                        
-                        if (isServerOnline) {
-                            syncStateToDatabase();
-                        }
+                        fetchHistory();
                         
                         renderCategoryNavigation();
                         renderActiveCategoryIndicators();
@@ -1853,6 +1736,12 @@
                 reader.readAsText(file);
                 input.value = ""; // Reset
             }
+        }
+
+        // Local browser reset helper
+        function confirmReset() {
+            if (!confirm("Reset active view back to blank defaults? (Saved drafts remain in history)")) return;
+            startNewAudit(true);
         }
     </script>
 </body>
