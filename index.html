@@ -1595,9 +1595,9 @@
             
             const modifiedClass = hasModifications ? "audit-card-modified" : "";
             return `
-                <div class="glass-card audit-card ${modifiedClass} rounded-2xl p-5 md:p-6 transition-all duration-300 border ${borderAccentClass} shadow-sm flex flex-col gap-4 relative overflow-hidden" id="card-${catEscaped}-${indEscaped}">
+                <div class="glass-card audit-card ${modifiedClass} rounded-2xl p-5 md:p-6 transition-all duration-300 border ${borderAccentClass} shadow-sm flex flex-col gap-4 relative" id="card-${catEscaped}-${indEscaped}">
                     
-                    <div class="absolute top-0 right-0 h-1.5 w-12 bg-emerald-500 rounded-bl-lg transition-transform duration-300 ${hasModifications ? 'scale-x-100' : 'scale-x-0'}"></div>
+                    <div class="absolute top-0 right-0 h-1.5 w-12 bg-emerald-500 rounded-bl-lg rounded-tr-2xl transition-transform duration-300 ${hasModifications ? 'scale-x-100' : 'scale-x-0'}"></div>
                     
                     <!-- Card Header -->
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
