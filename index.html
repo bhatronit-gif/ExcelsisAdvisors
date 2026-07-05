@@ -2160,25 +2160,26 @@
                         }
                         .print-header {
                             position: fixed !important;
-                            top: -1.2cm !important;
-                            left: 0 !important;
-                            right: 0 !important;
+                            top: 0.8cm !important;
+                            left: 1.5cm !important;
+                            right: 1.5cm !important;
                             display: none;
                         }
                         .print-footer {
                             position: fixed !important;
-                            bottom: -1.2cm !important;
-                            left: 0 !important;
-                            right: 0 !important;
+                            bottom: 0.8cm !important;
+                            left: 1.5cm !important;
+                            right: 1.5cm !important;
                             display: none;
                         }
                         @media print {
                             .print-header {
                                 display: block !important;
                                 position: fixed !important;
-                                top: -1.2cm !important;
-                                left: 0 !important;
-                                right: 0 !important;
+                                top: 0.8cm !important;
+                                left: 1.5cm !important;
+                                right: 1.5cm !important;
+                                z-index: 10 !important;
                             }
                             .print-footer {
                                 display: flex !important;
@@ -2187,9 +2188,10 @@
                                 border-top: 1px solid #e2e8f0 !important;
                                 padding-top: 6px !important;
                                 position: fixed !important;
-                                bottom: -1.2cm !important;
-                                left: 0 !important;
-                                right: 0 !important;
+                                bottom: 0.8cm !important;
+                                left: 1.5cm !important;
+                                right: 1.5cm !important;
+                                z-index: 10 !important;
                             }
                             .page-number::after {
                                 counter-increment: page;
@@ -2202,19 +2204,19 @@
                     
                     ${options.includeHeaders && options.confidentiality !== 'NONE' ? `
                     <!-- Confidentiality Running Header -->
-                    <div class="print-header text-center text-[10px] font-bold text-rose-600 uppercase tracking-widest border-b border-rose-100/50 pb-1 pointer-events-none" style="position: fixed; top: -1.2cm; left: 0; right: 0; display: none;">
+                    <div class="print-header text-center text-[10px] font-bold text-rose-600 uppercase tracking-widest border-b border-rose-100/50 pb-1 pointer-events-none" style="position: fixed; top: 0.8cm; left: 1.5cm; right: 1.5cm; display: none; z-index: 10;">
                         ${options.confidentiality}
                     </div>
                     ` : ''}
 
                     <!-- Confidentiality Running Footer -->
-                    <div class="print-footer border-slate-200 text-slate-400 font-semibold pointer-events-none" style="position: fixed; bottom: -1.2cm; left: 0; right: 0; display: none;">
+                    <div class="print-footer border-slate-200 text-slate-400 font-semibold pointer-events-none" style="position: fixed; bottom: 0.8cm; left: 1.5cm; right: 1.5cm; display: none; z-index: 10;">
                         <span class="font-sans">Excelsis Advisors - Campus Audit Report ${options.confidentiality !== 'NONE' ? `| ${options.confidentiality}` : ''}</span>
                         <span class="page-number font-sans font-bold"></span>
                     </div>
 
                     <!-- Dedicated Premium Cover Page -->
-                    <div class="flex flex-col justify-between h-[25.5cm] print:h-[26.5cm] print-page-break border-b-8 border-brand-500 pb-12 mb-12">
+                    <div class="print-cover flex flex-col justify-between h-[25.5cm] print:absolute print:inset-0 print:bg-white print:z-[100] print:p-[2cm] print-page-break border-b-8 border-brand-500 pb-12 mb-12">
                         <!-- Top Header/Logo Area -->
                         <div class="flex flex-col gap-6 mt-12">
                             <img src="${LOGO_BASE64}" alt="Excelsis Advisors" class="h-20 w-auto self-start object-contain">
