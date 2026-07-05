@@ -1922,6 +1922,11 @@
                 return;
             }
 
+            // Minimalist Heroicon SVGs for professional report styling
+            const svgFeature = `<svg class="w-3.5 h-3.5 text-indigo-600 inline shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>`;
+            const svgGap = `<svg class="w-3.5 h-3.5 text-rose-600 inline shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`;
+            const svgAction = `<svg class="w-3.5 h-3.5 text-emerald-600 inline shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`;
+
             let finalWeightedScore = 0;
             const categoryScores = [];
             const auditGapsList = [];
@@ -2021,32 +2026,49 @@
                                         </div>
                                         
                                         ${item.features || item.gaps || item.actions ? `
-                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-[10px] leading-relaxed pl-2">
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pl-2">
                                             ${item.features ? `
-                                                <div class="bg-indigo-50/30 border border-indigo-100/50 p-2.5 rounded-lg">
-                                                    <span class="font-extrabold text-[8px] uppercase text-indigo-700 tracking-wider block mb-0.5">Notable Features</span>
-                                                    <p class="text-slate-600 font-medium">${item.features}</p>
+                                                <div class="bg-white border border-slate-200 border-l-4 border-l-indigo-600 p-3.5 rounded-r-xl shadow-sm flex flex-col gap-1.5">
+                                                    <span class="font-extrabold text-[9px] uppercase text-indigo-700 tracking-wider flex items-center gap-1.5">
+                                                        ${svgFeature}
+                                                        Notable Features
+                                                    </span>
+                                                    <p class="text-slate-600 font-medium leading-relaxed text-sm">${item.features}</p>
                                                 </div>
                                             ` : ''}
                                             ${item.gaps ? `
-                                                <div class="bg-rose-50/30 border border-rose-100/50 p-2.5 rounded-lg">
-                                                    <span class="font-extrabold text-[8px] uppercase text-rose-600 tracking-wider block mb-0.5">Gaps Identified 🚩</span>
-                                                    <p class="text-slate-700 font-semibold">${item.gaps}</p>
+                                                <div class="bg-white border border-slate-200 border-l-4 border-l-rose-600 p-3.5 rounded-r-xl shadow-sm flex flex-col gap-1.5">
+                                                    <span class="font-extrabold text-[9px] uppercase text-rose-700 tracking-wider flex items-center gap-1.5">
+                                                        ${svgGap}
+                                                        Gaps Identified
+                                                    </span>
+                                                    <p class="text-slate-700 font-semibold leading-relaxed text-sm">${item.gaps}</p>
                                                 </div>
                                             ` : ''}
                                             ${item.actions ? `
-                                                <div class="bg-emerald-50/30 border border-emerald-100/50 p-2.5 rounded-lg">
-                                                    <span class="font-extrabold text-[8px] uppercase text-emerald-600 tracking-wider block mb-0.5">Actions Recommended 🛠</span>
-                                                    <p class="text-slate-700 font-semibold">${item.actions}</p>
+                                                <div class="bg-white border border-slate-200 border-l-4 border-l-emerald-600 p-3.5 rounded-r-xl shadow-sm flex flex-col gap-1.5">
+                                                    <span class="font-extrabold text-[9px] uppercase text-emerald-700 tracking-wider flex items-center gap-1.5">
+                                                        ${svgAction}
+                                                        Actions Recommended
+                                                    </span>
+                                                    <p class="text-slate-700 font-semibold leading-relaxed text-sm">${item.actions}</p>
                                                 </div>
                                             ` : ''}
                                         </div>
                                         ` : ''}
                                         
                                         ${item.photoData && options.includePhotos ? `
-                                            <div class="mt-1.5 flex flex-col gap-1 pl-2 print-avoid-break">
-                                                <span class="font-extrabold text-[8px] uppercase text-slate-400 tracking-wider block">Evidence Photo: ${item.photoName}</span>
-                                                <img src="${item.photoData}" class="max-w-xs max-h-48 object-cover rounded-lg border border-slate-200 shadow-sm self-start">
+                                            <div class="mt-3 flex flex-col print-avoid-break bg-slate-50 border border-slate-200 rounded-xl overflow-hidden max-w-md shadow-sm ml-2">
+                                                <div class="p-3 bg-white border-b border-slate-200 flex items-center justify-center">
+                                                    <img src="${item.photoData}" class="max-w-full max-h-60 object-contain rounded-lg">
+                                                </div>
+                                                <div class="bg-slate-100 px-4 py-2 flex items-center justify-between">
+                                                    <span class="font-extrabold text-[9px] uppercase text-slate-600 tracking-widest flex items-center gap-1.5">
+                                                        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                        Evidence Exhibit
+                                                    </span>
+                                                    <span class="text-[9px] font-bold text-slate-500 font-mono">${item.photoName}</span>
+                                                </div>
                                             </div>
                                         ` : ''}
                                     </div>
@@ -2082,15 +2104,19 @@
                 <head>
                     <title>Excelsis Advisors Audit Report - ${state.school}</title>
                     <meta charset="UTF-8">
-                    <!-- Google Fonts: Inter -->
-                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+                    <!-- Google Fonts: Inter, Montserrat, Playfair Display -->
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
                     <!-- Tailwind CSS CDN -->
                     ${scriptTailwind}
                     ${scriptConfigOpen}
                         tailwind.config = {
                             theme: {
                                 extend: {
-                                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                                    fontFamily: { 
+                                        sans: ['Inter', 'sans-serif'],
+                                        serif: ['Playfair Display', 'serif'],
+                                        montserrat: ['Montserrat', 'sans-serif']
+                                    },
                                     colors: {
                                         brand: {
                                             50: '#fff5f5',
@@ -2111,10 +2137,17 @@
                         }
                     ${scriptConfigClose}
                     <style>
+                        @page {
+                            margin: 2cm 1.5cm;
+                        }
+                        @page :first {
+                            margin: 0;
+                        }
                         @media print {
                             body {
                                 -webkit-print-color-adjust: exact;
                                 print-color-adjust: exact;
+                                counter-reset: page;
                             }
                             .print-avoid-break {
                                 page-break-inside: avoid;
@@ -2124,8 +2157,35 @@
                                 page-break-before: always;
                                 break-before: page;
                             }
-                            @page {
-                                margin: 1.5cm;
+                        }
+                        .print-header {
+                            position: fixed;
+                            top: -1.2cm;
+                            left: 0;
+                            right: 0;
+                            display: none;
+                        }
+                        .print-footer {
+                            position: fixed;
+                            bottom: -1.2cm;
+                            left: 0;
+                            right: 0;
+                            display: none;
+                        }
+                        @media print {
+                            .print-header {
+                                display: block;
+                            }
+                            .print-footer {
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                border-top: 1px solid #e2e8f0;
+                                padding-top: 6px;
+                            }
+                            .page-number::after {
+                                counter-increment: page;
+                                content: "Page " counter(page);
                             }
                         }
                     </style>
@@ -2134,15 +2194,58 @@
                     
                     ${options.includeHeaders && options.confidentiality !== 'NONE' ? `
                     <!-- Confidentiality Running Header -->
-                    <div class="fixed top-0 left-0 right-0 text-center text-[10px] font-bold text-rose-600 uppercase tracking-widest border-b border-rose-100/50 pb-1 mb-6 pointer-events-none hidden print:block">
+                    <div class="print-header text-center text-[10px] font-bold text-rose-600 uppercase tracking-widest border-b border-rose-100/50 pb-1 pointer-events-none">
                         ${options.confidentiality}
                     </div>
                     ` : ''}
 
                     <!-- Confidentiality Running Footer -->
-                    <div class="fixed bottom-0 left-0 right-0 border-t border-slate-100 pt-2 text-[8px] text-slate-400 font-semibold flex justify-between pointer-events-none hidden print:flex">
-                        <span>Excelsis Advisors - Campus Audit Report</span>
-                        <span>${options.confidentiality !== 'NONE' ? options.confidentiality : ''}</span>
+                    <div class="print-footer border-slate-200 text-slate-400 font-semibold pointer-events-none">
+                        <span class="font-sans">Excelsis Advisors - Campus Audit Report ${options.confidentiality !== 'NONE' ? `| ${options.confidentiality}` : ''}</span>
+                        <span class="page-number font-sans font-bold"></span>
+                    </div>
+
+                    <!-- Dedicated Premium Cover Page -->
+                    <div class="flex flex-col justify-between h-[25.5cm] print:h-[26.5cm] print-page-break border-b-8 border-brand-500 pb-12 mb-12">
+                        <!-- Top Header/Logo Area -->
+                        <div class="flex flex-col gap-6 mt-12">
+                            <img src="${LOGO_BASE64}" alt="Excelsis Advisors" class="h-20 w-auto self-start object-contain">
+                            <div class="w-24 h-1.5 bg-brand-500 mt-4"></div>
+                        </div>
+                        
+                        <!-- Middle Title Section -->
+                        <div class="flex flex-col gap-4 my-auto font-sans">
+                            <span class="text-xs font-black tracking-widest text-brand-600 uppercase">Compliance &amp; School Safety Advisory</span>
+                            <h1 class="text-5xl font-black text-slate-900 tracking-tight leading-tight font-serif">
+                                Campus Audit &amp;<br>Performance Report
+                            </h1>
+                            <p class="text-lg text-slate-500 font-medium max-w-xl leading-relaxed">
+                                A comprehensive evaluation of safety readiness, infrastructure quality, transport safety, and regulatory compliance.
+                            </p>
+                        </div>
+                        
+                        <!-- Bottom Metadata Section -->
+                        <div class="grid grid-cols-2 gap-8 pt-8 border-t border-slate-200 text-slate-600 font-sans">
+                            <div class="flex flex-col gap-1.5">
+                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Prepared For</span>
+                                <span class="text-2xl font-black text-slate-900 leading-none">${state.school}</span>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4 text-xs font-semibold">
+                                <div class="flex flex-col gap-0.5">
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Date of Audit</span>
+                                    <span class="text-slate-800">${state.date}</span>
+                                </div>
+                                <div class="flex flex-col gap-0.5">
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Lead Auditor</span>
+                                    <span class="text-slate-800">${state.loggedInUser || "Authorized Representative"}</span>
+                                </div>
+                                <div class="flex flex-col gap-0.5 col-span-2 mt-2">
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">File Reference</span>
+                                    <span class="text-slate-800 font-bold font-mono">${state.filename}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Cover Header -->
@@ -2212,7 +2315,7 @@
                                         <td class="p-3 text-center font-semibold text-slate-500">${cs.earned} / ${cs.max}</td>
                                         <td class="p-3">
                                             <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                                <div class="bg-brand-500 h-full rounded-full" style="width: ${cs.percentage}%"></div>
+                                                <div class="h-full rounded-full" style="width: ${cs.percentage}%; background: linear-gradient(90deg, #A9261B 0%, #C83728 100%);"></div>
                                             </div>
                                         </td>
                                         <td class="p-3 text-right font-extrabold text-brand-500">${cs.percentage.toFixed(2)}%</td>
@@ -2246,31 +2349,48 @@
                                                     </div>
                                                 </div>
                                                 
-                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-[11px] leading-relaxed">
+                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pl-2">
                                                     ${item.features ? `
-                                                        <div class="bg-indigo-50/40 border border-indigo-100/60 p-3 rounded-lg">
-                                                            <span class="font-extrabold text-[8px] uppercase text-indigo-700 tracking-wider block mb-1">Notable Features</span>
-                                                            <p class="text-slate-600 font-medium">${item.features}</p>
+                                                        <div class="bg-white border border-slate-200 border-l-4 border-l-indigo-600 p-3.5 rounded-r-xl shadow-sm flex flex-col gap-1.5">
+                                                            <span class="font-extrabold text-[9px] uppercase text-indigo-700 tracking-wider flex items-center gap-1.5 font-sans">
+                                                                ${svgFeature}
+                                                                Notable Features
+                                                            </span>
+                                                            <p class="text-slate-600 font-medium leading-relaxed text-sm font-sans">${item.features}</p>
                                                         </div>
                                                     ` : ''}
                                                     ${item.gaps ? `
-                                                        <div class="bg-rose-50/40 border border-rose-100/60 p-3 rounded-lg">
-                                                            <span class="font-extrabold text-[8px] uppercase text-rose-600 tracking-wider block mb-1">Gaps Identified 🚩</span>
-                                                            <p class="text-slate-700 font-semibold">${item.gaps}</p>
+                                                        <div class="bg-white border border-slate-200 border-l-4 border-l-rose-600 p-3.5 rounded-r-xl shadow-sm flex flex-col gap-1.5 font-sans">
+                                                            <span class="font-extrabold text-[9px] uppercase text-rose-700 tracking-wider flex items-center gap-1.5">
+                                                                ${svgGap}
+                                                                Gaps Identified
+                                                            </span>
+                                                            <p class="text-slate-700 font-semibold leading-relaxed text-sm">${item.gaps}</p>
                                                         </div>
                                                     ` : ''}
                                                     ${item.actions ? `
-                                                        <div class="bg-emerald-50/40 border border-emerald-100/60 p-3 rounded-lg">
-                                                            <span class="font-extrabold text-[8px] uppercase text-emerald-600 tracking-wider block mb-1">Actions Recommended 🛠</span>
-                                                            <p class="text-slate-700 font-semibold">${item.actions}</p>
+                                                        <div class="bg-white border border-slate-200 border-l-4 border-l-emerald-600 p-3.5 rounded-r-xl shadow-sm flex flex-col gap-1.5 font-sans">
+                                                            <span class="font-extrabold text-[9px] uppercase text-emerald-700 tracking-wider flex items-center gap-1.5">
+                                                                ${svgAction}
+                                                                Actions Recommended
+                                                            </span>
+                                                            <p class="text-slate-700 font-semibold leading-relaxed text-sm">${item.actions}</p>
                                                         </div>
                                                     ` : ''}
                                                 </div>
                                                 
                                                 ${item.photoData ? `
-                                                    <div class="mt-2 flex flex-col gap-1.5 print-avoid-break">
-                                                        <span class="font-extrabold text-[8px] uppercase text-slate-400 tracking-wider block">Evidence Photo: ${item.photoName}</span>
-                                                        <img src="${item.photoData}" class="max-w-md max-h-64 object-cover rounded-lg border border-slate-200 shadow-sm self-start">
+                                                    <div class="mt-3 flex flex-col print-avoid-break bg-slate-50 border border-slate-200 rounded-xl overflow-hidden max-w-md shadow-sm ml-2 font-sans">
+                                                        <div class="p-3 bg-white border-b border-slate-200 flex items-center justify-center">
+                                                            <img src="${item.photoData}" class="max-w-full max-h-60 object-contain rounded-lg">
+                                                        </div>
+                                                        <div class="bg-slate-100 px-4 py-2 flex items-center justify-between">
+                                                            <span class="font-extrabold text-[9px] uppercase text-slate-600 tracking-widest flex items-center gap-1.5">
+                                                                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                                Evidence Exhibit
+                                                            </span>
+                                                            <span class="text-[9px] font-bold text-slate-500 font-mono">${item.photoName}</span>
+                                                        </div>
                                                     </div>
                                                 ` : ''}
                                             </div>
