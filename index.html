@@ -2159,29 +2159,37 @@
                             }
                         }
                         .print-header {
-                            position: fixed;
-                            top: -1.2cm;
-                            left: 0;
-                            right: 0;
+                            position: fixed !important;
+                            top: -1.2cm !important;
+                            left: 0 !important;
+                            right: 0 !important;
                             display: none;
                         }
                         .print-footer {
-                            position: fixed;
-                            bottom: -1.2cm;
-                            left: 0;
-                            right: 0;
+                            position: fixed !important;
+                            bottom: -1.2cm !important;
+                            left: 0 !important;
+                            right: 0 !important;
                             display: none;
                         }
                         @media print {
                             .print-header {
-                                display: block;
+                                display: block !important;
+                                position: fixed !important;
+                                top: -1.2cm !important;
+                                left: 0 !important;
+                                right: 0 !important;
                             }
                             .print-footer {
-                                display: flex;
-                                justify-content: space-between;
-                                align-items: center;
-                                border-top: 1px solid #e2e8f0;
-                                padding-top: 6px;
+                                display: flex !important;
+                                justify-content: space-between !important;
+                                align-items: center !important;
+                                border-top: 1px solid #e2e8f0 !important;
+                                padding-top: 6px !important;
+                                position: fixed !important;
+                                bottom: -1.2cm !important;
+                                left: 0 !important;
+                                right: 0 !important;
                             }
                             .page-number::after {
                                 counter-increment: page;
@@ -2194,13 +2202,13 @@
                     
                     ${options.includeHeaders && options.confidentiality !== 'NONE' ? `
                     <!-- Confidentiality Running Header -->
-                    <div class="print-header text-center text-[10px] font-bold text-rose-600 uppercase tracking-widest border-b border-rose-100/50 pb-1 pointer-events-none">
+                    <div class="print-header text-center text-[10px] font-bold text-rose-600 uppercase tracking-widest border-b border-rose-100/50 pb-1 pointer-events-none" style="position: fixed; top: -1.2cm; left: 0; right: 0; display: none;">
                         ${options.confidentiality}
                     </div>
                     ` : ''}
 
                     <!-- Confidentiality Running Footer -->
-                    <div class="print-footer border-slate-200 text-slate-400 font-semibold pointer-events-none">
+                    <div class="print-footer border-slate-200 text-slate-400 font-semibold pointer-events-none" style="position: fixed; bottom: -1.2cm; left: 0; right: 0; display: none;">
                         <span class="font-sans">Excelsis Advisors - Campus Audit Report ${options.confidentiality !== 'NONE' ? `| ${options.confidentiality}` : ''}</span>
                         <span class="page-number font-sans font-bold"></span>
                     </div>
