@@ -358,6 +358,12 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     <span>Generate PDF Report</span>
                 </button>
+
+                <!-- Generate Audit Legend -->
+                <button onclick="generateAuditLegend()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm px-4 py-2.5 rounded-xl shadow-lg active:scale-[0.98] transition-all-custom flex items-center justify-center gap-2 cursor-pointer mt-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    <span>Generate Audit Legend</span>
+                </button>
                 
                 <!-- Compact Data & Backups Dropdown -->
                 <div class="relative w-full mt-1" id="data-dropdown-container">
@@ -1602,11 +1608,17 @@
                             </h3>
                         </div>
                         
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 ${badgeColorClass}">
+                        <div class="flex items-center gap-2 relative group">
+                            <span class="text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 ${badgeColorClass} cursor-help">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                                 Risk Multiplier: ${multiplier}x
                             </span>
+                            <!-- Hover Tooltip -->
+                            <div class="absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 bg-slate-900 dark:bg-slate-800 text-white text-[10px] p-2.5 rounded-xl shadow-xl z-50 text-left font-semibold leading-relaxed border border-slate-200/10 pointer-events-none transition-all duration-200">
+                                ${multiplier === 3 ? '<strong>3x Critical Risk</strong>: Standard safety, health, or statutory requirements. Failures present immediate physical, medical, or legal closure hazards.' : 
+                                  multiplier === 2 ? '<strong>2x Moderate Risk</strong>: Operational infrastructure and campus standards. Core educational spaces, facilities, and standard compliance processes.' : 
+                                  '<strong>1x Low Risk</strong>: Support systems or administrative checks. Secondary rooms, routine records, or general campus operations.'}
+                            </div>
                         </div>
                     </div>
                     
@@ -2430,6 +2442,313 @@
 
             printWindow.document.open();
             printWindow.document.write(reportHTML);
+            printWindow.document.close();
+        }
+
+        function generateAuditLegend() {
+            const printWindow = window.open("", "_blank");
+            if (!printWindow) {
+                showToast("Popup blocked! Please allow popups to open/print reports.", "error");
+                return;
+            }
+
+            const scriptTailwind = '<' + 'script src="https://cdn.tailwindcss.com"><' + '/script>';
+            const scriptConfigOpen = '<' + 'script>';
+            const scriptConfigClose = '<' + '/script>';
+
+            const legendHTML = `
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <title>Excelsis Advisors - Audit Methodology &amp; Legend</title>
+                    <meta charset="UTF-8">
+                    <!-- Google Fonts: Inter, Montserrat, Playfair Display -->
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+                    <!-- Tailwind CSS CDN -->
+                    ${scriptTailwind}
+                    ${scriptConfigOpen}
+                        tailwind.config = {
+                            theme: {
+                                extend: {
+                                    fontFamily: { 
+                                        sans: ['Inter', 'sans-serif'],
+                                        serif: ['Playfair Display', 'serif'],
+                                        montserrat: ['Montserrat', 'sans-serif']
+                                    },
+                                    colors: {
+                                        brand: {
+                                            50: '#fff5f5',
+                                            100: '#ffe3e3',
+                                            500: '#C83728',
+                                            600: '#A9261B',
+                                            700: '#8E1C12',
+                                            900: '#680E07',
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    ${scriptConfigClose}
+                    <style>
+                        @page {
+                            margin: 2.2cm 1.5cm 2cm 1.5cm;
+                            @top-center {
+                                content: "AUDIT METHODOLOGY & LEGEND GUIDE";
+                                font-family: 'Inter', sans-serif;
+                                font-size: 8px;
+                                font-weight: 700;
+                                color: #680E07; /* brand-900 */
+                                letter-spacing: 0.1em;
+                                border-bottom: 1px solid rgba(142, 28, 18, 0.15);
+                                padding-bottom: 4px;
+                                text-align: center;
+                                vertical-align: bottom;
+                            }
+                            @bottom-left {
+                                content: "Excelsis Advisors - Campus Safety Compliance Framework";
+                                font-family: 'Inter', sans-serif;
+                                font-size: 8px;
+                                font-weight: 600;
+                                color: #94a3b8; /* slate-400 */
+                                border-top: 1px solid #e2e8f0;
+                                padding-top: 6px;
+                                text-align: left;
+                                vertical-align: top;
+                            }
+                            @bottom-right {
+                                content: "Page " counter(page) " of " counter(pages);
+                                font-family: 'Inter', sans-serif;
+                                font-size: 8px;
+                                font-weight: 700;
+                                color: #94a3b8; /* slate-400 */
+                                border-top: 1px solid #e2e8f0;
+                                padding-top: 6px;
+                                text-align: right;
+                                vertical-align: top;
+                            }
+                        }
+                        @page :first {
+                            margin: 0;
+                            @top-center { content: none !important; }
+                            @bottom-left { content: none !important; }
+                            @bottom-right { content: none !important; }
+                        }
+                        @media print {
+                            body {
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
+                            .print-avoid-break {
+                                page-break-inside: avoid;
+                                break-inside: avoid;
+                            }
+                            .print-page-break {
+                                page-break-before: always;
+                                break-before: page;
+                            }
+                        }
+                    </style>
+                </head>
+                <body class="bg-white p-6 md:p-10 font-sans antialiased text-slate-800 leading-relaxed max-w-4xl mx-auto">
+                    
+                    <!-- Cover Page -->
+                    <div class="flex flex-col justify-between h-[25.5cm] print:h-[26.5cm] print-page-break border-b-8 border-brand-500 pb-12 mb-12">
+                        <div class="flex flex-col gap-6 mt-12">
+                            <img src="${LOGO_BASE64}" alt="Excelsis Advisors" class="h-20 w-auto self-start object-contain">
+                            <div class="w-24 h-1.5 bg-brand-500 mt-4"></div>
+                        </div>
+                        
+                        <div class="flex flex-col gap-4 my-auto font-sans">
+                            <span class="text-xs font-black tracking-widest text-brand-600 uppercase">Compliance Framework Reference</span>
+                            <h1 class="text-5xl font-black text-slate-900 tracking-tight leading-tight font-serif">
+                                Audit Methodology &amp;<br>Rating Legend Guide
+                            </h1>
+                            <p class="text-lg text-slate-500 font-medium max-w-xl leading-relaxed">
+                                A formal guide explaining the mathematical weightings, risk factors, indicator multipliers, and compliance score calculations used by Excelsis Advisors.
+                            </p>
+                        </div>
+                        
+                        <div class="pt-8 border-t border-slate-200 text-slate-600 font-sans flex justify-between items-end">
+                            <div class="flex flex-col gap-1">
+                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Released By</span>
+                                <span class="text-base font-black text-slate-900 leading-none">Excelsis Advisory Board</span>
+                            </div>
+                            <div class="text-right text-xs font-semibold">
+                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Reference Document</span>
+                                <span class="text-slate-800 font-bold font-mono">METHODOLOGY_REF_V2.0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Inner Page Contents -->
+                    <div class="flex flex-col gap-10 mt-6">
+                        
+                        <!-- Section 1: Introduction -->
+                        <div class="flex flex-col gap-3 print-avoid-break">
+                            <h2 class="text-xl font-bold text-slate-900 font-serif border-b-2 border-slate-100 pb-2 flex items-center gap-2">
+                                <span class="text-brand-500 font-black">1.</span>
+                                Executive Summary &amp; Rationale
+                            </h2>
+                            <p class="text-sm text-slate-600 leading-relaxed">
+                                Excelsis Advisors utilizes a structured risk-weighted scoring model to evaluate safety, infrastructure, operations, and regulatory compliance across academic campuses. By weighing categories according to total systemic liability and multiplying indicator scores by specific risk factors, the framework provides an accurate, balanced, and safety-focused audit assessment.
+                            </p>
+                        </div>
+
+                        <!-- Section 2: Macro Category Weights -->
+                        <div class="flex flex-col gap-4 print-avoid-break">
+                            <h2 class="text-xl font-bold text-slate-900 font-serif border-b-2 border-slate-100 pb-2 flex items-center gap-2">
+                                <span class="text-brand-500 font-black">2.</span>
+                                Macro Category Weightings
+                            </h2>
+                            <p class="text-sm text-slate-600 leading-relaxed">
+                                Each macro compliance category is assigned a weight representing its aggregate influence on total campus safety and legal compliance.
+                            </p>
+                            
+                            <div class="grid grid-cols-1 gap-4 mt-2">
+                                <div class="bg-white border border-slate-200 border-l-4 border-l-rose-600 p-4 rounded-r-xl shadow-sm">
+                                    <span class="font-extrabold text-[10px] uppercase text-rose-700 tracking-wider flex items-center gap-2 mb-1.5">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
+                                        Core Legal &amp; Physical Safety (15% Weight each)
+                                    </span>
+                                    <p class="text-xs text-slate-500 leading-relaxed mb-2 font-medium">
+                                        Categories: <strong>Safety &amp; Security</strong>, <strong>Regulatory Compliance</strong>, and <strong>School Operations</strong>.
+                                    </p>
+                                    <p class="text-sm text-slate-600 leading-relaxed">
+                                        Failures in these areas directly compromise life safety (fire safety, bus collisions, lab incidents) or introduce immediate legal and regulatory liabilities (unlicensed staff, statutory violations). Consequently, these represent the highest risk categories.
+                                    </p>
+                                </div>
+
+                                <div class="bg-white border border-slate-200 border-l-4 border-l-indigo-600 p-4 rounded-r-xl shadow-sm">
+                                    <span class="font-extrabold text-[10px] uppercase text-indigo-700 tracking-wider flex items-center gap-2 mb-1.5">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+                                        Campus Infrastructure &amp; Quality (10% Weight each)
+                                    </span>
+                                    <p class="text-xs text-slate-500 leading-relaxed mb-2 font-medium">
+                                        Categories: <strong>Infrastructure</strong>, <strong>Learning Environment</strong>, <strong>Health</strong>, and <strong>Transport</strong>.
+                                    </p>
+                                    <p class="text-sm text-slate-600 leading-relaxed">
+                                        These categories govern daily student hygiene, transit, physical facilities, and ventilation quality. While operational errors are highly disruptive and carry risk, they have slightly lower initial systemic liability than core compliance codes.
+                                    </p>
+                                </div>
+
+                                <div class="bg-white border border-slate-200 border-l-4 border-l-slate-600 p-4 rounded-r-xl shadow-sm">
+                                    <span class="font-extrabold text-[10px] uppercase text-slate-700 tracking-wider flex items-center gap-2 mb-1.5">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+                                        Operational Support &amp; Records (5% Weight each)
+                                    </span>
+                                    <p class="text-xs text-slate-500 leading-relaxed mb-2 font-medium">
+                                        Categories: <strong>Canteen</strong>, <strong>Institutional Records</strong>, and <strong>Student &amp; Staff Dev</strong>.
+                                    </p>
+                                    <p class="text-sm text-slate-600 leading-relaxed">
+                                        These categories cover secondary business processes, extracurricular safety committees, and record archiving. While critical for administrative audits, they represent indirect or minor physical risks.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 3: Risk Multipliers -->
+                        <div class="flex flex-col gap-4 print-avoid-break mt-6">
+                            <h2 class="text-xl font-bold text-slate-900 font-serif border-b-2 border-slate-100 pb-2 flex items-center gap-2">
+                                <span class="text-brand-500 font-black">3.</span>
+                                Indicator Risk Multipliers (1x, 2x, 3x)
+                            </h2>
+                            <p class="text-sm text-slate-600 leading-relaxed">
+                                Within each category, individual indicators are assigned a multiplier to represent the hazard severity or importance of that item:
+                            </p>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                                <div class="bg-white border border-slate-200 border-l-4 border-l-rose-500 p-4 rounded-r-xl shadow-sm flex flex-col gap-1.5">
+                                    <span class="font-extrabold text-[10px] uppercase text-rose-700 tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-rose-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                        3x - Critical Risk
+                                    </span>
+                                    <p class="text-xs text-slate-500 font-semibold uppercase">High Severity Impact</p>
+                                    <p class="text-slate-600 font-medium leading-relaxed text-sm">
+                                        Immediate life-safety or statutory hazards (e.g. firefighting readiness, CCTV operations, safe water supply, teacher licensing). Failure leads to high vulnerability.
+                                    </p>
+                                </div>
+
+                                <div class="bg-white border border-slate-200 border-l-4 border-l-amber-500 p-4 rounded-r-xl shadow-sm flex flex-col gap-1.5">
+                                    <span class="font-extrabold text-[10px] uppercase text-amber-700 tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                        2x - Moderate Risk
+                                    </span>
+                                    <p class="text-xs text-slate-500 font-semibold uppercase">Medium Severity Impact</p>
+                                    <p class="text-slate-600 font-medium leading-relaxed text-sm">
+                                        Key structural or operational facilities (e.g. classroom ventilation, laboratory setup, visitor log procedures, bus fleet registration). Required for daily safety standards.
+                                    </p>
+                                </div>
+
+                                <div class="bg-white border border-slate-200 border-l-4 border-l-slate-500 p-4 rounded-r-xl shadow-sm flex flex-col gap-1.5">
+                                    <span class="font-extrabold text-[10px] uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-slate-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+                                        1x - Low Risk
+                                    </span>
+                                    <p class="text-xs text-slate-500 font-semibold uppercase">Supporting Impact</p>
+                                    <p class="text-slate-600 font-medium leading-relaxed text-sm">
+                                        Supporting facilities or general administrative documentation (e.g. art room equipment, hobby classes records, canteen registry files). Low direct safety consequence.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 4: Rating Scale & Calculations -->
+                        <div class="flex flex-col gap-4 print-avoid-break mt-6 pb-12">
+                            <h2 class="text-xl font-bold text-slate-900 font-serif border-b-2 border-slate-100 pb-2 flex items-center gap-2">
+                                <span class="text-brand-500 font-black">4.</span>
+                                Score Calculations &amp; Thresholds
+                            </h2>
+                            <p class="text-sm text-slate-600 leading-relaxed">
+                                Indicators are scored from 1 (Critical) to 5 (Exemplary). A category percentage is calculated as the ratio of earned weighted points to total potential weighted points. The final score is computed by applying category weights to these percentages.
+                            </p>
+                            
+                            <table class="w-full text-xs text-left border-collapse border border-slate-200 mt-2">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-600 uppercase border-b border-slate-200">
+                                        <th class="p-3 font-extrabold">Score range</th>
+                                        <th class="p-3 font-extrabold text-center">Compliance rating</th>
+                                        <th class="p-3 font-extrabold">Risk &amp; Action Protocol</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="p-3 font-bold text-slate-900">90.00% – 100.00%</td>
+                                        <td class="p-3 text-center font-bold text-emerald-700"><span class="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200">Outstanding</span></td>
+                                        <td class="p-3 text-slate-600 font-medium">Exemplary compliance. Zero major safety gaps. Maintain standards and conduct annual check-ups.</td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="p-3 font-bold text-slate-900">75.00% – 89.99%</td>
+                                        <td class="p-3 text-center font-bold text-blue-700"><span class="px-2 py-0.5 rounded bg-blue-50 border border-blue-200">Good / Compliant</span></td>
+                                        <td class="p-3 text-slate-600 font-medium">Safe operations. Minor gaps identified requiring scheduling for routine maintenance or record updates.</td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="p-3 font-bold text-slate-900">60.00% – 74.99%</td>
+                                        <td class="p-3 text-center font-bold text-amber-700"><span class="px-2 py-0.5 rounded bg-amber-50 border border-amber-200">Needs Improvement</span></td>
+                                        <td class="p-3 text-slate-600 font-medium">Significant compliance gaps. Corrective actions required within 30 days to mitigate risk.</td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="p-3 font-bold text-rose-700 font-black">Below 60.00%</td>
+                                        <td class="p-3 text-center font-bold text-rose-700"><span class="px-2 py-0.5 rounded bg-rose-50 border border-rose-200">Critical Risk</span></td>
+                                        <td class="p-3 text-slate-700 font-semibold">Severe safety or regulatory violations. Requires immediate executive intervention and emergency action.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    ${scriptConfigOpen}
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                            }, 500);
+                        };
+                    ${scriptConfigClose}
+                </body>
+                </html>
+            `;
+
+            printWindow.document.open();
+            printWindow.document.write(legendHTML);
             printWindow.document.close();
         }
 
