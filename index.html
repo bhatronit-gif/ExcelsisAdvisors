@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excelsis Advisors - Smart Campus Audit Portal</title>
+    <meta name="description" content="A premium, highly responsive real-time audit scoring application for educational campus compliance, safety, and operational excellence.">
+
+    <!-- SEO Core Meta Tags -->
+    <link rel="canonical" href="https://excelsisadvisors.com/audit-portal">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#C83728">
+    <meta name="application-name" content="Excelsis Audit">
+    <meta name="apple-mobile-web-app-title" content="Excelsis Audit">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- OpenGraph (OG) Social Graph Meta Tags -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Excelsis Advisors">
+    <meta property="og:title" content="Excelsis Advisors - Smart Campus Audit Portal">
+    <meta property="og:description" content="A premium, highly responsive real-time audit scoring application for educational campus compliance, safety, and operational excellence.">
+    <meta property="og:url" content="https://excelsisadvisors.com/audit-portal">
+    <meta property="og:image" content="https://excelsisadvisors.com/logo.webp">
+    <meta property="og:image:type" content="image/webp">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Excelsis Advisors Logo">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@ExcelsisAdvisor">
+    <meta name="twitter:title" content="Excelsis Advisors - Smart Campus Audit Portal">
+    <meta name="twitter:description" content="A premium, highly responsive real-time audit scoring application for educational campus compliance, safety, and operational excellence.">
+    <meta name="twitter:image" content="https://excelsisadvisors.com/logo.webp">
+    <meta name="twitter:image:alt" content="Excelsis Advisors Logo">
+
+    <!-- Favicon & Progressive Web App (PWA) Portfolio -->
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+    <link rel="manifest" href="site.webmanifest">
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Main External Stylesheet (Design Tokens & Modular CSS) -->
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- Schema.org JSON-LD Structured Data for WebApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Excelsis Advisors - Smart Campus Audit Portal",
+      "alternateName": [
+        "Excelsis Audit Portal",
+        "Smart Campus Audit Portal"
+      ],
+      "url": "https://audit.excelsisadvisors.com/",
+      "description": "A premium, highly responsive real-time audit scoring application for educational institution school campuses.",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "All (Web Browser)",
+      "browserRequirements": "Requires JavaScript. Requires HTML5 web browser.",
+      "softwareVersion": "2.0.0",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Excelsis Advisors",
+        "url": "https://audit.excelsisadvisors.com/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Excelsis Advisors",
+        "url": "https://audit.excelsisadvisors.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://audit.excelsisadvisors.com/logo.webp"
+        }
+      },
+      "featureList": [
+        "Real-time risk-adjusted campus compliance scoring",
+        "Offline browser draft saving via IndexedDB and LocalStorage",
+        "Photographic evidence upload and attachment preview",
+        "PDF board report generation",
+        "CSV spreadsheet data export and import",
+        "Multi-auditor profile switching and draft consolidation"
+      ]
+    }
+    </script>
+</head>
+<body class="text-slate-800 dark:text-slate-200 min-h-screen font-sans antialiased transition-colors duration-300 bg-transparent">
+
+    <!-- Skip to Main Content Link -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[200] focus:px-4 focus:py-2.5 focus:bg-brand-500 focus:text-white focus:font-extrabold focus:rounded-xl focus:shadow-2xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500">
+        Skip to main content
+    </a>
+
+    <!-- Radial Background Ambient Glows -->
+    <div class="ambient-bg">
+        <div class="ambient-glow-1"></div>
+        <div class="ambient-glow-2"></div>
+    </div>
+
+    <!-- Login Authentication Overlay -->
+    <div id="login-overlay" role="dialog" aria-modal="true" aria-labelledby="login-modal-title" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/85 backdrop-blur-md transition-opacity duration-300 p-4">
+        <div class="glass-card rounded-2xl sm:rounded-3xl p-5 sm:p-8 max-w-sm w-full shadow-2xl flex flex-col gap-5 sm:gap-6 border border-slate-200/10 max-h-[calc(100vh-2rem)] sm:max-h-[90vh] my-auto overflow-y-auto overscroll-contain">
+            <div class="flex flex-col items-center text-center gap-2">
+                <div class="bg-brand-500 text-white p-3 rounded-2xl shadow-lg shadow-brand-500/20">
+                    <svg class="w-7 h-7" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                </div>
+                <h2 id="login-modal-title" class="font-extrabold text-xl tracking-tight text-slate-800 dark:text-slate-100">Portal Authentication</h2>
+                <p class="text-xs text-slate-600 dark:text-slate-300">Sign in to access your compliance drafts.</p>
+            </div>
+            
+            <form id="login-form" onsubmit="event.preventDefault(); handleLoginSubmit();" class="flex flex-col gap-6">
+                <div class="flex flex-col gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label for="login-user" class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">Select Auditor</label>
+                        <select id="login-user" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom">
+                            <option value="Ronit Bhat">Ronit Bhat</option>
+                            <option value="Rohit Bhat">Rohit Bhat</option>
+                            <option value="Sangeeta Puri">Sangeeta Puri</option>
+                            <option value="Monica Bhat">Monica Bhat</option>
+                            <option value="Superadmin">Superadmin</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label for="login-pass" class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">Password</label>
+                        <input type="password" id="login-pass" placeholder="••••••••" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom">
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm px-4 py-3.5 rounded-xl shadow-lg shadow-brand-500/10 active:scale-[0.98] transition-all-custom cursor-pointer flex items-center justify-center gap-1">
+                    <span>Sign In</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" role="status" aria-live="polite" aria-atomic="true" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+
+
+    <div class="flex flex-col lg:flex-row min-h-screen">
+        
+        <!-- ================= SIDEBAR / METADATA & CONTROL PANEL ================= -->
+        <aside class="w-full lg:w-96 bg-white dark:bg-[#111827] border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-[#26334D] p-3 sm:p-4 lg:p-6 flex flex-col justify-between shrink-0 lg:h-screen lg:overflow-hidden sticky top-0 lg:top-0 z-40 lg:z-auto">
+            <div class="flex flex-col gap-3 lg:gap-5 overflow-y-auto pr-1">
+                <!-- Branding Header & Mobile Top Bar -->
+                <div class="flex items-center justify-between gap-2 sm:gap-3">
+                    <div class="flex items-center gap-2.5">
+                        <img src="logo.webp" alt="Excelsis Advisors" class="h-7 lg:h-9 w-auto dark:brightness-110 object-contain">
+                        <div class="flex flex-col">
+                            <h1 class="sr-only">Excelsis Advisors — Smart Campus Audit Portal v2.0</h1>
+                            <span class="text-[11px] lg:text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Audit Portal v2.0</span>
+                            <div class="hidden sm:flex lg:flex items-center gap-2 text-[9px] font-bold">
+                                <div class="flex items-center gap-1 text-emerald-600 dark:text-emerald-300">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    <span>Offline Mode</span>
+                                </div>
+                                <span class="text-slate-300 dark:text-slate-700">•</span>
+                                <a href="https://excelsisadvisors.com/" target="_blank" rel="noopener noreferrer" class="text-slate-500 hover:text-brand-500 dark:text-slate-400 dark:hover:text-brand-400 transition-colors inline-flex items-center gap-0.5">
+                                    <span>Docs</span>
+                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mobile Control Group: Score Badge + Theme Toggle + Drawer Hamburger -->
+                    <div class="flex items-center gap-2">
+                        <!-- Mobile Compact Score Pill Badge (Visible on <1024px) -->
+                        <div class="flex lg:hidden items-center gap-1.5 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/20 px-2.5 py-1 rounded-lg text-xs font-bold">
+                            <span id="mobile-score-pill">60.00% NeedImp</span>
+                        </div>
+
+                        <!-- Theme Toggle -->
+                        <button id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light and dark color theme" class="p-2 rounded-lg bg-slate-100 dark:bg-[#1F2937] hover:bg-slate-200 dark:hover:bg-[#374151] text-slate-600 dark:text-slate-300 transition-colors" title="Toggle Theme">
+                            <svg id="theme-sun" class="w-4 h-4 sm:w-5 sm:h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364-3.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707m2.828 9.9a5 5 0 117.072 0l-7.072 0z"/></svg>
+                            <svg id="theme-moon" class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                        </button>
+
+                        <!-- Hamburger Drawer Toggle Button (`#mobile-drawer-toggle`) -->
+                        <button id="mobile-drawer-toggle" onclick="toggleMobileDrawer()" aria-expanded="false" aria-controls="mobile-drawer-content" aria-label="Toggle Audit Settings Drawer" class="lg:hidden p-2 rounded-lg bg-slate-100 dark:bg-[#1F2937] hover:bg-slate-200 dark:hover:bg-[#374151] text-slate-700 dark:text-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer">
+                            <span id="mobile-drawer-status" class="sr-only">Show</span>
+                            <svg id="mobile-drawer-chevron" class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Collapsible Drawer Container (Hidden on mobile by default, flex on desktop) -->
+                <div id="mobile-drawer-content" class="hidden lg:flex flex-col gap-5 pt-3 lg:pt-0 border-t border-slate-100 dark:border-[#1F2937] lg:border-t-0">
+                    <!-- Total Score Summary Card -->
+                    <div class="bg-gradient-to-br from-brand-600 to-excelsisBlue-600 text-white rounded-2xl p-5 shadow-xl shadow-brand-500/20 relative overflow-hidden">
+                        <div class="absolute -right-6 -bottom-6 w-32 h-32 rounded-full bg-white/5 pointer-events-none"></div>
+                        <div class="absolute -left-6 -top-6 w-24 h-24 rounded-full bg-white/5 pointer-events-none"></div>
+
+                        <div class="flex items-center justify-between gap-4 relative z-10">
+                            <div class="flex flex-col gap-1">
+                                <span class="text-[10px] font-bold text-brand-100 uppercase tracking-wider">Risk-Adjusted Score</span>
+                                <span id="score-display" class="text-3xl font-black tracking-tight">60.00%</span>
+                                
+                                <span class="text-[9px] font-bold text-brand-100 bg-white/10 px-2.5 py-1 rounded-lg backdrop-blur-sm w-fit mt-1.5" id="reviewed-count">
+                                    0 / 56 Indicators
+                                </span>
+                            </div>
+
+                            <!-- Animated SVG Score Progress Ring -->
+                            <div class="relative w-16 h-16 shrink-0 bg-white/10 rounded-full p-2 backdrop-blur-sm border border-white/15">
+                                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                                    <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="3" />
+                                    <circle id="sidebar-score-ring" cx="18" cy="18" r="15.915" fill="none" stroke="#F59E0B" stroke-width="3" stroke-dasharray="60.0, 100" stroke-linecap="round" class="transition-all duration-700 ease-out" />
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-[8px] font-bold text-white uppercase tracking-wider" id="sidebar-score-rating">NeedImp</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="w-full bg-white/20 h-1.5 rounded-full mt-4 overflow-hidden relative z-10">
+                            <div id="overall-progress-bar" class="bg-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                <!-- Audit Meta Form Card -->
+                <form id="metadata-form" onsubmit="event.preventDefault();" class="flex flex-col gap-4">
+                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest mt-1">Metadata Details</p>
+                    
+                    <!-- Audit Filename Input -->
+                    <div class="flex flex-col gap-1">
+                        <label for="meta-filename" class="text-xs font-bold text-slate-700 dark:text-slate-300">Audit File Name</label>
+                        <input type="text" id="meta-filename" oninput="handleFilenameChange(this.value)" placeholder="e.g. Q1_Safety_Audit" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom">
+                    </div>
+
+                    <!-- Locked Active Auditor Display -->
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Active Auditor</label>
+                        <div class="w-full bg-slate-100 dark:bg-[#1F2937]/50 border border-slate-200/60 dark:border-[#374151]/50 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-5.618 3.03A5.002 5.002 0 003 12c0 2.76 1.91 5.07 4.5 5.753m.002 0a11.953 11.953 0 01-4.5-5.753M12 21.003c2.76 0 5.07-1.91 5.753-4.5m0 0a11.954 11.954 0 01-5.753 4.5M12 21.003V12"/></svg>
+                            <span id="active-auditor-label">Not Authenticated</span>
+                        </div>
+                    </div>
+
+                    <!-- School Campus Selector -->
+                    <div class="flex flex-col gap-1">
+                        <label for="meta-school" class="text-xs font-bold text-slate-700 dark:text-slate-300">School Campus</label>
+                        <select id="meta-school" onchange="handleMetaChange('school', this.value)" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Date Picker -->
+                    <div class="flex flex-col gap-1">
+                        <label for="meta-date" class="text-xs font-bold text-slate-700 dark:text-slate-300">Audit Date</label>
+                        <input type="date" id="meta-date" onchange="handleMetaChange('date', this.value)" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom">
+                    </div>
+                </form>
+
+                <!-- Local Storage Drafts History Panel -->
+                <div class="flex flex-col gap-2 border-t border-slate-100 dark:border-[#1F2937] pt-4" id="database-history-panel">
+                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-1 flex items-center justify-between">
+                        <span>Local Browser Drafts</span>
+                    </p>
+                    <!-- Consolidate Button (Only visible for Superadmin) -->
+                    <button id="consolidate-btn" onclick="consolidateSelectedAudits()" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer mb-2">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                        <span>Consolidate Selected (0)</span>
+                    </button>
+                    <div id="saved-audits-list" class="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1 text-[11px] scrollbar-none">
+                        <span class="text-slate-600 dark:text-slate-300 italic">No saved drafts in browser cache</span>
+                    </div>
+                </div>
+
+                <!-- Category Navigation List (Desktop) -->
+                <div class="hidden lg:flex flex-col gap-1.5 mt-2">
+                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-1">Categories</p>
+                    <nav id="category-sidebar-list" aria-label="Desktop Audit Categories" class="flex flex-col gap-1">
+                        <!-- Populated dynamically -->
+                    </nav>
+                </div>
+
+            <!-- Footer Action Buttons -->
+            <footer class="flex flex-col gap-2 mt-6 pt-4 border-t border-slate-200 dark:border-[#1F2937]">
+                <!-- Save File (Update Local Database Entry) -->
+                <button onclick="saveDraftAction()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm px-4 py-3 rounded-xl shadow-lg shadow-brand-500/10 active:scale-[0.98] transition-all-custom flex items-center justify-center gap-2 cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                    <span>Save Draft File</span>
+                </button>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <!-- Save As copy -->
+                    <button onclick="saveAsAction()" class="bg-slate-100 hover:bg-slate-200 dark:bg-[#1F2937] dark:hover:bg-[#2b3547] text-slate-700 dark:text-slate-300 font-semibold text-xs px-2 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1 cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                        <span>Save As...</span>
+                    </button>
+
+                    <!-- Start Blank New Audit -->
+                    <button onclick="startNewAudit()" class="bg-slate-100 hover:bg-slate-200 dark:bg-[#1F2937] dark:hover:bg-[#2b3547] text-slate-700 dark:text-slate-300 font-semibold text-xs px-2 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1 cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span>New Audit</span>
+                    </button>
+                </div>
+
+                <!-- Generate PDF Board Report -->
+                <button onclick="generatePDFReport()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-600/10 active:scale-[0.98] transition-all-custom flex items-center justify-center gap-2 cursor-pointer mt-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span>Generate PDF Report</span>
+                </button>
+
+                <!-- Generate Audit Legend -->
+                <button onclick="generateAuditLegend()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm px-4 py-2.5 rounded-xl shadow-lg active:scale-[0.98] transition-all-custom flex items-center justify-center gap-2 cursor-pointer mt-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    <span>Generate Audit Legend</span>
+                </button>
+                
+                <!-- Compact Data & Backups Dropdown -->
+                <div class="relative w-full mt-1" id="data-dropdown-container">
+                    <button id="data-dropdown-btn" onclick="toggleDataDropdown()" aria-expanded="false" aria-haspopup="true" aria-controls="data-dropdown-menu" class="w-full bg-slate-50 hover:bg-slate-100 dark:bg-[#1F2937]/40 dark:hover:bg-[#1F2937]/80 border border-slate-200 dark:border-[#2C3854] text-slate-600 dark:text-slate-300 font-bold text-xs px-3 py-2.5 rounded-xl transition-all-custom flex items-center justify-between cursor-pointer">
+                        <span class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-brand-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.58 4 8 4s8-1.79 8-4M4 7c0-2.21 3.58-4 8-4s8 1.79 8 4m0 5c0 2.21-3.58 4-8 4s-8-1.79-8-4"/></svg>
+                            <span>Data & Backups</span>
+                        </span>
+                        <svg class="w-3.5 h-3.5 transition-transform duration-300" id="data-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    
+                    <div id="data-dropdown-menu" class="absolute left-0 right-0 bottom-full mb-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#2C3854] rounded-xl shadow-xl z-50 flex flex-col gap-1 p-1.5 hidden">
+                        <button onclick="exportToCSV(); toggleDataDropdown();" class="w-full text-left font-bold text-xs px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1F2937] transition-all-custom flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <span>Export CSV Spreadsheet</span>
+                        </button>
+                        <button onclick="exportToJSON(); toggleDataDropdown();" class="w-full text-left font-bold text-xs px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1F2937] transition-all-custom flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                            <span>Save JSON Backup</span>
+                        </button>
+                        <hr class="border-slate-100 dark:border-[#1F2937]/80 my-0.5">
+                        <button onclick="document.getElementById('import-json-file').click(); toggleDataDropdown();" class="w-full text-left font-bold text-xs px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1F2937] transition-all-custom flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                            <span>Load JSON Backup</span>
+                        </button>
+                        <button onclick="document.getElementById('import-csv-file').click(); toggleDataDropdown();" class="w-full text-left font-bold text-xs px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1F2937] transition-all-custom flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4 text-[#7896C8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                            <span>Load CSV Spreadsheet</span>
+                        </button>
+                        <hr class="border-slate-100 dark:border-[#1F2937]/80 my-0.5">
+                        <button onclick="downloadCSVTemplate(); toggleDataDropdown();" class="w-full text-left font-bold text-xs px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1F2937] transition-all-custom flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            <span>Download CSV Template</span>
+                        </button>
+                    </div>
+                </div>
+                <input type="file" id="import-json-file" accept=".json" class="hidden" onchange="importFromJSON(this)">
+                <input type="file" id="import-csv-file" accept=".csv" class="hidden" onchange="importFromCSV(this)">
+
+                <div class="flex items-center justify-between border-t border-slate-100 dark:border-[#1F2937]/60 pt-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    <a href="https://excelsisadvisors.com/" target="_blank" rel="noopener noreferrer" class="hover:text-brand-500 dark:hover:text-brand-400 transition-colors flex items-center gap-1">
+                        <span>Corporate Portal</span>
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    </a>
+                    <a href="https://excelsisadvisors.com/support" target="_blank" rel="noopener noreferrer" class="hover:text-brand-500 dark:hover:text-brand-400 transition-colors flex items-center gap-1">
+                        <span>Support & Guides</span>
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    </a>
+                </div>
+
+                <div class="flex items-center justify-between border-t border-slate-100 dark:border-[#1F2937]/60 pt-2">
+                    <button onclick="logOutAuditor()" class="text-rose-500 hover:text-rose-700 font-extrabold text-[10px] uppercase tracking-wider flex items-center gap-1 cursor-pointer">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                        <span>Log Out</span>
+                    </button>
+                    
+                    <button onclick="confirmReset()" class="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400 font-semibold text-[10px] cursor-pointer">
+                        Reset Local View
+                    </button>
+                </div>
+            </footer>
+                </div><!-- End #mobile-drawer-content -->
+            </div>
+        </aside>
+
+        <!-- ================= MAIN AUDIT PANEL ================= -->
+        <main id="main-content" tabindex="-1" class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-[#0B0F19] lg:h-screen lg:overflow-hidden focus:outline-none">
+            <!-- Global Search and Category Bar for Mobile -->
+            <header class="bg-white dark:bg-[#111827] border-b border-slate-200 dark:border-[#1F2937] p-4 lg:p-6 flex flex-col gap-4 shrink-0">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 id="active-category-title" class="text-xl font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            Infrastructure
+                        </h2>
+                        <p id="active-category-subtitle" class="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-0.5">
+                            Macro-Weight: 10% of Total Audit
+                        </p>
+                    </div>
+
+                    <!-- Search Input -->
+                    <form id="search-form" role="search" onsubmit="event.preventDefault();" class="relative w-full md:w-80">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </span>
+                        <label for="search-input" class="sr-only">Search compliance indicators</label>
+                        <input type="text" id="search-input" oninput="handleSearch(this.value)" placeholder="Search indicators..." aria-label="Search compliance indicators" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl pl-10 pr-9 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom">
+                        <button type="button" id="search-clear-btn" onclick="clearSearch()" aria-label="Clear indicator search filter" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hidden">
+                            <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Horizontal scrollable categories for mobile/tablets -->
+                <nav id="category-mobile-list" aria-label="Mobile Audit Categories" class="flex lg:hidden gap-2 overflow-x-auto pb-1 scrollbar-none">
+                    <!-- Populated dynamically -->
+                </nav>
+            </header>
+
+            <!-- Audit Cards Grid Area -->
+            <section class="flex-1 overflow-y-auto p-4 lg:p-6">
+                <!-- Cards Container -->
+                <div id="indicators-grid" class="flex flex-col gap-6 max-w-5xl mx-auto pb-8">
+                    <!-- Generated dynamically -->
+                </div>
+                
+                <!-- Empty state shown when searching returns no matches -->
+                <div id="search-empty-state" class="hidden flex-col items-center justify-center py-20 text-center gap-4">
+                    <div class="bg-slate-100 dark:bg-[#1F2937] text-slate-400 dark:text-slate-500 p-4 rounded-full">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-700 dark:text-slate-300">No Indicators Found</h3>
+                        <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">Try refining your search keyword.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- PDF Report Settings Modal Overlay -->
+    <div id="pdf-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="pdf-modal-title" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/85 backdrop-blur-md transition-opacity duration-300 hidden p-4">
+        <div class="glass-card rounded-2xl sm:rounded-3xl p-5 sm:p-8 max-w-md w-full shadow-2xl flex flex-col gap-5 sm:gap-6 border border-slate-200/10 text-slate-800 dark:text-slate-200 max-h-[calc(100vh-2rem)] sm:max-h-[90vh] my-auto overflow-y-auto overscroll-contain">
+            <div class="flex flex-col gap-2">
+                <h2 id="pdf-modal-title" class="font-extrabold text-xl tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <svg class="w-6 h-6 text-brand-500" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span>Report Settings</span>
+                </h2>
+                <p class="text-xs text-slate-600 dark:text-slate-300">Configure layout and options for your board report.</p>
+            </div>
+
+            <form id="pdf-settings-form" onsubmit="event.preventDefault(); submitPDFReport();" class="flex flex-col gap-6">
+                <div class="flex flex-col gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label for="pdf-report-type" class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">Report Type</label>
+                        <select id="pdf-report-type" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom text-slate-800 dark:text-slate-200">
+                            <option value="detailed">Detailed Report (Complete audit details)</option>
+                            <option value="summary">Executive Summary (Summary & critical gaps only)</option>
+                        </select>
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                        <label for="pdf-confidentiality" class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">Confidentiality Stamp</label>
+                        <select id="pdf-confidentiality" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none transition-all-custom text-slate-800 dark:text-slate-200">
+                            <option value="STRICTLY CONFIDENTIAL">Strictly Confidential</option>
+                            <option value="INTERNAL USE ONLY">Internal Use Only</option>
+                            <option value="CONFIDENTIAL">Confidential</option>
+                            <option value="NONE">None</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center justify-between p-1 border-b border-slate-100 dark:border-[#1F2937] pb-3">
+                        <div class="flex flex-col gap-0.5">
+                            <label for="pdf-include-photos" class="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">Include Photographic Evidence</label>
+                            <span class="text-[11px] text-slate-600 dark:text-slate-300">Render Base64 images directly inside the report.</span>
+                        </div>
+                        <input type="checkbox" id="pdf-include-photos" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer w-4 h-4" checked>
+                    </div>
+
+                    <div class="flex items-center justify-between p-1">
+                        <div class="flex flex-col gap-0.5">
+                            <label for="pdf-include-headers" class="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">Include Page Headers & Stamp</label>
+                            <span class="text-[11px] text-slate-600 dark:text-slate-300">Include Auditor, Date, and File ID metadata.</span>
+                        </div>
+                        <input type="checkbox" id="pdf-include-headers" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer w-4 h-4" checked>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-2">
+                    <button type="button" onclick="closePDFModal()" class="w-1/2 bg-slate-100 dark:bg-[#1F2937]/50 dark:hover:bg-[#1F2937] text-slate-700 dark:text-slate-300 font-bold text-xs px-3 py-3 rounded-xl transition-all-custom cursor-pointer text-center">
+                        Cancel
+                    </button>
+                    <button type="submit" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3 py-3 rounded-xl shadow-lg shadow-indigo-600/10 active:scale-[0.98] transition-all-custom cursor-pointer text-center">
+                        Generate Report
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
