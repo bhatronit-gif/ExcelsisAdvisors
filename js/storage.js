@@ -211,6 +211,7 @@ export async function saveLocalDraftToDB(filename, auditor, data, currentScore) 
         auditor: auditor,
         date: data.date,
         score: currentScore,
+        ai_summary: data.aiSummary || "",
         audit_data: data.auditData,
         last_updated: new Date().toISOString()
     };

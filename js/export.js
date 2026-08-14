@@ -86,6 +86,7 @@ export function exportToJSON() {
         filename: state.filename,
         school: state.school,
         date: state.date,
+        aiSummary: state.aiSummary || "",
         auditData: state.auditData
     }, null, 2));
     
@@ -117,6 +118,7 @@ export function importFromJSON(input) {
                 state.filename = imported.filename;
                 state.school = imported.school;
                 if (imported.date) state.date = imported.date;
+                state.aiSummary = imported.aiSummary || "";
                 state.auditData = imported.auditData;
                 
                 // Sync UI inputs
@@ -416,6 +418,7 @@ export async function loadAuditFromDatabaseForAuditor(filename, auditor) {
     state.school = data.school;
     state.date = data.date;
     state.auditor = auditor;
+    state.aiSummary = data.ai_summary || "";
     state.auditData = data.audit_data;
     
     // Sync UI inputs

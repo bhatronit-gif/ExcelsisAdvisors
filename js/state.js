@@ -14,6 +14,7 @@ export let state = {
     activeCategory: Object.keys(CATEGORIES)[0],
     searchQuery: "",
     loggedInUser: null,
+    aiSummary: "",
     auditData: {},
     useLocalStorageFallback: false
 };
@@ -183,6 +184,7 @@ export async function startNewAudit(force = false) {
     state.filename = "Untitled_Audit_" + new Date().toISOString().split('T')[0];
     state.school = SCHOOLS[0];
     state.date = new Date().toISOString().split('T')[0];
+    state.aiSummary = "";
     state.auditData = {};
     
     await loadState();

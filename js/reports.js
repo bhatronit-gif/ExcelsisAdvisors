@@ -6,6 +6,7 @@
 import { LOGO_BASE64, CATEGORIES } from './config.js';
 import { state } from './state.js';
 import { showToast, trapFocus, releaseFocus } from './ui.js';
+import { renderMarkdown } from './ai.js';
 
 /**
  * 1. Shared Print HTML Head Generator (AUD-JS-M2)
@@ -177,6 +178,7 @@ export function submitPDFReport() {
     const confidentiality = document.getElementById('pdf-confidentiality')?.value || 'INTERNAL';
     const includePhotos = document.getElementById('pdf-include-photos')?.checked ?? true;
     const includeHeaders = document.getElementById('pdf-include-headers')?.checked ?? true;
+    const includeAISummary = document.getElementById('pdf-include-ai-summary')?.checked ?? true;
     
     closePDFModal();
     
@@ -184,7 +186,8 @@ export function submitPDFReport() {
         reportType,
         confidentiality,
         includePhotos,
-        includeHeaders
+        includeHeaders,
+        includeAISummary
     });
 }
 
@@ -454,6 +457,22 @@ export function generatePDFReport(options) {
                     </tbody>
                 </table>
             </div>
+
+            <!-- AI-Synthesized Executive Briefing Section -->
+            ${options.includeAISummary !== false && state.aiSummary && state.aiSummary.trim().length > 0 ? `
+            <div class="flex flex-col gap-4 mt-8 print-avoid-break">
+                <div class="flex justify-between items-center border-b-2 border-brand-500 pb-2">
+                    <h3 class="text-xs font-extrabold text-brand-700 uppercase tracking-wider flex items-center gap-2">
+                        <svg class="w-4 h-4 text-brand-600 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        AI Executive Briefing &amp; Compliance Synthesis
+                    </h3>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Automated Intelligence Assessment</span>
+                </div>
+                <div class="bg-slate-50/80 border border-slate-200 rounded-xl p-5 text-slate-800 leading-relaxed text-xs">
+                    ${renderMarkdown(state.aiSummary)}
+                </div>
+            </div>
+            ` : ''}
 
             <!-- Details Sections -->
             ${options.reportType === 'summary' ? `

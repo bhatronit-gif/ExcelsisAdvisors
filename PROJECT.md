@@ -4,7 +4,7 @@
 - Target Root: `/Users/ronit/Downloads/ExcelsisAdvisors-main`
 - Core HTML: `index.html`
 - External Stylesheets: `css/styles.css`
-- External JS Modules: `js/config.js`, `js/storage.js`, `js/state.js`, `js/auth.js`, `js/ui.js`, `js/export.js`, `js/reports.js`, `js/app.js`
+- External JS Modules: `js/config.js`, `js/storage.js`, `js/state.js`, `js/auth.js`, `js/ui.js`, `js/export.js`, `js/reports.js`, `js/ai.js`, `js/app.js`
 - Assets: `favicon.png`, `logo.webp`, `site.webmanifest`
 - Reports: `AUDIT_REPORT.md`
 
@@ -26,6 +26,7 @@
 | 13| DOM Filter Optimization | Replace total grid innerHTML teardown with element visibility toggles | M3 | Survey Explorer 3 (M1) |
 | 14| SEO, OpenGraph & JSON-LD | Add Canonical, OG, Twitter Cards, Robots, Theme-color & Schema.org JSON-LD | M3 | Survey Explorer 3 (M2, M3) |
 | 15| Asset Verification & Security | Verify favicon portfolio, clean auth logic, validate links & HTML5 syntax | M3 | Survey Explorer 3 (H4, L1, L2, L3) |
+| 16| AI Executive Summaries | Google Gemini API integration (`gemini-2.5-flash`), interactive modal & PDF report synthesis | M4 | GRILL_ME SPEC |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -34,6 +35,7 @@
 | M1 | HTML Structure & WCAG | Fix HTML semantics, WCAG accessibility, form labels, ARIA dialogs | M0 | DONE |
 | M2 | CSS & Mobile Polish | Modularize CSS, custom properties, mobile responsive drawer & modal scroll | M1 | DONE |
 | M3 | JS Performance & SEO | JS modularization, debounced storage, DOM filter optimization, SEO metadata | M2 | DONE |
+| M4 | AI Executive Summaries | Gemini client, UI modal, markdown editor, IndexedDB persistence & PDF report synthesis | M3 | DONE |
 
 ## Interface Contracts
 ### HTML ↔ CSS
@@ -44,3 +46,4 @@
 - Modular JS loaded via `<script type="module" src="js/app.js"></script>`.
 - Storage debounced via `debounce(saveState, 400)`.
 - Event listeners attached dynamically or cleanly bound to window handlers.
+- AI state persisted in `state.aiSummary` and rendered via `renderMarkdown()`.

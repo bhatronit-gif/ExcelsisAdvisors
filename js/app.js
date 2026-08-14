@@ -20,6 +20,11 @@ import {
     saveAsAction, handleConsolidateCheckboxClick, consolidateSelectedAudits
 } from './export.js';
 import { closePDFModal, submitPDFReport, generatePDFReport, generateAuditLegend } from './reports.js';
+import { 
+    openAISummaryModal, closeAISummaryModal, setAIActiveTab, toggleAISettingsDrawer,
+    saveGeminiApiKeyFromUI, testGeminiApiKey, triggerAISummaryGeneration,
+    handleAISummaryEditorChange, copyAISummaryToClipboard, clearAISummary 
+} from './ai.js';
 
 // --- Window Bridge Bindings (Ensures 100% backward compatibility for inline HTML event attributes) ---
 window.handleCategorySelect = handleCategorySelect;
@@ -55,6 +60,16 @@ window.deleteAuditFromDatabase = deleteAuditFromDatabase;
 window.deleteAuditFromDatabaseForSuperadmin = deleteAuditFromDatabaseForSuperadmin;
 window.handleConsolidateCheckboxClick = handleConsolidateCheckboxClick;
 window.consolidateSelectedAudits = consolidateSelectedAudits;
+window.openAISummaryModal = openAISummaryModal;
+window.closeAISummaryModal = closeAISummaryModal;
+window.setAIActiveTab = setAIActiveTab;
+window.toggleAISettingsDrawer = toggleAISettingsDrawer;
+window.saveGeminiApiKeyFromUI = saveGeminiApiKeyFromUI;
+window.testGeminiApiKey = testGeminiApiKey;
+window.triggerAISummaryGeneration = triggerAISummaryGeneration;
+window.handleAISummaryEditorChange = handleAISummaryEditorChange;
+window.copyAISummaryToClipboard = copyAISummaryToClipboard;
+window.clearAISummary = clearAISummary;
 window.confirmReset = () => {
     if (!confirm("Reset active view back to blank defaults? (Saved drafts remain in history)")) return;
     startNewAudit(true);
@@ -66,6 +81,10 @@ document.addEventListener('keydown', function(e) {
         const pdfModal = document.getElementById('pdf-modal-overlay');
         if (pdfModal && !pdfModal.classList.contains('hidden')) {
             closePDFModal();
+        }
+        const aiModal = document.getElementById('ai-summary-modal-overlay');
+        if (aiModal && !aiModal.classList.contains('hidden')) {
+            closeAISummaryModal();
         }
     }
 });
