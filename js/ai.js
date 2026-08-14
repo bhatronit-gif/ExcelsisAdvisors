@@ -200,17 +200,76 @@ Keep the tone authoritative, objective, executive-level, and constructive. Forma
     return prompt;
 }
 
+let hasNetlifyServerKey = false;
+
 /**
- * Invokes Google Gemini REST API with fallback support across model versions.
+ * Checks if the Netlify Serverless Backend has process.env.GEMINI_API_KEY configured.
+ */
+export async function checkNetlifyServerKey() {
+    try {
+        const response = await fetch('/.netlify/functions/gemini', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        });
+        if (response.ok) {
+            const data = await response.json();
+            hasNetlifyServerKey = !!data.hasServerKey;
+            updateApiKeyStatusUI();
+            return hasNetlifyServerKey;
+        }
+    } catch (e) {
+        // Not running on Netlify or functions unavailable
+        hasNetlifyServerKey = false;
+    }
+    return false;
+}
+
+/**
+ * Invokes Google Gemini API via Netlify Serverless Function or direct client REST fallback.
  */
 export async function callGeminiAPI(apiKey, promptText, modelOverride = null) {
-    if (!apiKey) {
-        throw new Error("Missing Gemini API Key. Please provide your API key in Settings.");
+    const preferredModel = modelOverride || getGeminiModel() || DEFAULT_MODEL;
+
+    // 1. Try Netlify Serverless Function first (Uses process.env.GEMINI_API_KEY)
+    try {
+        const netlifyResponse = await fetch('/.netlify/functions/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: promptText,
+                model: preferredModel,
+                apiKey: apiKey || ''
+            })
+        });
+
+        if (netlifyResponse.ok) {
+            const data = await netlifyResponse.json();
+            if (data.text) {
+                hasNetlifyServerKey = true;
+                updateApiKeyStatusUI();
+                return {
+                    text: data.text,
+                    modelUsed: data.modelUsed || preferredModel
+                };
+            }
+        } else if (netlifyResponse.status !== 404 && netlifyResponse.status !== 502) {
+            const errData = await netlifyResponse.json().catch(() => ({}));
+            if (errData.error && !errData.error.includes("No Gemini API Key found")) {
+                throw new Error(errData.error);
+            }
+        }
+    } catch (netlifyErr) {
+        if (!apiKey && !hasNetlifyServerKey) {
+            throw netlifyErr;
+        }
     }
 
-    const preferredModel = modelOverride || getGeminiModel() || DEFAULT_MODEL;
-    const modelsToTry = [preferredModel, ...FALLBACK_MODELS.filter(m => m !== preferredModel)];
+    // 2. Direct Client-Side Fallback (if user provided key in UI or running offline)
+    if (!apiKey) {
+        throw new Error("No Gemini API key found. Please enter an API key in Settings or configure GEMINI_API_KEY in Netlify.");
+    }
 
+    const modelsToTry = [preferredModel, ...FALLBACK_MODELS.filter(m => m !== preferredModel)];
     let lastError = null;
 
     for (const model of modelsToTry) {
@@ -241,7 +300,6 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null) {
                 const errorData = await response.json().catch(() => ({}));
                 const errMsg = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
                 
-                // If model not found (404), try next model in fallback list
                 if (response.status === 404) {
                     console.warn(`Model ${model} returned 404, attempting fallback...`);
                     lastError = new Error(`Model ${model} not available: ${errMsg}`);
@@ -264,7 +322,6 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null) {
         } catch (err) {
             lastError = err;
             if (err.message && (err.message.includes("API Key") || err.message.includes("quota") || err.message.includes("403") || err.message.includes("401"))) {
-                // Auth/Quota error, no need to fallback models
                 throw err;
             }
         }
@@ -276,12 +333,15 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null) {
 /**
  * Opens the AI Summary Modal and initializes UI states.
  */
-export function openAISummaryModal() {
+export async function openAISummaryModal() {
     const modal = document.getElementById('ai-summary-modal-overlay');
     if (!modal) return;
 
     modal.classList.remove('hidden');
     modal.classList.add('flex');
+
+    // Check if Netlify environment variable key is active
+    checkNetlifyServerKey();
 
     // Populate API key input
     const keyInput = document.getElementById('gemini-api-key-input');
@@ -390,7 +450,12 @@ export function updateApiKeyStatusUI() {
     if (key && key.length > 5) {
         badge.innerHTML = `
             <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-            <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">API Key Ready</span>
+            <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">Custom Key Ready</span>
+        `;
+    } else if (hasNetlifyServerKey) {
+        badge.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+            <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">Netlify Key Active</span>
         `;
     } else {
         badge.innerHTML = `
@@ -447,11 +512,6 @@ export async function testGeminiApiKey() {
     const keyInput = document.getElementById('gemini-api-key-input');
     const key = keyInput ? keyInput.value.trim() : getGeminiApiKey();
 
-    if (!key) {
-        showToast("Please enter an API key first.", "warning");
-        return;
-    }
-
     const testBtn = document.getElementById('ai-test-key-btn');
     if (testBtn) {
         testBtn.disabled = true;
@@ -461,7 +521,7 @@ export async function testGeminiApiKey() {
     try {
         const res = await callGeminiAPI(key, "Respond with 'OK' if you can read this message.");
         showToast(`Connection successful! Connected to ${res.modelUsed}.`, "success");
-        setGeminiApiKey(key);
+        if (key) setGeminiApiKey(key);
         updateApiKeyStatusUI();
     } catch (err) {
         showToast(`API Test Failed: ${err.message}`, "error");
@@ -478,15 +538,18 @@ export async function testGeminiApiKey() {
  */
 export async function triggerAISummaryGeneration() {
     const apiKey = getGeminiApiKey();
-    if (!apiKey) {
-        showToast("Please configure your Google Gemini API Key first.", "warning");
-        const drawer = document.getElementById('ai-settings-drawer');
-        if (drawer && drawer.classList.contains('hidden')) {
-            toggleAISettingsDrawer();
+    if (!apiKey && !hasNetlifyServerKey) {
+        const serverKeyAvailable = await checkNetlifyServerKey();
+        if (!serverKeyAvailable) {
+            showToast("Please configure your Google Gemini API Key or add GEMINI_API_KEY in Netlify.", "warning");
+            const drawer = document.getElementById('ai-settings-drawer');
+            if (drawer && drawer.classList.contains('hidden')) {
+                toggleAISettingsDrawer();
+            }
+            const keyInput = document.getElementById('gemini-api-key-input');
+            if (keyInput) keyInput.focus();
+            return;
         }
-        const keyInput = document.getElementById('gemini-api-key-input');
-        if (keyInput) keyInput.focus();
-        return;
     }
 
     const generateBtn = document.getElementById('ai-generate-btn');
