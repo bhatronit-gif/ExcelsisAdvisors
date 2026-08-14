@@ -251,3 +251,99 @@ textarea:focus-visible {
   box-shadow: 0 0 0 3px rgba(200, 55, 40, 0.25);
 }
 
+/* ==========================================================================
+   3. COMPLIANCE SCORE RATING BUTTONS (High-Contrast Light & Dark Styling)
+   ========================================================================== */
+.score-btn-1 { border-color: #fecdd3; color: #e11d48; background-color: transparent; }
+.score-btn-1:hover { background-color: #fff1f2; }
+.score-btn-1-active { background-color: #f43f5e !important; border-color: #f43f5e !important; color: #ffffff !important; box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35) !important; }
+
+.score-btn-2 { border-color: #fed7aa; color: #ea580c; background-color: transparent; }
+.score-btn-2:hover { background-color: #fff7ed; }
+.score-btn-2-active { background-color: #f97316 !important; border-color: #f97316 !important; color: #ffffff !important; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35) !important; }
+
+.score-btn-3 { border-color: #fde68a; color: #d97706; background-color: transparent; }
+.score-btn-3:hover { background-color: #fffbeb; }
+.score-btn-3-active { background-color: #f59e0b !important; border-color: #f59e0b !important; color: #ffffff !important; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35) !important; }
+
+.score-btn-4 { border-color: #a7f3d0; color: #059669; background-color: transparent; }
+.score-btn-4:hover { background-color: #ecfdf5; }
+.score-btn-4-active { background-color: #10b981 !important; border-color: #10b981 !important; color: #ffffff !important; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important; }
+
+.score-btn-5 { border-color: #c7d2fe; color: #4338ca; background-color: transparent; }
+.score-btn-5:hover { background-color: #eef2ff; }
+.score-btn-5-active { background-color: #4f46e5 !important; border-color: #4f46e5 !important; color: #ffffff !important; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35) !important; }
+
+/* Dark Mode Score Button Variants */
+.dark .score-btn-1 { border-color: rgba(225, 29, 72, 0.4); color: #fb7185; }
+.dark .score-btn-1:hover { background-color: rgba(225, 29, 72, 0.15); }
+.dark .score-btn-1-active { background-color: #f43f5e !important; border-color: #f43f5e !important; color: #ffffff !important; }
+
+.dark .score-btn-2 { border-color: rgba(234, 88, 12, 0.4); color: #fb923c; }
+.dark .score-btn-2:hover { background-color: rgba(234, 88, 12, 0.15); }
+.dark .score-btn-2-active { background-color: #f97316 !important; border-color: #f97316 !important; color: #ffffff !important; }
+
+.dark .score-btn-3 { border-color: rgba(217, 119, 6, 0.4); color: #fbbf24; }
+.dark .score-btn-3:hover { background-color: rgba(217, 119, 6, 0.15); }
+.dark .score-btn-3-active { background-color: #f59e0b !important; border-color: #f59e0b !important; color: #ffffff !important; }
+
+.dark .score-btn-4 { border-color: rgba(5, 150, 105, 0.4); color: #34d399; }
+.dark .score-btn-4:hover { background-color: rgba(5, 150, 105, 0.15); }
+.dark .score-btn-4-active { background-color: #10b981 !important; border-color: #10b981 !important; color: #ffffff !important; }
+
+.dark .score-btn-5 { border-color: rgba(67, 56, 202, 0.4); color: #a5b4fc; }
+.dark .score-btn-5:hover { background-color: rgba(67, 56, 202, 0.15); }
+.dark .score-btn-5-active { background-color: #4f46e5 !important; border-color: #4f46e5 !important; color: #ffffff !important; }
+
+/* ==========================================================================
+   4. EXPLICIT DARK THEME SURFACE & TYPOGRAPHY OVERRIDES
+   ========================================================================== */
+.dark body {
+  color: #e2e8f0;
+  background-color: var(--surface-0);
+}
+
+.dark aside {
+  background-color: #111827 !important;
+  border-color: #26334D !important;
+  color: #e2e8f0;
+}
+
+.dark main {
+  background-color: #0B0F19 !important;
+  color: #e2e8f0;
+}
+
+.dark header {
+  background-color: #111827 !important;
+  border-color: #1F2937 !important;
+}
+
+.dark .glass-card {
+  background-color: #161F30;
+  border-color: #26334D;
+  color: #f1f5f9;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #1F2937 !important;
+  border-color: #374151 !important;
+  color: #f1f5f9 !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+.dark label {
+  color: #cbd5e1 !important;
+}
+
+.dark h1, .dark h2, .dark h3, .dark h4 {
+  color: #f8fafc !important;
+}
+
+

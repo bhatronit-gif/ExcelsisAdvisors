@@ -144,16 +144,21 @@ export function updateCalculations() {
         }
     }
     
+    const ringValEl = document.getElementById('sidebar-score-ring-val');
+    if (ringValEl) {
+        ringValEl.innerText = `${Math.round(finalPercent)}%`;
+    }
+
     const ratingLabelEl = document.getElementById('sidebar-score-rating');
     if (ratingLabelEl) {
         if (finalPercent >= 90) {
-            ratingLabelEl.innerText = "Outstnd";
+            ratingLabelEl.innerText = "Outstanding";
         } else if (finalPercent >= 75) {
-            ratingLabelEl.innerText = "Complnt";
+            ratingLabelEl.innerText = "Compliant";
         } else if (finalPercent >= 60) {
-            ratingLabelEl.innerText = "NeedImp";
+            ratingLabelEl.innerText = "Needs Improvement";
         } else {
-            ratingLabelEl.innerText = "CritRsk";
+            ratingLabelEl.innerText = "Critical Risk";
         }
     }
 

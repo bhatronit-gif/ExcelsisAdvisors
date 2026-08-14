@@ -50,6 +50,33 @@
     <!-- Main External Stylesheet (Design Tokens & Modular CSS) -->
     <link rel="stylesheet" href="css/styles.css">
 
+    <!-- Tailwind CSS Play CDN (with dark mode class strategy & extended palette) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fff5f5',
+                            100: '#ffe3e3',
+                            500: '#C83728',
+                            600: '#A9261B',
+                            700: '#8E1C12',
+                            900: '#680E07',
+                        },
+                        excelsisBlue: {
+                            100: '#f0f9ff',
+                            500: '#A0CDF0',
+                            600: '#7896C8',
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+
     <!-- Schema.org JSON-LD Structured Data for WebApplication -->
     <script type="application/ld+json">
     {
@@ -180,7 +207,7 @@
                     <div class="flex items-center gap-2">
                         <!-- Mobile Compact Score Pill Badge (Visible on <1024px) -->
                         <div class="flex lg:hidden items-center gap-1.5 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/20 px-2.5 py-1 rounded-lg text-xs font-bold">
-                            <span id="mobile-score-pill">60.00% NeedImp</span>
+                            <span id="mobile-score-pill">60.00% Needs Improvement</span>
                         </div>
 
                         <!-- Theme Toggle -->
@@ -204,29 +231,35 @@
                         <div class="absolute -right-6 -bottom-6 w-32 h-32 rounded-full bg-white/5 pointer-events-none"></div>
                         <div class="absolute -left-6 -top-6 w-24 h-24 rounded-full bg-white/5 pointer-events-none"></div>
 
-                        <div class="flex items-center justify-between gap-4 relative z-10">
-                            <div class="flex flex-col gap-1">
+                        <div class="flex items-center justify-between gap-3 relative z-10">
+                            <div class="flex flex-col gap-1 min-w-0">
                                 <span class="text-[10px] font-bold text-brand-100 uppercase tracking-wider">Risk-Adjusted Score</span>
                                 <span id="score-display" class="text-3xl font-black tracking-tight">60.00%</span>
                                 
-                                <span class="text-[9px] font-bold text-brand-100 bg-white/10 px-2.5 py-1 rounded-lg backdrop-blur-sm w-fit mt-1.5" id="reviewed-count">
+                                <span class="text-[9px] font-bold text-brand-100 bg-white/10 px-2.5 py-1 rounded-lg backdrop-blur-sm w-fit mt-1" id="reviewed-count">
                                     0 / 56 Indicators
                                 </span>
                             </div>
 
                             <!-- Animated SVG Score Progress Ring -->
-                            <div class="relative w-16 h-16 shrink-0 bg-white/10 rounded-full p-2 backdrop-blur-sm border border-white/15">
+                            <div class="relative w-16 h-16 shrink-0 bg-white/10 rounded-full p-2 backdrop-blur-sm border border-white/15 flex items-center justify-center">
                                 <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                                     <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="3" />
                                     <circle id="sidebar-score-ring" cx="18" cy="18" r="15.915" fill="none" stroke="#F59E0B" stroke-width="3" stroke-dasharray="60.0, 100" stroke-linecap="round" class="transition-all duration-700 ease-out" />
                                 </svg>
-                                <div class="absolute inset-0 flex items-center justify-center">
-                                    <span class="text-[8px] font-bold text-white uppercase tracking-wider" id="sidebar-score-rating">NeedImp</span>
+                                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <span class="text-[11px] font-black text-white leading-none" id="sidebar-score-ring-val">60%</span>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="w-full bg-white/20 h-1.5 rounded-full mt-4 overflow-hidden relative z-10">
+                        <!-- Rating Status Badge Row -->
+                        <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between relative z-10">
+                            <span class="text-[10px] font-semibold text-brand-100 uppercase tracking-wider">Compliance Status</span>
+                            <span id="sidebar-score-rating" class="font-bold text-[11px] px-2.5 py-0.5 rounded-md bg-white/15 text-white border border-white/20 backdrop-blur-sm">Needs Improvement</span>
+                        </div>
+
+                        <div class="w-full bg-white/20 h-1.5 rounded-full mt-3 overflow-hidden relative z-10">
                             <div id="overall-progress-bar" class="bg-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
                         </div>
                     </div>

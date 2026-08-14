@@ -439,20 +439,20 @@ export function renderCardHTML(catName, indName, multiplier) {
 export function getScoreButtonClass(score, active) {
     const classes = {
         1: active 
-            ? "bg-rose-500 border-rose-500 text-white shadow-md shadow-rose-500/20" 
-            : "border-rose-200 dark:border-rose-950/60 text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20",
+            ? "score-btn-1-active bg-rose-500 border-rose-500 text-white shadow-md shadow-rose-500/20" 
+            : "score-btn-1 border-rose-200 dark:border-rose-950/60 text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20",
         2: active 
-            ? "bg-orange-500 border-orange-500 text-white shadow-md shadow-orange-500/20" 
-            : "border-orange-200 dark:border-orange-950/60 text-orange-500 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/20",
+            ? "score-btn-2-active bg-orange-500 border-orange-500 text-white shadow-md shadow-orange-500/20" 
+            : "score-btn-2 border-orange-200 dark:border-orange-950/60 text-orange-500 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/20",
         3: active 
-            ? "bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-500/20" 
-            : "border-amber-200 dark:border-amber-950/60 text-amber-500 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20",
+            ? "score-btn-3-active bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-500/20" 
+            : "score-btn-3 border-amber-200 dark:border-amber-950/60 text-amber-500 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20",
         4: active 
-            ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20" 
-            : "border-emerald-200 dark:border-emerald-950/60 text-emerald-500 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20",
+            ? "score-btn-4-active bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20" 
+            : "score-btn-4 border-emerald-200 dark:border-emerald-950/60 text-emerald-500 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20",
         5: active 
-            ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/20" 
-            : "border-indigo-200 dark:border-indigo-950/60 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
+            ? "score-btn-5-active bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/20" 
+            : "score-btn-5 border-indigo-200 dark:border-indigo-950/60 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
     };
     return classes[score];
 }
