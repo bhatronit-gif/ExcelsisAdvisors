@@ -40,6 +40,9 @@ export async function loadState() {
                     features: "",
                     gaps: "",
                     actions: "",
+                    aiFeatures: "",
+                    aiGaps: "",
+                    aiActions: "",
                     photoName: "",
                     photoData: "",
                     reviewed: false

@@ -306,7 +306,7 @@ export function renderCardHTML(catName, indName, multiplier) {
         badgeColorClass = "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300";
     }
     
-    const hasModifications = data.reviewed || data.features || data.gaps || data.actions || data.score !== 3 || data.photoName;
+    const hasModifications = data.reviewed || data.features || data.gaps || data.actions || data.aiFeatures || data.aiGaps || data.aiActions || data.score !== 3 || data.photoName;
     const borderAccentClass = hasModifications 
         ? "border-emerald-500/30 dark:border-emerald-500/20" 
         : "border-slate-200 dark:border-[#1F2937]";
@@ -328,11 +328,22 @@ export function renderCardHTML(catName, indName, multiplier) {
                 </div>
                 
                 <div class="flex items-center gap-2 relative group focus-within:z-50">
+                    <!-- AI Enhance Card Button -->
+                    <button type="button" 
+                            id="ai-btn-${catEscaped}-${indEscaped}"
+                            onclick="enhanceIndicatorCard('${catName}', '${indName}')" 
+                            title="AI Enhance write-ups for this indicator"
+                            class="text-xs font-bold px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-500/10 to-indigo-500/10 hover:from-purple-500/20 hover:to-indigo-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/20 flex items-center gap-1.5 transition-all-custom cursor-pointer active:scale-95">
+                        <svg class="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <span>AI Enhance</span>
+                    </button>
+
+                    <!-- Risk Multiplier Tooltip Trigger -->
                     <button type="button" 
                             id="tooltip-trigger-${catEscaped}-${indEscaped}"
                             aria-describedby="tooltip-desc-${catEscaped}-${indEscaped}"
                             class="text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 ${badgeColorClass} cursor-help focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition-all">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                         Risk Multiplier: ${multiplier}x
                     </button>
                     <!-- Hover & Focus Tooltip -->
@@ -379,6 +390,27 @@ export function renderCardHTML(catName, indName, multiplier) {
                               oninput="handleTextChange('${catName}', '${indName}', 'features', this.value)" 
                               placeholder="Highlights, achievements..." 
                               class="w-full bg-slate-50/50 dark:bg-[#172033] border border-slate-200 dark:border-[#2C3854] rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom h-20 resize-y">${data.features || ''}</textarea>
+                    
+                    <!-- AI Notable Features Suggestion -->
+                    ${data.aiFeatures ? `
+                    <div id="ai-box-feat-${catEscaped}-${indEscaped}" class="mt-1.5 p-2.5 rounded-xl bg-purple-50/80 dark:bg-purple-950/25 border border-purple-200 dark:border-purple-800/50 flex flex-col gap-1.5 shadow-sm animate-fadeIn">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                                <svg class="w-3 h-3 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                AI Enhanced
+                            </span>
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="applyAIEnhancement('${catName}', '${indName}', 'features', 'replace')" title="Replace original text with AI text" class="px-2 py-0.5 rounded bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] shadow-sm transition-colors cursor-pointer">Replace</button>
+                                <button type="button" onclick="applyAIEnhancement('${catName}', '${indName}', 'features', 'append')" title="Append to existing text" class="px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] transition-colors cursor-pointer">Append</button>
+                                <button type="button" onclick="applyAIEnhancement('${catName}', '${indName}', 'features', 'discard')" title="Discard suggestion" class="px-1 py-0.5 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 text-xs font-bold transition-colors cursor-pointer">✕</button>
+                            </div>
+                        </div>
+                        <textarea id="ai-feat-${catEscaped}-${indEscaped}"
+                                  aria-label="AI Enhanced Notable Features for ${indName}"
+                                  oninput="handleAITextChange('${catName}', '${indName}', 'features', this.value)"
+                                  class="w-full bg-white/90 dark:bg-[#121827]/90 border border-purple-200/80 dark:border-purple-800/40 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all h-20 resize-y leading-relaxed">${data.aiFeatures}</textarea>
+                    </div>
+                    ` : ''}
                 </div>
                 
                 <!-- Gaps Identified -->
@@ -391,6 +423,27 @@ export function renderCardHTML(catName, indName, multiplier) {
                               oninput="handleTextChange('${catName}', '${indName}', 'gaps', this.value)" 
                               placeholder="Risks, gaps..." 
                               class="w-full bg-slate-50/50 dark:bg-[#172033] border border-slate-200 dark:border-[#2C3854] rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom h-20 resize-y">${data.gaps || ''}</textarea>
+                    
+                    <!-- AI Gaps Identified Suggestion -->
+                    ${data.aiGaps ? `
+                    <div id="ai-box-gaps-${catEscaped}-${indEscaped}" class="mt-1.5 p-2.5 rounded-xl bg-purple-50/80 dark:bg-purple-950/25 border border-purple-200 dark:border-purple-800/50 flex flex-col gap-1.5 shadow-sm animate-fadeIn">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                                <svg class="w-3 h-3 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                AI Enhanced
+                            </span>
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="applyAIEnhancement('${catName}', '${indName}', 'gaps', 'replace')" title="Replace original text with AI text" class="px-2 py-0.5 rounded bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] shadow-sm transition-colors cursor-pointer">Replace</button>
+                                <button type="button" onclick="applyAIEnhancement('${catName}', '${indName}', 'gaps', 'append')" title="Append to existing text" class="px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] transition-colors cursor-pointer">Append</button>
+                                <button type="button" onclick="applyAIEnhancement('${catName}', '${indName}', 'gaps', 'discard')" title="Discard suggestion" class="px-1 py-0.5 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 text-xs font-bold transition-colors cursor-pointer">✕</button>
+                            </div>
+                        </div>
+                        <textarea id="ai-gaps-${catEscaped}-${indEscaped}"
+                                  aria-label="AI Enhanced Gaps Identified for ${indName}"
+                                  oninput="handleAITextChange('${catName}', '${indName}', 'gaps', this.value)"
+                                  class="w-full bg-white/90 dark:bg-[#121827]/90 border border-purple-200/80 dark:border-purple-800/40 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all h-20 resize-y leading-relaxed">${data.aiGaps}</textarea>
+                    </div>
+                    ` : ''}
                 </div>
                 
                 <!-- Actions Recommended -->
@@ -403,6 +456,27 @@ export function renderCardHTML(catName, indName, multiplier) {
                               oninput="handleTextChange('${catName}', '${indName}', 'actions', this.value)" 
                               placeholder="Proposed corrective tasks..." 
                               class="w-full bg-slate-50/50 dark:bg-[#172033] border border-slate-200 dark:border-[#2C3854] rounded-xl px-3.5 py-2.5 text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom h-20 resize-y">${data.actions || ''}</textarea>
+                    
+                    <!-- AI Actions Recommended Suggestion -->
+                    ${data.aiActions ? `
+                    <div id="ai-box-act-${catEscaped}-${indEscaped}" class="mt-1.5 p-2.5 rounded-xl bg-purple-50/80 dark:bg-purple-950/25 border border-purple-200 dark:border-purple-800/50 flex flex-col gap-1.5 shadow-sm animate-fadeIn">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                                <svg class="w-3 h-3 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                AI Enhanced
+                            </span>
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="applyAIEnhancement('${catName}', '${indName}', 'actions', 'replace')" title="Replace original text with AI text" class="px-2 py-0.5 rounded bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] shadow-sm transition-colors cursor-pointer">Replace</button>
+                                <button type="button" onclick="applyAIEnhancement('${catName}', '${indName}', 'actions', 'append')" title="Append to existing text" class="px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] transition-colors cursor-pointer">Append</button>
+                                <button type="button" onclick="applyAIEnhancement('${catName}', '${indName}', 'actions', 'discard')" title="Discard suggestion" class="px-1 py-0.5 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 text-xs font-bold transition-colors cursor-pointer">✕</button>
+                            </div>
+                        </div>
+                        <textarea id="ai-act-${catEscaped}-${indEscaped}"
+                                  aria-label="AI Enhanced Actions Recommended for ${indName}"
+                                  oninput="handleAITextChange('${catName}', '${indName}', 'actions', this.value)"
+                                  class="w-full bg-white/90 dark:bg-[#121827]/90 border border-purple-200/80 dark:border-purple-800/40 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all h-20 resize-y leading-relaxed">${data.aiActions}</textarea>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
 
@@ -469,6 +543,25 @@ export function updateLiveIndicatorsForCard(catName, indName) {
         );
     }
     renderCategoryNavigation();
+}
+
+/**
+ * In-place replaces a specific indicator card's DOM without affecting scroll or other cards.
+ */
+export function refreshCardDOM(catName, indName) {
+    const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
+    const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
+    const cardEl = document.getElementById(`card-${catEscaped}-${indEscaped}`);
+    if (!cardEl) return;
+
+    const catData = CATEGORIES[catName];
+    const multiplier = catData?.indicators?.[indName] || 1;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = renderCardHTML(catName, indName, multiplier);
+    const newCardEl = tempDiv.firstElementChild;
+    if (newCardEl) {
+        cardEl.replaceWith(newCardEl);
+    }
 }
 
 export function handleCategorySelect(catName) {

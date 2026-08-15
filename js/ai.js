@@ -7,7 +7,7 @@
 
 import { CATEGORIES } from './config.js';
 import { state, saveState, calculateScore } from './state.js';
-import { showToast } from './ui.js';
+import { showToast, refreshCardDOM } from './ui.js';
 
 const DEFAULT_MODEL = 'gemini-2.5-flash';
 const FALLBACK_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
@@ -640,3 +640,177 @@ export function clearAISummary() {
     }
     showToast("AI Summary cleared.", "info");
 }
+
+/**
+ * Enhances raw auditor notes for a specific indicator card.
+ */
+export async function enhanceIndicatorCard(catName, indName, showFeedback = true) {
+    const data = state.auditData[catName]?.[indName];
+    if (!data) return false;
+
+    const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
+    const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
+    const btn = document.getElementById(`ai-btn-${catEscaped}-${indEscaped}`);
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="animate-spin inline-block text-[10px]">⌛</span><span class="text-[10px]">Enhancing...</span>`;
+    }
+
+    try {
+        const apiKey = getGeminiApiKey();
+
+        const prompt = `You are a Senior Campus Safety and Regulatory Compliance Auditor.
+Enhance and formalize the auditor's raw write-ups for this specific campus audit indicator.
+
+INDICATOR CONTEXT:
+- Macro Compliance Category: ${catName}
+- Specific Indicator: ${indName}
+- Current Compliance Score: ${data.score}/5
+
+RAW AUDITOR WRITE-UPS:
+- Notable Features: ${data.features || "(None recorded)"}
+- Gaps Identified: ${data.gaps || "(None recorded)"}
+- Actions Recommended: ${data.actions || "(None recorded)"}
+
+INSTRUCTIONS:
+1. Polish the raw notes into formal, executive-ready, regulatory audit language.
+2. Preserve 100% of the auditor's specific facts, measurements, equipment names, locations, and ratings.
+3. If Notable Features has notes, enhance them into concise, professional compliance observations. If it was empty, return empty string "".
+4. If Gaps Identified has notes, enhance them into clear, prioritized regulatory vulnerability statements. If it was empty, return empty string "".
+5. If Actions Recommended has notes, enhance them into structured, actionable remediation tasks with clear scope. If Actions Recommended was empty BUT a gap was identified or score is <= 2, intelligently generate the appropriate standard remedial action.
+6. You MUST return ONLY a valid, raw JSON object (with no markdown code blocks, backticks, or commentary) strictly matching this schema:
+{
+  "aiFeatures": "Enhanced notable features text (or empty string)",
+  "aiGaps": "Enhanced gaps identified text (or empty string)",
+  "aiActions": "Enhanced actions recommended text (or empty string)"
+}`;
+
+        const res = await callGeminiAPI(apiKey, prompt);
+        let cleanedText = res.text.trim();
+        if (cleanedText.startsWith('```')) {
+            cleanedText = cleanedText.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
+        }
+
+        let parsed = {};
+        try {
+            parsed = JSON.parse(cleanedText);
+        } catch (parseErr) {
+            const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                parsed = JSON.parse(jsonMatch[0]);
+            } else {
+                throw new Error("Unable to parse structured AI enhancement response.");
+            }
+        }
+
+        data.aiFeatures = parsed.aiFeatures || "";
+        data.aiGaps = parsed.aiGaps || "";
+        data.aiActions = parsed.aiActions || "";
+
+        saveState();
+        refreshCardDOM(catName, indName);
+
+        if (showFeedback) {
+            showToast(`Enhanced write-ups for "${indName}"!`, "success");
+        }
+        return true;
+    } catch (err) {
+        console.error("Card enhancement error:", err);
+        if (showFeedback) {
+            showToast(`Enhancement failed: ${err.message}`, "error");
+        }
+        refreshCardDOM(catName, indName);
+        return false;
+    }
+}
+
+/**
+ * Bulk enhances all indicators in the active category that have notes or modified scores.
+ */
+export async function enhanceActiveCategoryWriteups() {
+    const catName = state.activeCategory;
+    const catData = CATEGORIES[catName];
+    if (!catData) return;
+
+    const indicatorsToEnhance = [];
+    Object.keys(catData.indicators).forEach(indName => {
+        const item = state.auditData[catName]?.[indName];
+        if (item && (item.features || item.gaps || item.actions || item.score !== 3 || item.photoName)) {
+            indicatorsToEnhance.push(indName);
+        }
+    });
+
+    if (indicatorsToEnhance.length === 0) {
+        showToast(`No write-ups or active ratings found in "${catName}" to enhance.`, "info");
+        return;
+    }
+
+    const catBtn = document.getElementById('category-ai-enhance-btn');
+    if (catBtn) {
+        catBtn.disabled = true;
+        catBtn.innerHTML = `<span class="animate-spin inline-block mr-1">⌛</span><span>Enhancing Category...</span>`;
+    }
+
+    showToast(`Starting AI enhancement for ${indicatorsToEnhance.length} indicators in "${catName}"...`, "info");
+
+    let successCount = 0;
+    for (let i = 0; i < indicatorsToEnhance.length; i++) {
+        const indName = indicatorsToEnhance[i];
+        showToast(`Enhancing ${i + 1} of ${indicatorsToEnhance.length}: "${indName}"...`, "info");
+        const ok = await enhanceIndicatorCard(catName, indName, false);
+        if (ok) successCount++;
+    }
+
+    if (catBtn) {
+        catBtn.disabled = false;
+        catBtn.innerHTML = `
+            <svg class="w-3.5 h-3.5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span>AI Enhance Category</span>
+        `;
+    }
+
+    showToast(`Successfully enhanced ${successCount} indicators in "${catName}"!`, "success");
+}
+
+/**
+ * Applies, appends, or discards an AI enhanced write-up field.
+ */
+export function applyAIEnhancement(catName, indName, field, mode) {
+    const data = state.auditData[catName]?.[indName];
+    if (!data) return;
+
+    const aiField = field === 'features' ? 'aiFeatures' : field === 'gaps' ? 'aiGaps' : 'aiActions';
+    const enhancedText = data[aiField] || '';
+
+    if (mode === 'replace') {
+        data[field] = enhancedText;
+        data[aiField] = '';
+        data.reviewed = true;
+        showToast(`Applied enhanced ${field === 'features' ? 'Features' : field === 'gaps' ? 'Gaps' : 'Actions'}.`, "success");
+    } else if (mode === 'append') {
+        data[field] = data[field] ? (data[field].trim() + '\n\n' + enhancedText) : enhancedText;
+        data[aiField] = '';
+        data.reviewed = true;
+        showToast(`Appended enhanced ${field === 'features' ? 'Features' : field === 'gaps' ? 'Gaps' : 'Actions'}.`, "success");
+    } else if (mode === 'discard') {
+        data[aiField] = '';
+        showToast("Suggestion discarded.", "info");
+    }
+
+    saveState();
+    refreshCardDOM(catName, indName);
+}
+
+/**
+ * Handles text input inside the secondary AI suggestion textarea.
+ */
+export function handleAITextChange(catName, indName, field, value) {
+    const data = state.auditData[catName]?.[indName];
+    if (!data) return;
+
+    const aiField = field === 'features' ? 'aiFeatures' : field === 'gaps' ? 'aiGaps' : 'aiActions';
+    data[aiField] = value;
+    saveState();
+}
+

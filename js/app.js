@@ -23,8 +23,10 @@ import { closePDFModal, submitPDFReport, generatePDFReport, generateAuditLegend 
 import { 
     openAISummaryModal, closeAISummaryModal, setAIActiveTab, toggleAISettingsDrawer,
     saveGeminiApiKeyFromUI, testGeminiApiKey, triggerAISummaryGeneration,
-    handleAISummaryEditorChange, copyAISummaryToClipboard, clearAISummary 
+    handleAISummaryEditorChange, copyAISummaryToClipboard, clearAISummary,
+    enhanceIndicatorCard, enhanceActiveCategoryWriteups, applyAIEnhancement, handleAITextChange
 } from './ai.js';
+import { refreshCardDOM } from './ui.js';
 
 // --- Window Bridge Bindings (Ensures 100% backward compatibility for inline HTML event attributes) ---
 window.handleCategorySelect = handleCategorySelect;
@@ -70,6 +72,11 @@ window.triggerAISummaryGeneration = triggerAISummaryGeneration;
 window.handleAISummaryEditorChange = handleAISummaryEditorChange;
 window.copyAISummaryToClipboard = copyAISummaryToClipboard;
 window.clearAISummary = clearAISummary;
+window.enhanceIndicatorCard = enhanceIndicatorCard;
+window.enhanceActiveCategoryWriteups = enhanceActiveCategoryWriteups;
+window.applyAIEnhancement = applyAIEnhancement;
+window.handleAITextChange = handleAITextChange;
+window.refreshCardDOM = refreshCardDOM;
 window.confirmReset = () => {
     if (!confirm("Reset active view back to blank defaults? (Saved drafts remain in history)")) return;
     startNewAudit(true);

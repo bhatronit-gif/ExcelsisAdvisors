@@ -439,17 +439,25 @@
                         </p>
                     </div>
 
-                    <!-- Search Input -->
-                    <form id="search-form" role="search" onsubmit="event.preventDefault();" class="relative w-full md:w-80">
-                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                            <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                        </span>
-                        <label for="search-input" class="sr-only">Search compliance indicators</label>
-                        <input type="text" id="search-input" oninput="handleSearch(this.value)" placeholder="Search indicators..." aria-label="Search compliance indicators" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl pl-10 pr-9 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom">
-                        <button type="button" id="search-clear-btn" onclick="clearSearch()" aria-label="Clear indicator search filter" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hidden">
-                            <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <div class="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+                        <!-- AI Enhance Category Button -->
+                        <button id="category-ai-enhance-btn" onclick="enhanceActiveCategoryWriteups()" title="AI Enhance all write-ups in this active category" class="bg-gradient-to-r from-purple-600 via-indigo-600 to-brand-600 hover:from-purple-700 hover:via-indigo-700 hover:to-brand-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl shadow-md shadow-purple-600/15 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
+                            <svg class="w-3.5 h-3.5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            <span>AI Enhance Category</span>
                         </button>
-                    </form>
+
+                        <!-- Search Input -->
+                        <form id="search-form" role="search" onsubmit="event.preventDefault();" class="relative w-full md:w-80">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            </span>
+                            <label for="search-input" class="sr-only">Search compliance indicators</label>
+                            <input type="text" id="search-input" oninput="handleSearch(this.value)" placeholder="Search indicators..." aria-label="Search compliance indicators" class="w-full bg-slate-50 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] rounded-xl pl-10 pr-9 py-2.5 text-sm font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500 transition-all-custom">
+                            <button type="button" id="search-clear-btn" onclick="clearSearch()" aria-label="Clear indicator search filter" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hidden">
+                                <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </form>
+                    </div>
                 </div>
 
                 <!-- Horizontal scrollable categories for mobile/tablets -->
@@ -516,6 +524,17 @@
                             <span class="text-[11px] text-slate-600 dark:text-slate-300">Render Base64 images directly inside the report.</span>
                         </div>
                         <input type="checkbox" id="pdf-include-photos" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer w-4 h-4" checked>
+                    </div>
+
+                    <div class="flex items-center justify-between p-1 border-b border-slate-100 dark:border-[#1F2937] pb-3">
+                        <div class="flex flex-col gap-0.5">
+                            <label for="pdf-use-ai-writeups" class="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer flex items-center gap-1.5">
+                                <span>Use AI-Enhanced Write-ups in Report</span>
+                                <span class="text-[9px] bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-extrabold px-1.5 py-0.5 rounded-full border border-indigo-500/20">AI</span>
+                            </label>
+                            <span class="text-[11px] text-slate-600 dark:text-slate-300">Use polished regulatory write-ups where available over draft notes.</span>
+                        </div>
+                        <input type="checkbox" id="pdf-use-ai-writeups" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer w-4 h-4" checked>
                     </div>
 
                     <div class="flex items-center justify-between p-1 border-b border-slate-100 dark:border-[#1F2937] pb-3">

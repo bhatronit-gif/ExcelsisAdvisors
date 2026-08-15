@@ -20,8 +20,11 @@ export function exportToCSV() {
         "Risk Multiplier",
         "Score",
         "Notable Features",
+        "AI Notable Features",
         "Gaps Identified",
+        "AI Gaps Identified",
         "Actions Recommended",
+        "AI Actions Recommended",
         "Photo Attachment"
     ];
     
@@ -39,7 +42,7 @@ export function exportToCSV() {
     
     Object.entries(CATEGORIES).forEach(([catName, catData]) => {
         Object.entries(catData.indicators).forEach(([indName, multiplier]) => {
-            const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "" };
+            const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", aiFeatures: "", aiGaps: "", aiActions: "", photoName: "" };
             
             const row = [
                 filename,
@@ -51,8 +54,11 @@ export function exportToCSV() {
                 `${multiplier}x`,
                 item.score,
                 item.features || "",
+                item.aiFeatures || "",
                 item.gaps || "",
+                item.aiGaps || "",
                 item.actions || "",
+                item.aiActions || "",
                 item.photoName || ""
             ];
             

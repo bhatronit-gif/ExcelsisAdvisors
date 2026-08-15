@@ -27,6 +27,7 @@
 | 14| SEO, OpenGraph & JSON-LD | Add Canonical, OG, Twitter Cards, Robots, Theme-color & Schema.org JSON-LD | M3 | Survey Explorer 3 (M2, M3) |
 | 15| Asset Verification & Security | Verify favicon portfolio, clean auth logic, validate links & HTML5 syntax | M3 | Survey Explorer 3 (H4, L1, L2, L3) |
 | 16| AI Executive Summaries | Google Gemini API integration (`gemini-2.5-flash`), interactive modal & PDF report synthesis | M4 | GRILL_ME SPEC |
+| 17| AI Write-up Enhancement | Inline secondary editable textareas, per-card/category batch triggers, apply/append/discard & PDF option | M5 | GRILL_ME SPEC |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -36,6 +37,7 @@
 | M2 | CSS & Mobile Polish | Modularize CSS, custom properties, mobile responsive drawer & modal scroll | M1 | DONE |
 | M3 | JS Performance & SEO | JS modularization, debounced storage, DOM filter optimization, SEO metadata | M2 | DONE |
 | M4 | AI Executive Summaries | Gemini client, UI modal, markdown editor, IndexedDB persistence & PDF report synthesis | M3 | DONE |
+| M5 | AI Write-up Enhancement | Inline editable suggestions, per-card & category batch polish, apply/append actions, PDF integration | M4 | DONE |
 
 ## Interface Contracts
 ### HTML ↔ CSS
@@ -46,4 +48,4 @@
 - Modular JS loaded via `<script type="module" src="js/app.js"></script>`.
 - Storage debounced via `debounce(saveState, 400)`.
 - Event listeners attached dynamically or cleanly bound to window handlers.
-- AI state persisted in `state.aiSummary` and rendered via `renderMarkdown()`.
+- AI state persisted in `state.aiSummary` and `state.auditData[cat][ind].ai*`.

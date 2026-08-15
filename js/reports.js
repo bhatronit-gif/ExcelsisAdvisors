@@ -179,6 +179,7 @@ export function submitPDFReport() {
     const includePhotos = document.getElementById('pdf-include-photos')?.checked ?? true;
     const includeHeaders = document.getElementById('pdf-include-headers')?.checked ?? true;
     const includeAISummary = document.getElementById('pdf-include-ai-summary')?.checked ?? true;
+    const useAIEnhancedWriteups = document.getElementById('pdf-use-ai-writeups')?.checked ?? true;
     
     closePDFModal();
     
@@ -187,7 +188,8 @@ export function submitPDFReport() {
         confidentiality,
         includePhotos,
         includeHeaders,
-        includeAISummary
+        includeAISummary,
+        useAIEnhancedWriteups
     });
 }
 
@@ -226,15 +228,19 @@ export function generatePDFReport(options) {
         let catIssues = [];
         
         Object.entries(catData.indicators).forEach(([indName, multiplier]) => {
-            const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "", photoData: "" };
+            const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", aiFeatures: "", aiGaps: "", aiActions: "", photoName: "", photoData: "" };
             const score = Number(item.score) || 3;
             
             catEarned += (score * multiplier);
             catMax += (5 * multiplier);
             
-            const hasGapsText = item.gaps && String(item.gaps).trim() !== "";
-            const hasActionsText = item.actions && String(item.actions).trim() !== "";
-            const hasFeaturesText = item.features && String(item.features).trim() !== "";
+            const featText = (options.useAIEnhancedWriteups !== false && item.aiFeatures) ? item.aiFeatures : (item.features || "");
+            const gapsText = (options.useAIEnhancedWriteups !== false && item.aiGaps) ? item.aiGaps : (item.gaps || "");
+            const actText = (options.useAIEnhancedWriteups !== false && item.aiActions) ? item.aiActions : (item.actions || "");
+
+            const hasGapsText = gapsText && String(gapsText).trim() !== "";
+            const hasActionsText = actText && String(actText).trim() !== "";
+            const hasFeaturesText = featText && String(featText).trim() !== "";
             const hasPhoto = item.photoName && String(item.photoName).trim() !== "";
 
             const isGap = score === 1 || score === 2 || hasGapsText || hasActionsText;
@@ -247,9 +253,9 @@ export function generatePDFReport(options) {
                     indName,
                     score,
                     multiplier,
-                    features: options.reportType === 'summary' ? "" : item.features,
-                    gaps: item.gaps,
-                    actions: item.actions,
+                    features: options.reportType === 'summary' ? "" : featText,
+                    gaps: gapsText,
+                    actions: actText,
                     photoName: options.includePhotos ? item.photoName : "",
                     photoData: options.includePhotos ? item.photoData : ""
                 });
