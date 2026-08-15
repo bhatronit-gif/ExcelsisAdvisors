@@ -278,10 +278,19 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null) {
                     modelUsed: data.modelUsed || preferredModel
                 };
             }
-        } else if (netlifyResponse.status !== 404 && netlifyResponse.status !== 502) {
+        } else {
             const errData = await netlifyResponse.json().catch(() => ({}));
-            if (errData.error && !errData.error.includes("No Gemini API Key found")) {
-                throw new Error(errData.error);
+            const errMsg = errData.error || '';
+            const errLower = errMsg.toLowerCase();
+            
+            // If Netlify returned a rate/demand error or non-auth error and we have NO client key, report helpful message
+            if (!apiKey) {
+                if (errLower.includes('high demand') || errLower.includes('overloaded')) {
+                    throw new Error("Google's servers are temporarily experiencing high demand across standard models. Retrying in a few moments, or selecting Gemini 1.5 Flash in Settings, will resolve this.");
+                }
+                if (errMsg && !errMsg.includes("No Gemini API Key found")) {
+                    throw new Error(errMsg);
+                }
             }
         }
     } catch (netlifyErr) {
@@ -327,9 +336,24 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null) {
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 const errMsg = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+                const errLower = errMsg.toLowerCase();
                 
-                if (response.status === 404 || errMsg.includes('not found') || errMsg.includes('not supported')) {
-                    console.warn(`Model ${model} returned 404/not supported, attempting fallback...`);
+                const isRetryable = 
+                    response.status === 404 || 
+                    response.status === 429 || 
+                    response.status === 503 || 
+                    response.status === 500 ||
+                    errLower.includes('high demand') ||
+                    errLower.includes('overloaded') ||
+                    errLower.includes('resource exhausted') ||
+                    errLower.includes('quota') ||
+                    errLower.includes('rate limit') ||
+                    errLower.includes('not found') ||
+                    errLower.includes('not supported') ||
+                    errLower.includes('temporarily unavailable');
+
+                if (isRetryable) {
+                    console.warn(`Model ${model} returned retryable error (${errMsg}), attempting fallback...`);
                     lastError = new Error(`Model ${model} not available: ${errMsg}`);
                     
                     if (i === modelsToTry.length - 1) {
@@ -339,6 +363,7 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null) {
                             modelsToTry.push(...newModels);
                         }
                     }
+                    await new Promise(r => setTimeout(r, 400));
                     continue;
                 }
                 

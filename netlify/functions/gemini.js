@@ -129,9 +129,24 @@ exports.handler = async (event, context) => {
                 if (!response.ok) {
                     const errData = await response.json().catch(() => ({}));
                     const errMsg = errData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+                    const errLower = errMsg.toLowerCase();
 
-                    if (response.status === 404 || errMsg.includes('not found') || errMsg.includes('not supported')) {
-                        lastError = new Error(`Model ${model} unavailable: ${errMsg}`);
+                    const isRetryableModelError = 
+                        response.status === 404 || 
+                        response.status === 429 || 
+                        response.status === 503 || 
+                        response.status === 500 ||
+                        errLower.includes('high demand') ||
+                        errLower.includes('overloaded') ||
+                        errLower.includes('resource exhausted') ||
+                        errLower.includes('quota') ||
+                        errLower.includes('rate limit') ||
+                        errLower.includes('not found') ||
+                        errLower.includes('not supported') ||
+                        errLower.includes('temporarily unavailable');
+
+                    if (isRetryableModelError) {
+                        lastError = new Error(`Model ${model}: ${errMsg}`);
                         
                         // If we are at the end of static candidates, dynamically discover account models
                         if (i === modelsToTry.length - 1) {
@@ -141,6 +156,8 @@ exports.handler = async (event, context) => {
                                 modelsToTry.push(...newModels);
                             }
                         }
+                        // Brief pause to allow transient server spikes to clear
+                        await new Promise(r => setTimeout(r, 400));
                         continue;
                     }
                     return {
