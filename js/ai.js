@@ -10,7 +10,33 @@ import { state, saveState, calculateScore } from './state.js';
 import { showToast, refreshCardDOM } from './ui.js';
 
 const DEFAULT_MODEL = 'gemini-2.5-flash';
-const FALLBACK_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+const CANDIDATE_MODELS = [
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-exp',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-8b',
+    'gemini-1.5-pro',
+    'gemini-1.5-pro-latest',
+    'gemini-pro'
+];
+
+async function discoverClientModels(apiKey) {
+    try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+        if (!res.ok) return [];
+        const data = await res.json();
+        if (data.models && Array.isArray(data.models)) {
+            return data.models
+                .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+                .map(m => m.name.replace(/^models\//, ''));
+        }
+    } catch (e) {
+        return [];
+    }
+    return [];
+}
 
 /**
  * Retrieves the stored Gemini API Key from localStorage.
@@ -269,10 +295,12 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null) {
         throw new Error("No Gemini API key found. Please enter an API key in Settings or configure GEMINI_API_KEY in Netlify.");
     }
 
-    const modelsToTry = [preferredModel, ...FALLBACK_MODELS.filter(m => m !== preferredModel)];
+    const cleanPreferredModel = preferredModel.replace(/^models\//, '');
+    let modelsToTry = [cleanPreferredModel, ...CANDIDATE_MODELS.filter(m => m !== cleanPreferredModel)];
     let lastError = null;
 
-    for (const model of modelsToTry) {
+    for (let i = 0; i < modelsToTry.length; i++) {
+        const model = modelsToTry[i];
         try {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
             
@@ -300,9 +328,17 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null) {
                 const errorData = await response.json().catch(() => ({}));
                 const errMsg = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
                 
-                if (response.status === 404) {
-                    console.warn(`Model ${model} returned 404, attempting fallback...`);
+                if (response.status === 404 || errMsg.includes('not found') || errMsg.includes('not supported')) {
+                    console.warn(`Model ${model} returned 404/not supported, attempting fallback...`);
                     lastError = new Error(`Model ${model} not available: ${errMsg}`);
+                    
+                    if (i === modelsToTry.length - 1) {
+                        const discovered = await discoverClientModels(apiKey);
+                        const newModels = discovered.filter(m => !modelsToTry.includes(m));
+                        if (newModels.length > 0) {
+                            modelsToTry.push(...newModels);
+                        }
+                    }
                     continue;
                 }
                 

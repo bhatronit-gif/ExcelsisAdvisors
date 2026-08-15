@@ -5,7 +5,33 @@
  */
 
 const DEFAULT_MODEL = 'gemini-2.5-flash';
-const FALLBACK_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+const CANDIDATE_MODELS = [
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-exp',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-8b',
+    'gemini-1.5-pro',
+    'gemini-1.5-pro-latest',
+    'gemini-pro'
+];
+
+async function discoverAvailableModels(apiKey) {
+    try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+        if (!res.ok) return [];
+        const data = await res.json();
+        if (data.models && Array.isArray(data.models)) {
+            return data.models
+                .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+                .map(m => m.name.replace(/^models\//, ''));
+        }
+    } catch (e) {
+        return [];
+    }
+    return [];
+}
 
 exports.handler = async (event, context) => {
     // CORS headers
@@ -67,12 +93,16 @@ exports.handler = async (event, context) => {
             };
         }
 
-        const preferredModel = requestedModel || DEFAULT_MODEL;
-        const modelsToTry = [preferredModel, ...FALLBACK_MODELS.filter(m => m !== preferredModel)];
+        const cleanRequestedModel = (requestedModel || '').replace(/^models\//, '');
+        let modelsToTry = [
+            ...(cleanRequestedModel ? [cleanRequestedModel] : []),
+            ...CANDIDATE_MODELS.filter(m => m !== cleanRequestedModel)
+        ];
 
         let lastError = null;
 
-        for (const model of modelsToTry) {
+        for (let i = 0; i < modelsToTry.length; i++) {
+            const model = modelsToTry[i];
             try {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(effectiveKey)}`;
                 
@@ -100,8 +130,17 @@ exports.handler = async (event, context) => {
                     const errData = await response.json().catch(() => ({}));
                     const errMsg = errData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
 
-                    if (response.status === 404) {
+                    if (response.status === 404 || errMsg.includes('not found') || errMsg.includes('not supported')) {
                         lastError = new Error(`Model ${model} unavailable: ${errMsg}`);
+                        
+                        // If we are at the end of static candidates, dynamically discover account models
+                        if (i === modelsToTry.length - 1) {
+                            const discovered = await discoverAvailableModels(effectiveKey);
+                            const newModels = discovered.filter(m => !modelsToTry.includes(m));
+                            if (newModels.length > 0) {
+                                modelsToTry.push(...newModels);
+                            }
+                        }
                         continue;
                     }
                     return {
