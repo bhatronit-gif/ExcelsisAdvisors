@@ -9,19 +9,25 @@ import { CATEGORIES } from './config.js';
 import { state, saveState, calculateScore } from './state.js';
 import { showToast, refreshCardDOM } from './ui.js';
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
-const CANDIDATE_MODELS = [
+export const DEFAULT_MODEL = 'gemini-2.0-flash';
+export const CANDIDATE_MODELS = [
     'gemini-2.0-flash',
     'gemini-1.5-flash-latest',
     'gemini-1.5-flash',
+    'gemini-1.5-pro',
+    'gemini-2.0-flash-lite',
     'gemini-2.5-flash',
-    'gemini-2.0-flash-exp',
-    'gemini-1.5-pro'
+    'gemini-2.0-flash-exp'
 ];
 
 async function discoverClientModels(apiKey) {
     try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
         if (!res.ok) return [];
         const data = await res.json();
         if (data.models && Array.isArray(data.models)) {
@@ -35,29 +41,283 @@ async function discoverClientModels(apiKey) {
     return [];
 }
 
-function extractCandidateText(data) {
-    if (!data) return "";
-    const candidate = data.candidates?.[0];
-    if (!candidate) return "";
+const SAFETY_BLOCK_REASONS = ['SAFETY', 'RECITATION', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII'];
 
-    const parts = candidate.content?.parts;
-    if (Array.isArray(parts)) {
-        const textParts = parts
-            .filter(p => p && typeof p.text === 'string')
-            .map(p => p.text.trim())
-            .filter(t => t.length > 0);
-        if (textParts.length > 0) {
-            return textParts.join('\n\n');
+function isSafetyBlockReason(reason) {
+    if (!reason || typeof reason !== 'string') return false;
+    const upper = reason.toUpperCase().replace(/^FINISH_REASON_/, '');
+    return SAFETY_BLOCK_REASONS.includes(upper) ||
+           upper.includes('SAFETY') ||
+           upper.includes('BLOCKLIST') ||
+           upper.includes('PROHIBIT') ||
+           upper.includes('RECITAT') ||
+           upper.includes('HARM') ||
+           upper.includes('SPII');
+}
+
+/**
+ * Robustly inspects Gemini API response structures.
+ * Handles empty parts, thinking token blocks, safety/recitation/blocklist finish reasons,
+ * multiple candidates, array payloads, and non-standard candidate formats without throwing uncaught exceptions.
+ */
+export function inspectGeminiResponse(data) {
+    if (!data || (typeof data !== 'object' && !Array.isArray(data))) {
+        return { text: '', finishReason: 'NO_DATA', blockReason: null, isBlocked: false };
+    }
+
+    // Handle array of response objects (aggregated streaming or batch items)
+    if (Array.isArray(data)) {
+        if (data.length === 0) {
+            return { text: '', finishReason: 'NO_DATA', blockReason: null, isBlocked: false };
+        }
+        const collectedTexts = [];
+        let lastFinishReason = 'STOP';
+        let blockedReason = null;
+        let isBlocked = false;
+
+        for (const item of data) {
+            const res = inspectGeminiResponse(item);
+            if (res.text) collectedTexts.push(res.text);
+            if (res.isBlocked) {
+                isBlocked = true;
+                blockedReason = res.blockReason;
+            }
+            if (res.finishReason) lastFinishReason = res.finishReason;
+        }
+
+        return {
+            text: collectedTexts.join('\n\n').trim(),
+            finishReason: lastFinishReason,
+            blockReason: blockedReason,
+            isBlocked: isBlocked && collectedTexts.length === 0
+        };
+    }
+
+    // Check prompt-level feedback block
+    const promptBlockReason = data.promptFeedback?.blockReason || null;
+    if (promptBlockReason) {
+        const isSafety = isSafetyBlockReason(promptBlockReason);
+        return {
+            text: '',
+            finishReason: promptBlockReason,
+            blockReason: promptBlockReason,
+            isBlocked: isSafety
+        };
+    }
+
+    if (Array.isArray(data.promptFeedback?.safetyRatings)) {
+        const blockedRating = data.promptFeedback.safetyRatings.find(r => r.blocked === true || r.blocked === 'true');
+        if (blockedRating) {
+            const bCategory = blockedRating.category || 'SAFETY';
+            return {
+                text: '',
+                finishReason: bCategory,
+                blockReason: bCategory,
+                isBlocked: true
+            };
         }
     }
 
-    if (typeof candidate.text === 'string' && candidate.text.trim()) {
-        return candidate.text.trim();
+    const candidates = Array.isArray(data.candidates) ? data.candidates : (Array.isArray(data.response?.candidates) ? data.response.candidates : []);
+    
+    let primaryFinishReason = candidates[0]?.finishReason || (typeof candidates[0] === 'string' ? 'STOP' : 'UNKNOWN');
+    let safetyBlockedReason = null;
+
+    if (candidates.length > 0) {
+        for (const candidate of candidates) {
+            if (!candidate) continue;
+
+            // Direct string candidate
+            if (typeof candidate === 'string' && candidate.trim()) {
+                return {
+                    text: candidate.trim(),
+                    finishReason: 'STOP',
+                    blockReason: null,
+                    isBlocked: false
+                };
+            }
+
+            const cFinishReason = candidate.finishReason || 'UNKNOWN';
+            if (isSafetyBlockReason(cFinishReason)) {
+                safetyBlockedReason = cFinishReason;
+            }
+
+            if (Array.isArray(candidate.safetyRatings)) {
+                const candBlocked = candidate.safetyRatings.find(r => r.blocked === true || r.blocked === 'true');
+                if (candBlocked) {
+                    safetyBlockedReason = candBlocked.category || cFinishReason || 'SAFETY';
+                }
+            }
+
+            let nonThoughtTextParts = [];
+            let thoughtTextParts = [];
+
+            const content = candidate.content || candidate.message;
+            const parts = Array.isArray(content?.parts) 
+                ? content.parts 
+                : (Array.isArray(candidate.parts) 
+                    ? candidate.parts 
+                    : (Array.isArray(candidate.content) 
+                        ? candidate.content 
+                        : (Array.isArray(content) 
+                            ? content 
+                            : (Array.isArray(candidate.message?.content) 
+                                ? candidate.message.content 
+                                : null))));
+
+            if (Array.isArray(parts)) {
+                for (const part of parts) {
+                    if (!part) continue;
+                    if (typeof part === 'string' && part.trim()) {
+                        nonThoughtTextParts.push(part.trim());
+                    } else if (typeof part.text === 'string' && part.text.trim()) {
+                        if (part.thought === true || part.thought === 'true') {
+                            thoughtTextParts.push(part.text.trim());
+                        } else {
+                            nonThoughtTextParts.push(part.text.trim());
+                        }
+                    } else if (typeof part.output === 'string' && part.output.trim()) {
+                        nonThoughtTextParts.push(part.output.trim());
+                    } else if (typeof part.content === 'string' && part.content.trim()) {
+                        nonThoughtTextParts.push(part.content.trim());
+                    } else if (typeof part.part === 'string' && part.part.trim()) {
+                        nonThoughtTextParts.push(part.part.trim());
+                    } else if (typeof part.text?.value === 'string' && part.text.value.trim()) {
+                        nonThoughtTextParts.push(part.text.value.trim());
+                    }
+                }
+            }
+
+            if (nonThoughtTextParts.length > 0) {
+                return {
+                    text: nonThoughtTextParts.join('\n\n'),
+                    finishReason: cFinishReason,
+                    blockReason: null,
+                    isBlocked: false
+                };
+            }
+
+            if (typeof content === 'string' && content.trim()) {
+                return {
+                    text: content.trim(),
+                    finishReason: cFinishReason,
+                    blockReason: null,
+                    isBlocked: false
+                };
+            }
+
+            if (typeof content?.parts === 'string' && content.parts.trim()) {
+                return {
+                    text: content.parts.trim(),
+                    finishReason: cFinishReason,
+                    blockReason: null,
+                    isBlocked: false
+                };
+            }
+
+            if (typeof content?.text === 'string' && content.text.trim()) {
+                return {
+                    text: content.text.trim(),
+                    finishReason: cFinishReason,
+                    blockReason: null,
+                    isBlocked: false
+                };
+            }
+
+            if (typeof candidate.text === 'string' && candidate.text.trim()) {
+                return {
+                    text: candidate.text.trim(),
+                    finishReason: cFinishReason,
+                    blockReason: null,
+                    isBlocked: false
+                };
+            }
+
+            if (typeof candidate.output === 'string' && candidate.output.trim()) {
+                return {
+                    text: candidate.output.trim(),
+                    finishReason: cFinishReason,
+                    blockReason: null,
+                    isBlocked: false
+                };
+            }
+
+            if (typeof candidate.parts === 'string' && candidate.parts.trim()) {
+                return {
+                    text: candidate.parts.trim(),
+                    finishReason: cFinishReason,
+                    blockReason: null,
+                    isBlocked: false
+                };
+            }
+
+            if (typeof candidate.content === 'string' && candidate.content.trim()) {
+                return {
+                    text: candidate.content.trim(),
+                    finishReason: cFinishReason,
+                    blockReason: null,
+                    isBlocked: false
+                };
+            }
+
+            if (typeof candidate.message?.content === 'string' && candidate.message.content.trim()) {
+                return {
+                    text: candidate.message.content.trim(),
+                    finishReason: cFinishReason,
+                    blockReason: null,
+                    isBlocked: false
+                };
+            }
+
+            // If only thinking parts were produced, use thinking parts as fallback
+            if (thoughtTextParts.length > 0) {
+                return {
+                    text: thoughtTextParts.join('\n\n'),
+                    finishReason: cFinishReason,
+                    blockReason: null,
+                    isBlocked: false
+                };
+            }
+        }
     }
-    if (typeof candidate.output === 'string' && candidate.output.trim()) {
-        return candidate.output.trim();
+
+    // Direct root fields check (when candidates are empty or contain no extractable text)
+    if (typeof data.text === 'string' && data.text.trim()) {
+        return { text: data.text.trim(), finishReason: primaryFinishReason !== 'UNKNOWN' ? primaryFinishReason : 'STOP', blockReason: null, isBlocked: false };
     }
-    return "";
+    if (typeof data.output === 'string' && data.output.trim()) {
+        return { text: data.output.trim(), finishReason: primaryFinishReason !== 'UNKNOWN' ? primaryFinishReason : 'STOP', blockReason: null, isBlocked: false };
+    }
+    if (typeof data.content === 'string' && data.content.trim()) {
+        return { text: data.content.trim(), finishReason: primaryFinishReason !== 'UNKNOWN' ? primaryFinishReason : 'STOP', blockReason: null, isBlocked: false };
+    }
+    if (typeof data.response === 'string' && data.response.trim()) {
+        return { text: data.response.trim(), finishReason: primaryFinishReason !== 'UNKNOWN' ? primaryFinishReason : 'STOP', blockReason: null, isBlocked: false };
+    }
+
+    if (candidates.length === 0) {
+        return {
+            text: '',
+            finishReason: 'NO_CANDIDATES',
+            blockReason: null,
+            isBlocked: false
+        };
+    }
+
+    return {
+        text: '',
+        finishReason: primaryFinishReason,
+        blockReason: safetyBlockedReason,
+        isBlocked: !!safetyBlockedReason
+    };
+}
+
+/**
+ * Extracts candidate text safely from Gemini response.
+ */
+export function extractCandidateText(data) {
+    const inspection = inspectGeminiResponse(data);
+    return inspection.text;
 }
 
 /**
@@ -83,7 +343,7 @@ export function setGeminiApiKey(key) {
  */
 export function getGeminiModel() {
     const stored = localStorage.getItem('gemini_selected_model');
-    if (!stored || stored === 'gemini-2.5-flash' || stored === 'gemini-1.5-flash') {
+    if (!stored) {
         return DEFAULT_MODEL; // gemini-2.0-flash
     }
     return stored;
@@ -287,73 +547,102 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
 
     // 1. Try Netlify Serverless Function first
     try {
-        const netlifyResponse = await fetch('/.netlify/functions/gemini', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            signal: AbortSignal.timeout(8500),
-            body: JSON.stringify({
-                prompt: promptText,
-                model: preferredModel,
-                apiKey: apiKey || '',
-                responseMimeType: responseMimeType
-            })
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 9500);
+        let netlifyResponse;
+        try {
+            netlifyResponse = await fetch('/.netlify/functions/gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
+                body: JSON.stringify({
+                    prompt: promptText,
+                    model: preferredModel,
+                    apiKey: apiKey || '',
+                    responseMimeType: responseMimeType
+                })
+            });
+        } finally {
+            clearTimeout(timeoutId);
+        }
+
+        let resData = null;
+        try {
+            resData = await netlifyResponse.json();
+        } catch (e) {
+            resData = null;
+        }
 
         if (netlifyResponse.ok) {
-            const data = await netlifyResponse.json();
-            if (data.text) {
+            if (resData && typeof resData.text === 'string' && resData.text.trim()) {
                 hasNetlifyServerKey = true;
                 updateApiKeyStatusUI();
                 return {
-                    text: data.text,
-                    modelUsed: data.modelUsed || preferredModel
+                    text: resData.text.trim(),
+                    modelUsed: resData.modelUsed || preferredModel
                 };
             }
-        } else {
-            const errData = await netlifyResponse.json().catch(() => ({}));
-            const errMsg = errData.error || (netlifyResponse.status === 404 ? 'Netlify backend not found' : `HTTP ${netlifyResponse.status}`);
-            serverErrorDetail = errMsg;
-            const errLower = errMsg.toLowerCase();
+        }
 
-            // If Netlify returned a specific error and we have NO client key, report accurate error
-            if (!apiKey) {
-                if (netlifyResponse.status === 504 || errLower.includes('504') || errLower.includes('gateway timeout') || errLower.includes('timeout')) {
-                    throw new Error("AI request timed out while waiting for Google servers. Please try again in a moment, or enter your Gemini API key in Settings (⚙️) for a direct connection.");
-                }
-                if (errLower.includes('high demand') || errLower.includes('overloaded') || errLower.includes('resource exhausted') || errLower.includes('quota') || errLower.includes('rate limit')) {
-                    throw new Error("Google AI servers are temporarily experiencing high demand. Retrying in a few moments, or selecting Gemini 1.5 Flash in Settings, will resolve this.");
-                }
-                if (errLower.includes('no gemini api key found') || errLower.includes('no api key')) {
-                    throw new Error("No Gemini API key found. Please enter an API key in Settings (⚙️) or configure GEMINI_API_KEY in Netlify.");
-                }
-                if (netlifyResponse.status !== 404) {
-                    throw new Error(errMsg);
-                }
+        const errMsg = resData?.error || (netlifyResponse.status === 404 ? 'Netlify backend not found' : `HTTP ${netlifyResponse.status}`);
+        serverErrorDetail = errMsg;
+
+        // If client API key is NOT provided, map Netlify error to user-friendly actionable message
+        if (!apiKey) {
+            const errLower = errMsg.toLowerCase();
+            if (netlifyResponse.status === 401 || errLower.includes('invalid gemini api key') || errLower.includes('api key not valid')) {
+                throw new Error("Invalid Gemini API key configured in Netlify. Please check your environment variables or enter an API key in Settings (⚙️).");
             }
+            if (netlifyResponse.status === 429 || errLower.includes('quota') || errLower.includes('rate limit')) {
+                throw new Error("Google AI servers are experiencing high demand (rate limit reached). Please try again in a few moments or enter your Gemini API key in Settings (⚙️).");
+            }
+            if (netlifyResponse.status === 400 && (errLower.includes('safety') || errLower.includes('flagged'))) {
+                throw new Error("The request was blocked by Google Gemini safety filters. Please adjust the prompt or audit write-ups.");
+            }
+            if (netlifyResponse.status === 504 || errLower.includes('504') || errLower.includes('gateway timeout') || errLower.includes('timeout')) {
+                throw new Error("AI request timed out while waiting for Google servers. Please try again in a moment, or enter your Gemini API key in Settings (⚙️) for a direct connection.");
+            }
+            if (errLower.includes('no gemini api key found') || errLower.includes('no api key')) {
+                throw new Error("No Gemini API key found. Please enter an API key in Settings (⚙️) or configure GEMINI_API_KEY in Netlify.");
+            }
+            if (netlifyResponse.status === 404) {
+                throw new Error("No Gemini API key found. Please enter an API key in Settings (⚙️) to enable AI features.");
+            }
+            const cleanDetail = resData?.details || errMsg;
+            throw new Error(`AI service temporarily unavailable (${cleanDetail}). Please try again in a moment or enter an API key in Settings (⚙️).`);
         }
     } catch (netlifyErr) {
-        // Propagate intentional descriptive errors thrown above
-        if (netlifyErr.message && (
-            netlifyErr.message.includes("AI request timed out") ||
-            netlifyErr.message.includes("Google AI servers") || 
-            netlifyErr.message.includes("No Gemini API key found")
-        )) {
+        if (!apiKey) {
+            if (netlifyErr.name === 'AbortError' || netlifyErr.name === 'TimeoutError') {
+                throw new Error("AI request timed out while connecting to the server. Please check your connection or enter a Gemini API key in Settings (⚙️).");
+            }
+            if (netlifyErr.message && (netlifyErr.message.includes('fetch') || netlifyErr.message.includes('Failed to fetch') || netlifyErr.message.includes('NetworkError'))) {
+                throw new Error("No Gemini API key found and Netlify backend unavailable. Please enter a Gemini API key in Settings (⚙️) to enable AI features.");
+            }
             throw netlifyErr;
         }
-        serverErrorDetail = netlifyErr.name === 'TimeoutError' ? 'Request timed out' : (netlifyErr.message || 'Connection failed');
+        console.warn("[AI Client] Netlify serverless function unavailable, proceeding with direct client API...", netlifyErr.message);
+        serverErrorDetail = (netlifyErr.name === 'TimeoutError' || netlifyErr.name === 'AbortError') ? 'Request timed out' : (netlifyErr.message || 'Connection failed');
     }
 
-    // 2. Direct Client-Side Fallback (if user provided key in UI or running offline)
+    // 2. Direct Client-Side Fallback (when apiKey is provided)
     if (!apiKey) {
-        if (hasNetlifyServerKey || (serverErrorDetail && !serverErrorDetail.includes('not found'))) {
-            throw new Error(`AI service temporarily busy (${serverErrorDetail || 'Network error'}). Please try again in a moment or enter your Gemini API key in Settings (⚙️).`);
-        }
         throw new Error("No Gemini API key found. Please enter an API key in Settings (⚙️) or configure GEMINI_API_KEY in Netlify.");
     }
 
-    const cleanPreferredModel = preferredModel.replace(/^models\//, '');
-    let modelsToTry = [cleanPreferredModel, ...CANDIDATE_MODELS.filter(m => m !== cleanPreferredModel)];
+    const cleanPreferredModel = (preferredModel || '').trim().replace(/^models\//, '').trim();
+    let modelsToTry = [];
+    if (cleanPreferredModel) {
+        modelsToTry.push(cleanPreferredModel);
+    }
+    for (const m of CANDIDATE_MODELS) {
+        if (!modelsToTry.includes(m)) {
+            modelsToTry.push(m);
+        }
+    }
+
     let lastError = null;
+    let modelFailures = [];
 
     for (let i = 0; i < modelsToTry.length; i++) {
         const model = modelsToTry[i];
@@ -369,35 +658,53 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
                 genConfig.responseMimeType = responseMimeType;
             }
 
-            let response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            role: 'user',
-                            parts: [{ text: promptText }]
-                        }
-                    ],
-                    generationConfig: genConfig
-                })
-            });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 12000);
 
+            let response;
+            try {
+                response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    signal: controller.signal,
+                    body: JSON.stringify({
+                        contents: [
+                            {
+                                role: 'user',
+                                parts: [{ text: promptText }]
+                            }
+                        ],
+                        generationConfig: genConfig
+                    })
+                });
+            } finally {
+                clearTimeout(timeoutId);
+            }
+
+            // If responseMimeType is not supported on this specific model, retry request without it
             if (!response.ok && genConfig.responseMimeType) {
                 const checkErr = await response.clone().json().catch(() => ({}));
                 const checkMsg = (checkErr.error?.message || '').toLowerCase();
-                if (checkMsg.includes('responsemimetype') || checkMsg.includes('unsupported') || checkMsg.includes('invalid argument')) {
+                const normMsg = checkMsg.replace(/_/g, '');
+                if (normMsg.includes('responsemimetype') || normMsg.includes('mimetype') || normMsg.includes('generationconfig') || checkMsg.includes('unsupported') || checkMsg.includes('invalid argument') || checkMsg.includes('unknown name') || checkMsg.includes('invalid value') || checkMsg.includes('cannot find field')) {
                     delete genConfig.responseMimeType;
-                    response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{ role: 'user', parts: [{ text: promptText }] }],
-                            generationConfig: genConfig
-                        })
-                    });
+                    const retryCtrl = new AbortController();
+                    const retryTimeout = setTimeout(() => retryCtrl.abort(), 10000);
+                    try {
+                        response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            signal: retryCtrl.signal,
+                            body: JSON.stringify({
+                                contents: [{ role: 'user', parts: [{ text: promptText }] }],
+                                generationConfig: genConfig
+                            })
+                        });
+                    } finally {
+                        clearTimeout(retryTimeout);
+                    }
                 }
             }
 
@@ -406,58 +713,94 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
                 const errMsg = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
                 const errLower = errMsg.toLowerCase();
                 
-                const isRetryable = 
-                    response.status === 404 || 
-                    response.status === 429 || 
-                    response.status === 503 || 
-                    response.status === 500 ||
-                    errLower.includes('high demand') ||
-                    errLower.includes('overloaded') ||
-                    errLower.includes('resource exhausted') ||
-                    errLower.includes('quota') ||
-                    errLower.includes('rate limit') ||
-                    errLower.includes('not found') ||
-                    errLower.includes('not supported') ||
-                    errLower.includes('temporarily unavailable');
+                // Immediate fail for invalid API key
+                const isApiKeyError = response.status === 401 || 
+                    (response.status === 400 && (errLower.includes('api key not valid') || errLower.includes('invalid api key') || errLower.includes('api_key_invalid'))) ||
+                    (response.status === 403 && (errLower.includes('api key') || errLower.includes('permission_denied') || errLower.includes('forbidden')));
 
-                if (isRetryable) {
-                    console.warn(`Model ${model} returned retryable error (${errMsg}), attempting fallback...`);
-                    lastError = new Error(`Model ${model} not available: ${errMsg}`);
-                    
-                    if (i === modelsToTry.length - 1) {
-                        const discovered = await discoverClientModels(apiKey);
-                        const newModels = discovered.filter(m => !modelsToTry.includes(m));
-                        if (newModels.length > 0) {
-                            modelsToTry.push(...newModels);
-                        }
-                    }
-                    await new Promise(r => setTimeout(r, 400));
-                    continue;
+                if (isApiKeyError) {
+                    throw new Error(`Invalid Gemini API Key: ${errMsg}. Please verify your key in Settings.`);
                 }
-                
-                throw new Error(errMsg);
-            }
 
-            const data = await response.json();
-            const candidateText = extractCandidateText(data);
-            if (!candidateText) {
-                lastError = new Error(`Model ${model} returned empty content (finishReason: ${data.candidates?.[0]?.finishReason || 'unknown'})`);
+                const isRateLimit = response.status === 429 || errLower.includes('quota') || errLower.includes('rate limit') || errLower.includes('resource_exhausted');
+
+                console.warn(`[AI Client] Model ${model} returned HTTP ${response.status} (${errMsg}). Trying fallback model...`);
+                modelFailures.push({ 
+                    model, 
+                    reason: `HTTP ${response.status}: ${errMsg}`,
+                    isSafety: false,
+                    isRateLimit: isRateLimit,
+                    isEmpty: false
+                });
+                lastError = new Error(`Model ${model}: ${errMsg}`);
+
+                if (i === modelsToTry.length - 1) {
+                    const discovered = await discoverClientModels(apiKey);
+                    const newModels = discovered.filter(m => !modelsToTry.includes(m));
+                    if (newModels.length > 0) {
+                        modelsToTry.push(...newModels.slice(0, 3));
+                    }
+                }
+                await new Promise(r => setTimeout(r, 200));
                 continue;
             }
 
+            const data = await response.json();
+            const inspection = inspectGeminiResponse(data);
+
+            if (!inspection.text) {
+                const isSafety = inspection.isBlocked && inspection.blockReason;
+                const reason = isSafety 
+                    ? `Safety filter blocked (${inspection.blockReason})`
+                    : `Empty content (finishReason: ${inspection.finishReason || 'unknown'})`;
+                console.warn(`[AI Client] Model ${model} returned empty/blocked response: ${reason}. Trying fallback model...`);
+                modelFailures.push({ 
+                    model, 
+                    reason,
+                    isSafety: !!isSafety,
+                    isRateLimit: false,
+                    isEmpty: !isSafety
+                });
+                lastError = new Error(`Model ${model} returned no text (${reason})`);
+                continue;
+            }
+
+            console.log(`[AI Client] Successfully generated response using fallback model ${model}`);
             return {
-                text: candidateText,
+                text: inspection.text,
                 modelUsed: model
             };
         } catch (err) {
-            lastError = err;
-            if (err.message && (err.message.includes("API Key") || err.message.includes("quota") || err.message.includes("403") || err.message.includes("401"))) {
+            if (err.message && err.message.includes("Invalid Gemini API Key")) {
                 throw err;
             }
+            const isAbort = err.name === 'AbortError';
+            const msg = isAbort ? 'Request timed out' : (err.message || 'Connection error');
+            console.warn(`[AI Client] Model ${model} failed with exception: ${msg}. Trying next fallback...`);
+            modelFailures.push({ 
+                model, 
+                reason: msg,
+                isSafety: false,
+                isRateLimit: false,
+                isEmpty: false,
+                isTimeout: isAbort
+            });
+            lastError = err;
         }
     }
 
-    throw lastError || new Error("Failed to connect to Google Gemini API.");
+    const failureSummary = modelFailures.map(f => `${f.model} (${f.reason})`).join(', ');
+    const allBlocked = modelFailures.length > 0 && modelFailures.every(f => f.isSafety);
+    const allRateLimited = modelFailures.length > 0 && modelFailures.every(f => f.isRateLimit);
+
+    if (allBlocked) {
+        throw new Error("Content could not be generated as the prompt was flagged by Google safety filters across candidate models.");
+    }
+    if (allRateLimited) {
+        throw new Error("Google AI rate limits exceeded across all attempted models. Please wait a few moments or try again later.");
+    }
+
+    throw new Error(`AI service temporarily unavailable (${failureSummary || lastError?.message || 'Failed to connect to Google AI models'}). Please try again in a moment.`);
 }
 
 /**
@@ -776,7 +1119,19 @@ export function clearAISummary() {
  * Handles valid JSON, code fences, unescaped multiline strings, regex-extracted keys, and markdown sections.
  */
 export function parseAIEnhancementResponse(rawText) {
-    if (!rawText || typeof rawText !== 'string') {
+    if (!rawText) {
+        return { aiFeatures: "", aiGaps: "", aiActions: "" };
+    }
+
+    if (typeof rawText === 'object') {
+        return {
+            aiFeatures: String(rawText.aiFeatures || rawText.features || rawText["Notable Features"] || rawText.notable_features || "").trim(),
+            aiGaps: String(rawText.aiGaps || rawText.gaps || rawText["Gaps Identified"] || rawText.gaps_identified || "").trim(),
+            aiActions: String(rawText.aiActions || rawText.actions || rawText["Actions Recommended"] || rawText.actions_recommended || "").trim()
+        };
+    }
+
+    if (typeof rawText !== 'string') {
         return { aiFeatures: "", aiGaps: "", aiActions: "" };
     }
 
@@ -1049,15 +1404,8 @@ export function parseAIRiskResponse(rawText, baseMultiplier = 2, currentScore = 
         rationale: "Evaluated based on qualitative observations and systemic risk potential."
     };
 
-    if (!rawText || typeof rawText !== 'string') {
+    if (!rawText) {
         return fallback;
-    }
-
-    let text = rawText.trim();
-
-    // 1. Strip markdown code fences if present
-    if (text.startsWith('```')) {
-        text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     }
 
     // Helper to validate and normalize parsed object
@@ -1098,6 +1446,22 @@ export function parseAIRiskResponse(rawText, baseMultiplier = 2, currentScore = 
             rationale: rat
         };
     };
+
+    if (typeof rawText === 'object') {
+        const norm = normalizeObj(rawText);
+        if (norm) return norm;
+    }
+
+    if (typeof rawText !== 'string') {
+        return fallback;
+    }
+
+    let text = rawText.trim();
+
+    // 1. Strip markdown code fences if present
+    if (text.startsWith('```')) {
+        text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    }
 
     // 2. Direct JSON parse
     try {
