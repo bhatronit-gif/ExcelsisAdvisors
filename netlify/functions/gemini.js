@@ -18,22 +18,36 @@ const CANDIDATE_MODELS = [
     'gemini-1.5-flash'
 ];
 
+let modelDiscoveryCache = {
+    apiKey: '',
+    models: [],
+    timestamp: 0
+};
+
 /**
  * Discovers text-generation models enabled on the provided Gemini API key.
  * Strictly filters out audio-only, TTS, embedding, and image-only models.
  */
 async function discoverAvailableModels(apiKey) {
+    if (!apiKey) return [];
+    const now = Date.now();
+    if (modelDiscoveryCache.apiKey === apiKey && (now - modelDiscoveryCache.timestamp < 300000) && modelDiscoveryCache.models.length > 0) {
+        return modelDiscoveryCache.models;
+    }
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`, {
             signal: controller.signal
         });
         clearTimeout(timeoutId);
-        if (!res.ok) return [];
+        if (res.status === 401 || res.status === 403) {
+            return { invalidKey: true, status: res.status };
+        }
+        if (!res.ok) return modelDiscoveryCache.models || [];
         const data = await res.json();
         if (data.models && Array.isArray(data.models)) {
-            return data.models
+            const filtered = data.models
                 .filter(m => {
                     const name = (m.name || '').replace(/^models\//, '').toLowerCase();
                     if (!m.supportedGenerationMethods || !m.supportedGenerationMethods.includes('generateContent')) {
@@ -54,22 +68,30 @@ async function discoverAvailableModels(apiKey) {
                 .sort((a, b) => {
                     const getScore = (modelName) => {
                         const n = modelName.toLowerCase();
-                        if (n.includes('3.6-flash') || n.includes('3.5-flash')) return 100;
-                        if (n.includes('3.0-flash') || n.includes('flash')) return 90;
+                        if (n.includes('flash') && (n.includes('3.6') || n.includes('3.5'))) return 100;
+                        if (n.includes('flash') && (n.includes('3.0') || n.includes('2.5') || n.includes('2.0') || n.includes('1.5'))) return 90;
+                        if (n.includes('flash')) return 85;
                         if (n.includes('gemini-3')) return 80;
-                        if (n.includes('gemini-2.5')) return 70;
-                        if (n.includes('gemini-2')) return 60;
-                        if (n.includes('gemini-1.5')) return 40;
-                        if (n.includes('gemma')) return 10;
+                        if (n.includes('gemini-2.5') || n.includes('gemini-2.0')) return 70;
+                        if (n.includes('gemini-1.5')) return 60;
+                        if (n.includes('gemma')) return 20;
                         return 50;
                     };
                     return getScore(b) - getScore(a);
                 });
+            if (filtered.length > 0) {
+                modelDiscoveryCache = {
+                    apiKey,
+                    models: filtered,
+                    timestamp: now
+                };
+                return filtered;
+            }
         }
     } catch (e) {
-        return [];
+        return modelDiscoveryCache.models || [];
     }
-    return [];
+    return modelDiscoveryCache.models || [];
 }
 
 const SAFETY_BLOCK_REASONS = ['SAFETY', 'RECITATION', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII'];
@@ -426,6 +448,25 @@ exports.handler = async (event, context) => {
         if (cleanRequestedModel) {
             modelsToTry.push(cleanRequestedModel);
         }
+
+        // Perform fast upfront discovery of live supported models on this key
+        const discovered = await discoverAvailableModels(effectiveKey);
+        if (discovered && discovered.invalidKey) {
+            return {
+                statusCode: discovered.status || 401,
+                headers,
+                body: JSON.stringify({
+                    error: "Invalid Gemini API Key. Please verify your API key in Settings or Netlify environment variables."
+                })
+            };
+        }
+        if (discovered && Array.isArray(discovered) && discovered.length > 0) {
+            for (const m of discovered) {
+                if (!modelsToTry.includes(m)) {
+                    modelsToTry.push(m);
+                }
+            }
+        }
         for (const m of CANDIDATE_MODELS) {
             if (!modelsToTry.includes(m)) {
                 modelsToTry.push(m);
@@ -455,7 +496,7 @@ exports.handler = async (event, context) => {
                     genConfig.responseMimeType = responseMimeType;
                 }
 
-                const maxPerAttempt = (modelsToTry.length - i > 1) ? 9000 : 20000;
+                const maxPerAttempt = (modelsToTry.length - i > 1) ? 5500 : 20000;
                 const remainingMs = Math.max(2500, Math.min(maxPerAttempt, MAX_EXECUTION_MS - (Date.now() - startTime)));
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), remainingMs);

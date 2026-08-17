@@ -23,22 +23,33 @@ export const CANDIDATE_MODELS = [
     'gemini-1.5-flash'
 ];
 
+let clientModelCache = {
+    apiKey: '',
+    models: [],
+    timestamp: 0
+};
+
 /**
  * Discovers text-generation models enabled on the client's Gemini API key.
  * Strictly filters out audio-only, TTS, embedding, and image-only models.
  */
 async function discoverClientModels(apiKey) {
+    if (!apiKey) return [];
+    const now = Date.now();
+    if (clientModelCache.apiKey === apiKey && (now - clientModelCache.timestamp < 300000) && clientModelCache.models.length > 0) {
+        return clientModelCache.models;
+    }
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`, {
             signal: controller.signal
         });
         clearTimeout(timeoutId);
-        if (!res.ok) return [];
+        if (!res.ok) return clientModelCache.models || [];
         const data = await res.json();
         if (data.models && Array.isArray(data.models)) {
-            return data.models
+            const filtered = data.models
                 .filter(m => {
                     const name = (m.name || '').replace(/^models\//, '').toLowerCase();
                     if (!m.supportedGenerationMethods || !m.supportedGenerationMethods.includes('generateContent')) {
@@ -59,22 +70,30 @@ async function discoverClientModels(apiKey) {
                 .sort((a, b) => {
                     const getScore = (modelName) => {
                         const n = modelName.toLowerCase();
-                        if (n.includes('3.6-flash') || n.includes('3.5-flash')) return 100;
-                        if (n.includes('3.0-flash') || n.includes('flash')) return 90;
+                        if (n.includes('flash') && (n.includes('3.6') || n.includes('3.5'))) return 100;
+                        if (n.includes('flash') && (n.includes('3.0') || n.includes('2.5') || n.includes('2.0') || n.includes('1.5'))) return 90;
+                        if (n.includes('flash')) return 85;
                         if (n.includes('gemini-3')) return 80;
-                        if (n.includes('gemini-2.5')) return 70;
-                        if (n.includes('gemini-2')) return 60;
-                        if (n.includes('gemini-1.5')) return 40;
-                        if (n.includes('gemma')) return 10;
+                        if (n.includes('gemini-2.5') || n.includes('gemini-2.0')) return 70;
+                        if (n.includes('gemini-1.5')) return 60;
+                        if (n.includes('gemma')) return 20;
                         return 50;
                     };
                     return getScore(b) - getScore(a);
                 });
+            if (filtered.length > 0) {
+                clientModelCache = {
+                    apiKey,
+                    models: filtered,
+                    timestamp: now
+                };
+                return filtered;
+            }
         }
     } catch (e) {
-        return [];
+        return clientModelCache.models || [];
     }
-    return [];
+    return clientModelCache.models || [];
 }
 
 const SAFETY_BLOCK_REASONS = ['SAFETY', 'RECITATION', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII'];
@@ -682,6 +701,16 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
     if (cleanPreferredModel) {
         modelsToTry.push(cleanPreferredModel);
     }
+
+    // Perform fast upfront discovery of live supported models on client key
+    const discovered = await discoverClientModels(apiKey);
+    if (discovered && Array.isArray(discovered) && discovered.length > 0) {
+        for (const m of discovered) {
+            if (!modelsToTry.includes(m)) {
+                modelsToTry.push(m);
+            }
+        }
+    }
     for (const m of CANDIDATE_MODELS) {
         if (!modelsToTry.includes(m)) {
             modelsToTry.push(m);
@@ -705,7 +734,7 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
                 genConfig.responseMimeType = responseMimeType;
             }
 
-            const perAttemptMs = (modelsToTry.length - i > 1) ? 9000 : 25000;
+            const perAttemptMs = (modelsToTry.length - i > 1) ? 6000 : 25000;
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), perAttemptMs);
 
