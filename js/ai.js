@@ -253,8 +253,9 @@ export async function checkNetlifyServerKey() {
 /**
  * Invokes Google Gemini API via Netlify Serverless Function or direct client REST fallback.
  */
-export async function callGeminiAPI(apiKey, promptText, modelOverride = null) {
+export async function callGeminiAPI(apiKey, promptText, modelOverride = null, options = {}) {
     const preferredModel = modelOverride || getGeminiModel() || DEFAULT_MODEL;
+    const responseMimeType = options.responseMimeType || null;
 
     // 1. Try Netlify Serverless Function first (Uses process.env.GEMINI_API_KEY)
     try {
@@ -264,7 +265,8 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null) {
             body: JSON.stringify({
                 prompt: promptText,
                 model: preferredModel,
-                apiKey: apiKey || ''
+                apiKey: apiKey || '',
+                responseMimeType: responseMimeType
             })
         });
 
@@ -313,7 +315,16 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null) {
         try {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
             
-            const response = await fetch(url, {
+            const genConfig = {
+                temperature: 0.3,
+                topP: 0.85,
+                maxOutputTokens: 2500
+            };
+            if (responseMimeType) {
+                genConfig.responseMimeType = responseMimeType;
+            }
+
+            let response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -325,13 +336,25 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null) {
                             parts: [{ text: promptText }]
                         }
                     ],
-                    generationConfig: {
-                        temperature: 0.3,
-                        topP: 0.85,
-                        maxOutputTokens: 2500
-                    }
+                    generationConfig: genConfig
                 })
             });
+
+            if (!response.ok && genConfig.responseMimeType) {
+                const checkErr = await response.clone().json().catch(() => ({}));
+                const checkMsg = (checkErr.error?.message || '').toLowerCase();
+                if (checkMsg.includes('responsemimetype') || checkMsg.includes('unsupported') || checkMsg.includes('invalid argument')) {
+                    delete genConfig.responseMimeType;
+                    response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ role: 'user', parts: [{ text: promptText }] }],
+                            generationConfig: genConfig
+                        })
+                    });
+                }
+            }
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
@@ -703,6 +726,113 @@ export function clearAISummary() {
 }
 
 /**
+ * Multi-stage bulletproof parser for AI indicator enhancement responses.
+ * Handles valid JSON, code fences, unescaped multiline strings, regex-extracted keys, and markdown sections.
+ */
+export function parseAIEnhancementResponse(rawText) {
+    if (!rawText || typeof rawText !== 'string') {
+        return { aiFeatures: "", aiGaps: "", aiActions: "" };
+    }
+
+    let text = rawText.trim();
+
+    // 1. Strip markdown code fences if present
+    if (text.startsWith('```')) {
+        text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    }
+
+    // 2. Direct JSON parse
+    try {
+        const direct = JSON.parse(text);
+        if (direct && typeof direct === 'object') {
+            return {
+                aiFeatures: String(direct.aiFeatures || direct.features || direct["Notable Features"] || direct.notable_features || "").trim(),
+                aiGaps: String(direct.aiGaps || direct.gaps || direct["Gaps Identified"] || direct.gaps_identified || "").trim(),
+                aiActions: String(direct.aiActions || direct.actions || direct["Actions Recommended"] || direct.actions_recommended || "").trim()
+            };
+        }
+    } catch (e) {}
+
+    // 3. Substring between outermost { and } with unescaped newline normalization
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+        const sub = text.substring(firstBrace, lastBrace + 1);
+        try {
+            const parsedSub = JSON.parse(sub);
+            if (parsedSub && typeof parsedSub === 'object') {
+                return {
+                    aiFeatures: String(parsedSub.aiFeatures || parsedSub.features || parsedSub["Notable Features"] || parsedSub.notable_features || "").trim(),
+                    aiGaps: String(parsedSub.aiGaps || parsedSub.gaps || parsedSub["Gaps Identified"] || parsedSub.gaps_identified || "").trim(),
+                    aiActions: String(parsedSub.aiActions || parsedSub.actions || parsedSub["Actions Recommended"] || parsedSub.actions_recommended || "").trim()
+                };
+            }
+        } catch (e) {
+            try {
+                // Fix unescaped newlines/tabs inside string literals
+                const sanitized = sub.replace(/(?<=:\s*"(?:[^"\\]|\\.)*)\n(?=(?:[^"\\]|\\.)*")/g, '\\n');
+                const parsedSanitized = JSON.parse(sanitized);
+                if (parsedSanitized && typeof parsedSanitized === 'object') {
+                    return {
+                        aiFeatures: String(parsedSanitized.aiFeatures || parsedSanitized.features || "").trim(),
+                        aiGaps: String(parsedSanitized.aiGaps || parsedSanitized.gaps || "").trim(),
+                        aiActions: String(parsedSanitized.aiActions || parsedSanitized.actions || "").trim()
+                    };
+                }
+            } catch (e2) {}
+        }
+    }
+
+    // 4. Regex extraction for JSON key-value pairs
+    const result = { aiFeatures: "", aiGaps: "", aiActions: "" };
+    
+    const featMatch = text.match(/"?(?:aiFeatures|features|Notable\s*Features|notable_features)"?\s*:\s*"((?:[^"\\]|\\.)*)"/i) ||
+                      text.match(/"?(?:aiFeatures|features|Notable\s*Features|notable_features)"?\s*:\s*`([\s\S]*?)`/i);
+    if (featMatch) {
+        result.aiFeatures = featMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+    }
+
+    const gapsMatch = text.match(/"?(?:aiGaps|gaps|Gaps\s*Identified|gaps_identified)"?\s*:\s*"((?:[^"\\]|\\.)*)"/i) ||
+                      text.match(/"?(?:aiGaps|gaps|Gaps\s*Identified|gaps_identified)"?\s*:\s*`([\s\S]*?)`/i);
+    if (gapsMatch) {
+        result.aiGaps = gapsMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+    }
+
+    const actionsMatch = text.match(/"?(?:aiActions|actions|Actions\s*Recommended|actions_recommended)"?\s*:\s*"((?:[^"\\]|\\.)*)"/i) ||
+                         text.match(/"?(?:aiActions|actions|Actions\s*Recommended|actions_recommended)"?\s*:\s*`([\s\S]*?)`/i);
+    if (actionsMatch) {
+        result.aiActions = actionsMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+    }
+
+    if (result.aiFeatures || result.aiGaps || result.aiActions) {
+        return result;
+    }
+
+    // 5. Plaintext / Markdown section fallback (if model responded with headers)
+    const sections = text.split(/(?:^|\n)(?:#{1,4}\s*|\*\*|)(Notable Features|Gaps Identified|Actions Recommended)(?:\*\*|:|\n)/i);
+    if (sections.length > 1) {
+        for (let i = 1; i < sections.length; i += 2) {
+            const header = sections[i].toLowerCase();
+            const content = (sections[i + 1] || '').trim().replace(/^[:\s-]+/, '').trim();
+            if (header.includes('notable') || header.includes('feature')) {
+                result.aiFeatures = content;
+            } else if (header.includes('gap') || header.includes('vulnerabilit')) {
+                result.aiGaps = content;
+            } else if (header.includes('action') || header.includes('remediat')) {
+                result.aiActions = content;
+            }
+        }
+    }
+
+    // 6. If completely unstructured but text exists, assign to aiActions or aiFeatures
+    if (!result.aiFeatures && !result.aiGaps && !result.aiActions && text.length > 0) {
+        result.aiActions = text;
+    }
+
+    return result;
+}
+
+/**
  * Enhances raw auditor notes for a specific indicator card.
  */
 export async function enhanceIndicatorCard(catName, indName, showFeedback = true) {
@@ -747,23 +877,8 @@ INSTRUCTIONS:
   "aiActions": "Enhanced actions recommended text (or empty string)"
 }`;
 
-        const res = await callGeminiAPI(apiKey, prompt);
-        let cleanedText = res.text.trim();
-        if (cleanedText.startsWith('```')) {
-            cleanedText = cleanedText.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
-        }
-
-        let parsed = {};
-        try {
-            parsed = JSON.parse(cleanedText);
-        } catch (parseErr) {
-            const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                parsed = JSON.parse(jsonMatch[0]);
-            } else {
-                throw new Error("Unable to parse structured AI enhancement response.");
-            }
-        }
+        const res = await callGeminiAPI(apiKey, prompt, null, { responseMimeType: 'application/json' });
+        const parsed = parseAIEnhancementResponse(res.text);
 
         data.aiFeatures = parsed.aiFeatures || "";
         data.aiGaps = parsed.aiGaps || "";
@@ -876,6 +991,142 @@ export function handleAITextChange(catName, indName, field, value) {
 }
 
 /**
+ * Multi-stage bulletproof parser for AI dynamic risk assessment responses.
+ * Extracts severity, suggestedMultiplier (1-3), suggestedScore (1-5), scoreDelta, and rationale.
+ */
+export function parseAIRiskResponse(rawText, baseMultiplier = 2, currentScore = 3) {
+    const fallback = {
+        severity: "Medium",
+        suggestedMultiplier: baseMultiplier,
+        suggestedScore: currentScore,
+        scoreDelta: 0,
+        rationale: "Evaluated based on qualitative observations and systemic risk potential."
+    };
+
+    if (!rawText || typeof rawText !== 'string') {
+        return fallback;
+    }
+
+    let text = rawText.trim();
+
+    // 1. Strip markdown code fences if present
+    if (text.startsWith('```')) {
+        text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    }
+
+    // Helper to validate and normalize parsed object
+    const normalizeObj = (obj) => {
+        if (!obj || typeof obj !== 'object') return null;
+
+        let sev = (obj.severity || obj.riskSeverity || obj.riskLevel || obj.severityLevel || "").toString().trim();
+        if (/critical/i.test(sev)) sev = "Critical";
+        else if (/high/i.test(sev)) sev = "High";
+        else if (/low/i.test(sev)) sev = "Low";
+        else sev = "Medium";
+
+        let mult = parseInt(obj.suggestedMultiplier || obj.multiplier || obj.weight || obj.effectiveMultiplier, 10);
+        if (isNaN(mult) || mult < 1 || mult > 3) {
+            mult = (sev === "Critical" || sev === "High") ? 3 : (sev === "Low" ? 1 : 2);
+        }
+
+        let score = parseInt(obj.suggestedScore || obj.score || obj.rating || obj.suggestedRating, 10);
+        if (isNaN(score) || score < 1 || score > 5) {
+            score = currentScore;
+        }
+
+        let delta = parseInt(obj.scoreDelta || obj.delta, 10);
+        if (isNaN(delta)) {
+            delta = score - currentScore;
+        }
+
+        let rat = (obj.rationale || obj.justification || obj.reason || obj.riskRationale || obj.notes || obj.explanation || "").toString().trim();
+        if (!rat) {
+            rat = `Assessed as ${sev} Risk based on on-site findings.`;
+        }
+
+        return {
+            severity: sev,
+            suggestedMultiplier: mult,
+            suggestedScore: score,
+            scoreDelta: delta,
+            rationale: rat
+        };
+    };
+
+    // 2. Direct JSON parse
+    try {
+        const direct = JSON.parse(text);
+        const norm = normalizeObj(direct);
+        if (norm) return norm;
+    } catch (e) {}
+
+    // 3. Substring between first { and last } with unescaped newline normalization
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+        const sub = text.substring(firstBrace, lastBrace + 1);
+        try {
+            const parsedSub = JSON.parse(sub);
+            const norm = normalizeObj(parsedSub);
+            if (norm) return norm;
+        } catch (e) {
+            try {
+                const sanitized = sub.replace(/(?<=:\s*"(?:[^"\\]|\\.)*)\n(?=(?:[^"\\]|\\.)*")/g, '\\n');
+                const parsedSanitized = JSON.parse(sanitized);
+                const norm = normalizeObj(parsedSanitized);
+                if (norm) return norm;
+            } catch (e2) {}
+        }
+    }
+
+    // 4. Regex extraction for JSON key-value pairs
+    const sevMatch = text.match(/"?(?:severity|riskSeverity|riskLevel|severityLevel)"?\s*:\s*"?(Critical|High|Medium|Moderate|Low)"?/i);
+    const multMatch = text.match(/"?(?:suggestedMultiplier|multiplier|weight)"?\s*:\s*"?([1-3])"?/i);
+    const scoreMatch = text.match(/"?(?:suggestedScore|score|rating)"?\s*:\s*"?([1-5])"?/i);
+    const deltaMatch = text.match(/"?(?:scoreDelta|delta)"?\s*:\s*"?([+-]?\d+)"?/i);
+    const ratMatch = text.match(/"?(?:rationale|justification|reason|riskRationale|notes|explanation)"?\s*:\s*"((?:[^"\\]|\\.)*)"/i) ||
+                     text.match(/"?(?:rationale|justification|reason|riskRationale|notes|explanation)"?\s*:\s*`([\s\S]*?)`/i);
+
+    if (sevMatch || multMatch || scoreMatch || ratMatch) {
+        let rawSev = sevMatch ? sevMatch[1] : (text.toLowerCase().includes('critical') ? 'Critical' : (text.toLowerCase().includes('high') ? 'High' : (text.toLowerCase().includes('low') ? 'Low' : 'Medium')));
+        let sev = /critical/i.test(rawSev) ? "Critical" : (/high/i.test(rawSev) ? "High" : (/low/i.test(rawSev) ? "Low" : "Medium"));
+        let mult = multMatch ? parseInt(multMatch[1], 10) : ((sev === "Critical" || sev === "High") ? 3 : (sev === "Low" ? 1 : 2));
+        let score = scoreMatch ? parseInt(scoreMatch[1], 10) : currentScore;
+        let delta = deltaMatch ? parseInt(deltaMatch[1], 10) : (score - currentScore);
+        let rat = ratMatch ? ratMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim() : "Evaluated based on qualitative findings.";
+
+        return {
+            severity: sev,
+            suggestedMultiplier: mult,
+            suggestedScore: score,
+            scoreDelta: delta,
+            rationale: rat
+        };
+    }
+
+    // 5. Plaintext keyword heuristic fallback
+    let detectedSev = "Medium";
+    if (/\b(critical|life-safety|emergency|statutory violation|hazard|danger)\b/i.test(text)) {
+        detectedSev = "Critical";
+    } else if (/\b(high risk|severe|urgent|deficiency|non-compliant)\b/i.test(text)) {
+        detectedSev = "High";
+    } else if (/\b(low risk|compliant|exemplary|good|minor)\b/i.test(text)) {
+        detectedSev = "Low";
+    }
+
+    const suggestedMultiplier = (detectedSev === "Critical" || detectedSev === "High") ? 3 : (detectedSev === "Low" ? 1 : 2);
+    const suggestedScore = detectedSev === "Critical" ? 1 : (detectedSev === "High" ? 2 : (detectedSev === "Low" ? 5 : 3));
+
+    return {
+        severity: detectedSev,
+        suggestedMultiplier,
+        suggestedScore,
+        scoreDelta: suggestedScore - currentScore,
+        rationale: text.replace(/[{}"\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200) || "Evaluated based on qualitative observations."
+    };
+}
+
+/**
  * Analyzes written qualitative findings (Notable Features, Gaps, Actions) with Gemini AI
  * to dynamically evaluate Risk Severity and propose multiplier (1x-3x) and score adjustments.
  */
@@ -942,30 +1193,15 @@ EVALUATION RUBRIC:
   "rationale": "1-2 sentence risk justification"
 }`;
 
-        const res = await callGeminiAPI(apiKey, prompt);
-        let cleanedText = res.text.trim();
-        if (cleanedText.startsWith('```')) {
-            cleanedText = cleanedText.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
-        }
-
-        let parsed = {};
-        try {
-            parsed = JSON.parse(cleanedText);
-        } catch (parseErr) {
-            const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                parsed = JSON.parse(jsonMatch[0]);
-            } else {
-                throw new Error("Unable to parse AI risk response JSON.");
-            }
-        }
+        const res = await callGeminiAPI(apiKey, prompt, null, { responseMimeType: 'application/json' });
+        const parsed = parseAIRiskResponse(res.text, baseMultiplier, currentScore);
 
         data.suggestedRisk = {
-            severity: parsed.severity || "Medium",
-            suggestedMultiplier: Number(parsed.suggestedMultiplier) || baseMultiplier,
-            suggestedScore: Number(parsed.suggestedScore) || currentScore,
-            scoreDelta: Number(parsed.scoreDelta) || (Number(parsed.suggestedScore || currentScore) - currentScore),
-            rationale: parsed.rationale || "Evaluated based on qualitative observations and systemic risk potential."
+            severity: parsed.severity,
+            suggestedMultiplier: parsed.suggestedMultiplier,
+            suggestedScore: parsed.suggestedScore,
+            scoreDelta: parsed.scoreDelta,
+            rationale: parsed.rationale
         };
 
         saveState();

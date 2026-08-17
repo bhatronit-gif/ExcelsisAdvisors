@@ -71,7 +71,7 @@ exports.handler = async (event, context) => {
 
     try {
         const body = JSON.parse(event.body || '{}');
-        const { prompt, model: requestedModel, apiKey: clientKey } = body;
+        const { prompt, model: requestedModel, apiKey: clientKey, responseMimeType } = body;
 
         const effectiveKey = clientKey || envKey;
 
@@ -106,7 +106,16 @@ exports.handler = async (event, context) => {
             try {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(effectiveKey)}`;
                 
-                const response = await fetch(url, {
+                const genConfig = {
+                    temperature: 0.3,
+                    topP: 0.85,
+                    maxOutputTokens: 2500
+                };
+                if (responseMimeType && typeof responseMimeType === 'string') {
+                    genConfig.responseMimeType = responseMimeType;
+                }
+
+                let response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -118,13 +127,26 @@ exports.handler = async (event, context) => {
                                 parts: [{ text: prompt }]
                             }
                         ],
-                        generationConfig: {
-                            temperature: 0.3,
-                            topP: 0.85,
-                            maxOutputTokens: 2500
-                        }
+                        generationConfig: genConfig
                     })
                 });
+
+                // If responseMimeType is not supported on this specific model, retry request without it
+                if (!response.ok && genConfig.responseMimeType) {
+                    const checkErr = await response.clone().json().catch(() => ({}));
+                    const checkMsg = (checkErr.error?.message || '').toLowerCase();
+                    if (checkMsg.includes('responsemimetype') || checkMsg.includes('unsupported') || checkMsg.includes('invalid argument')) {
+                        delete genConfig.responseMimeType;
+                        response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                                generationConfig: genConfig
+                            })
+                        });
+                    }
+                }
 
                 if (!response.ok) {
                     const errData = await response.json().catch(() => ({}));
