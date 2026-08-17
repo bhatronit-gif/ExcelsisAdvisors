@@ -353,7 +353,7 @@ function extractCandidateText(data) {
 
 exports.handler = async (event, context) => {
     const startTime = Date.now();
-    const MAX_EXECUTION_MS = 8000; // Return clean response before Netlify 10s gateway timeout
+    const MAX_EXECUTION_MS = 24000; // Netlify functions configured with 26s timeout
 
     // CORS headers
     const headers = {
@@ -399,7 +399,7 @@ exports.handler = async (event, context) => {
 
     try {
         const body = JSON.parse(event.body || '{}');
-        const { prompt, model: requestedModel, apiKey: clientKey, responseMimeType } = body;
+        const { prompt, model: requestedModel, apiKey: clientKey, responseMimeType, maxOutputTokens } = body;
 
         const effectiveKey = clientKey || envKey;
 
@@ -436,7 +436,7 @@ exports.handler = async (event, context) => {
         let modelFailures = [];
 
         for (let i = 0; i < modelsToTry.length; i++) {
-            // Guard against approaching Netlify 10s gateway timeout
+            // Guard against approaching Netlify gateway timeout
             if (Date.now() - startTime > MAX_EXECUTION_MS) {
                 console.warn(`[Gemini Handler] Approaching timeout threshold (${Date.now() - startTime}ms), stopping fallback sequence.`);
                 break;
@@ -449,13 +449,14 @@ exports.handler = async (event, context) => {
                 const genConfig = {
                     temperature: 0.3,
                     topP: 0.85,
-                    maxOutputTokens: 2500
+                    maxOutputTokens: typeof maxOutputTokens === 'number' && maxOutputTokens > 0 ? maxOutputTokens : 2000
                 };
                 if (responseMimeType && typeof responseMimeType === 'string') {
                     genConfig.responseMimeType = responseMimeType;
                 }
 
-                const remainingMs = Math.max(2500, MAX_EXECUTION_MS - (Date.now() - startTime));
+                const maxPerAttempt = (modelsToTry.length - i > 1) ? 9000 : 20000;
+                const remainingMs = Math.max(2500, Math.min(maxPerAttempt, MAX_EXECUTION_MS - (Date.now() - startTime)));
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), remainingMs);
 

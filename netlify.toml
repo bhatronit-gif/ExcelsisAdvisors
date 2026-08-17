@@ -2,6 +2,10 @@
   publish = "."
   functions = "netlify/functions"
 
+[functions]
+  node_bundler = "esbuild"
+  timeout = 26
+
 [[redirects]]
   from = "/api/gemini"
   to = "/.netlify/functions/gemini"

@@ -553,7 +553,7 @@ Provide an actionable, phased implementation roadmap based on the findings:
 - **Medium-Term (30–90 Days)**: Infrastructure upgrades, protocol revisions, or staff training.
 - **Long-Term Strategic (90+ Days)**: Ongoing preventative maintenance, technology integrations, and scheduled reassessments.
 
-Keep the tone authoritative, objective, executive-level, and constructive. Format cleanly using Markdown headings, bold text, and bullet points.`;
+Keep the tone authoritative, objective, executive-level, and constructive. Be concise, punchy, and structured (~400-600 words total across the 4 sections) for immediate executive review. Format cleanly using Markdown headings, bold text, and bullet points.`;
 
     return prompt;
 }
@@ -594,7 +594,7 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
     // 1. Try Netlify Serverless Function first
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 9500);
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
         let netlifyResponse;
         try {
             netlifyResponse = await fetch('/.netlify/functions/gemini', {
@@ -605,7 +605,8 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
                     prompt: promptText,
                     model: preferredModel,
                     apiKey: apiKey || '',
-                    responseMimeType: responseMimeType
+                    responseMimeType: responseMimeType,
+                    maxOutputTokens: options.maxOutputTokens || null
                 })
             });
         } finally {
@@ -698,14 +699,15 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
             const genConfig = {
                 temperature: 0.3,
                 topP: 0.85,
-                maxOutputTokens: 2500
+                maxOutputTokens: typeof options.maxOutputTokens === 'number' && options.maxOutputTokens > 0 ? options.maxOutputTokens : 2500
             };
             if (responseMimeType) {
                 genConfig.responseMimeType = responseMimeType;
             }
 
+            const perAttemptMs = (modelsToTry.length - i > 1) ? 9000 : 25000;
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 12000);
+            const timeoutId = setTimeout(() => controller.abort(), perAttemptMs);
 
             let response;
             try {
@@ -1092,7 +1094,7 @@ export async function triggerAISummaryGeneration() {
 
     try {
         const prompt = buildAuditContextPrompt();
-        const result = await callGeminiAPI(apiKey, prompt);
+        const result = await callGeminiAPI(apiKey, prompt, null, { maxOutputTokens: 1800 });
         
         state.aiSummary = result.text;
         saveState();
@@ -1335,7 +1337,7 @@ INSTRUCTIONS:
   "aiActions": "Enhanced actions recommended text (or empty string)"
 }`;
 
-        const res = await callGeminiAPI(apiKey, prompt, null, { responseMimeType: 'application/json' });
+        const res = await callGeminiAPI(apiKey, prompt, null, { responseMimeType: 'application/json', maxOutputTokens: 1000 });
         const parsed = parseAIEnhancementResponse(res.text);
 
         data.aiFeatures = parsed.aiFeatures || "";
@@ -1669,7 +1671,7 @@ EVALUATION RUBRIC:
   "rationale": "1-2 sentence risk justification"
 }`;
 
-        const res = await callGeminiAPI(apiKey, prompt, null, { responseMimeType: 'application/json' });
+        const res = await callGeminiAPI(apiKey, prompt, null, { responseMimeType: 'application/json', maxOutputTokens: 500 });
         const parsed = parseAIRiskResponse(res.text, baseMultiplier, currentScore);
 
         data.suggestedRisk = {
