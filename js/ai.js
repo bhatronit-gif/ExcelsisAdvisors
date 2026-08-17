@@ -9,21 +9,28 @@ import { CATEGORIES } from './config.js';
 import { state, saveState, calculateScore } from './state.js';
 import { showToast, refreshCardDOM } from './ui.js';
 
-export const DEFAULT_MODEL = 'gemini-2.0-flash';
+export const DEFAULT_MODEL = 'gemini-3.6-flash';
 export const CANDIDATE_MODELS = [
-    'gemini-2.0-flash',
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro',
-    'gemini-2.0-flash-lite',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash',
+    'gemini-3.0-flash',
     'gemini-2.5-flash',
-    'gemini-2.0-flash-exp'
+    'gemini-3.6-pro',
+    'gemini-3.5-pro',
+    'gemini-3.0-pro',
+    'gemini-2.5-pro',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash'
 ];
 
+/**
+ * Discovers text-generation models enabled on the client's Gemini API key.
+ * Strictly filters out audio-only, TTS, embedding, and image-only models.
+ */
 async function discoverClientModels(apiKey) {
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`, {
             signal: controller.signal
         });
@@ -32,8 +39,37 @@ async function discoverClientModels(apiKey) {
         const data = await res.json();
         if (data.models && Array.isArray(data.models)) {
             return data.models
-                .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
-                .map(m => m.name.replace(/^models\//, ''));
+                .filter(m => {
+                    const name = (m.name || '').replace(/^models\//, '').toLowerCase();
+                    if (!m.supportedGenerationMethods || !m.supportedGenerationMethods.includes('generateContent')) {
+                        return false;
+                    }
+                    // Exclude non-text/audio/TTS/embedding models
+                    if (name.includes('-tts') || name.includes('-audio') || name.includes('preview-tts') ||
+                        name.includes('-embedding') || name.includes('imagen') || name.includes('whisper') ||
+                        name.includes('speech')) {
+                        return false;
+                    }
+                    if (m.outputModalities && Array.isArray(m.outputModalities) && !m.outputModalities.includes('TEXT')) {
+                        return false;
+                    }
+                    return true;
+                })
+                .map(m => m.name.replace(/^models\//, ''))
+                .sort((a, b) => {
+                    const getScore = (modelName) => {
+                        const n = modelName.toLowerCase();
+                        if (n.includes('3.6-flash') || n.includes('3.5-flash')) return 100;
+                        if (n.includes('3.0-flash') || n.includes('flash')) return 90;
+                        if (n.includes('gemini-3')) return 80;
+                        if (n.includes('gemini-2.5')) return 70;
+                        if (n.includes('gemini-2')) return 60;
+                        if (n.includes('gemini-1.5')) return 40;
+                        if (n.includes('gemma')) return 10;
+                        return 50;
+                    };
+                    return getScore(b) - getScore(a);
+                });
         }
     } catch (e) {
         return [];
@@ -343,10 +379,20 @@ export function setGeminiApiKey(key) {
  */
 export function getGeminiModel() {
     const stored = localStorage.getItem('gemini_selected_model');
-    if (!stored) {
-        return DEFAULT_MODEL; // gemini-2.0-flash
+    const obsoleteModels = [
+        'gemini-2.0-flash',
+        'gemini-1.5-flash-latest',
+        'gemini-1.5-flash',
+        'gemini-1.5-pro',
+        'gemini-2.0-flash-lite',
+        'gemini-2.0-flash-exp',
+        'gemini-2.5-flash-preview-tts',
+        'gemini-2.5-pro-preview-tts'
+    ];
+    if (!stored || obsoleteModels.includes(stored.trim())) {
+        return DEFAULT_MODEL; // gemini-3.6-flash
     }
-    return stored;
+    return stored.trim();
 }
 
 /**
@@ -733,6 +779,17 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
                     isEmpty: false
                 });
                 lastError = new Error(`Model ${model}: ${errMsg}`);
+
+                // Dynamically parse suggested replacement model from API error message if provided
+                const suggestedMatch = errMsg.match(/(?:use|models\/)\s*(?:models\/)?(gemini-[a-zA-Z0-9_.-]+|gemma-[a-zA-Z0-9_.-]+)/i);
+                if (suggestedMatch && suggestedMatch[1]) {
+                    const suggestedModel = suggestedMatch[1].trim().replace(/^models\//, '');
+                    const cleanLower = suggestedModel.toLowerCase();
+                    if (!cleanLower.includes('tts') && !cleanLower.includes('audio') && !cleanLower.includes('embedding') && !cleanLower.includes('imagen') && !modelsToTry.includes(suggestedModel)) {
+                        console.log(`[AI Client] Dynamically queuing suggested model from API: ${suggestedModel}`);
+                        modelsToTry.splice(i + 1, 0, suggestedModel);
+                    }
+                }
 
                 if (i === modelsToTry.length - 1) {
                     const discovered = await discoverClientModels(apiKey);
