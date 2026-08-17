@@ -4,22 +4,24 @@
  * Allows secure server-side execution without exposing the API key on the frontend.
  */
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-2.0-flash';
 const CANDIDATE_MODELS = [
-    'gemini-2.5-flash',
     'gemini-2.0-flash',
-    'gemini-2.0-flash-exp',
     'gemini-1.5-flash-latest',
     'gemini-1.5-flash',
-    'gemini-1.5-flash-8b',
-    'gemini-1.5-pro',
-    'gemini-1.5-pro-latest',
-    'gemini-pro'
+    'gemini-2.5-flash',
+    'gemini-2.0-flash-exp',
+    'gemini-1.5-pro'
 ];
 
 async function discoverAvailableModels(apiKey) {
     try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
         if (!res.ok) return [];
         const data = await res.json();
         if (data.models && Array.isArray(data.models)) {
@@ -34,6 +36,9 @@ async function discoverAvailableModels(apiKey) {
 }
 
 exports.handler = async (event, context) => {
+    const startTime = Date.now();
+    const MAX_EXECUTION_MS = 7500; // Return clean response before Netlify 10s gateway timeout
+
     // CORS headers
     const headers = {
         'Access-Control-Allow-Origin': '*',
@@ -108,6 +113,11 @@ exports.handler = async (event, context) => {
         let lastError = null;
 
         for (let i = 0; i < modelsToTry.length; i++) {
+            // Guard against approaching Netlify 10s gateway timeout
+            if (Date.now() - startTime > MAX_EXECUTION_MS) {
+                break;
+            }
+
             const model = modelsToTry[i];
             try {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(effectiveKey)}`;
@@ -115,27 +125,37 @@ exports.handler = async (event, context) => {
                 const genConfig = {
                     temperature: 0.3,
                     topP: 0.85,
-                    maxOutputTokens: 2500
+                    maxOutputTokens: 1500
                 };
                 if (responseMimeType && typeof responseMimeType === 'string') {
                     genConfig.responseMimeType = responseMimeType;
                 }
 
-                let response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        contents: [
-                            {
-                                role: 'user',
-                                parts: [{ text: prompt }]
-                            }
-                        ],
-                        generationConfig: genConfig
-                    })
-                });
+                const remainingMs = Math.max(3000, MAX_EXECUTION_MS - (Date.now() - startTime));
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), remainingMs);
+
+                let response;
+                try {
+                    response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        signal: controller.signal,
+                        body: JSON.stringify({
+                            contents: [
+                                {
+                                    role: 'user',
+                                    parts: [{ text: prompt }]
+                                }
+                            ],
+                            generationConfig: genConfig
+                        })
+                    });
+                } finally {
+                    clearTimeout(timeoutId);
+                }
 
                 // If responseMimeType is not supported on this specific model, retry request without it
                 if (!response.ok && genConfig.responseMimeType) {
@@ -143,14 +163,22 @@ exports.handler = async (event, context) => {
                     const checkMsg = (checkErr.error?.message || '').toLowerCase();
                     if (checkMsg.includes('responsemimetype') || checkMsg.includes('unsupported') || checkMsg.includes('invalid argument')) {
                         delete genConfig.responseMimeType;
-                        response = await fetch(url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                                generationConfig: genConfig
-                            })
-                        });
+                        const retryRemaining = Math.max(2500, MAX_EXECUTION_MS - (Date.now() - startTime));
+                        const retryCtrl = new AbortController();
+                        const retryTimeout = setTimeout(() => retryCtrl.abort(), retryRemaining);
+                        try {
+                            response = await fetch(url, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                signal: retryCtrl.signal,
+                                body: JSON.stringify({
+                                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                                    generationConfig: genConfig
+                                })
+                            });
+                        } finally {
+                            clearTimeout(retryTimeout);
+                        }
                     }
                 }
 
@@ -176,16 +204,14 @@ exports.handler = async (event, context) => {
                     if (isRetryableModelError) {
                         lastError = new Error(`Model ${model}: ${errMsg}`);
                         
-                        // If we are at the end of static candidates, dynamically discover account models
-                        if (i === modelsToTry.length - 1) {
+                        // If we are at the end of static candidates and have time left, discover account models
+                        if (i === modelsToTry.length - 1 && (Date.now() - startTime < 5000)) {
                             const discovered = await discoverAvailableModels(effectiveKey);
                             const newModels = discovered.filter(m => !modelsToTry.includes(m));
                             if (newModels.length > 0) {
-                                modelsToTry.push(...newModels);
+                                modelsToTry.push(...newModels.slice(0, 3));
                             }
                         }
-                        // Brief pause to allow transient server spikes to clear
-                        await new Promise(r => setTimeout(r, 400));
                         continue;
                     }
                     return {
@@ -221,9 +247,9 @@ exports.handler = async (event, context) => {
         }
 
         return {
-            statusCode: 500,
+            statusCode: 503,
             headers,
-            body: JSON.stringify({ error: lastError?.message || 'Failed to generate content with Gemini API.' })
+            body: JSON.stringify({ error: lastError?.message || 'Google AI model service temporarily busy. Please try again in a few moments.' })
         };
     } catch (err) {
         return {

@@ -9,17 +9,14 @@ import { CATEGORIES } from './config.js';
 import { state, saveState, calculateScore } from './state.js';
 import { showToast, refreshCardDOM } from './ui.js';
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-2.0-flash';
 const CANDIDATE_MODELS = [
-    'gemini-2.5-flash',
     'gemini-2.0-flash',
-    'gemini-2.0-flash-exp',
     'gemini-1.5-flash-latest',
     'gemini-1.5-flash',
-    'gemini-1.5-flash-8b',
-    'gemini-1.5-pro',
-    'gemini-1.5-pro-latest',
-    'gemini-pro'
+    'gemini-2.5-flash',
+    'gemini-2.0-flash-exp',
+    'gemini-1.5-pro'
 ];
 
 async function discoverClientModels(apiKey) {
@@ -60,7 +57,11 @@ export function setGeminiApiKey(key) {
  * Retrieves the stored Gemini model name from localStorage or defaults to DEFAULT_MODEL.
  */
 export function getGeminiModel() {
-    return localStorage.getItem('gemini_selected_model') || DEFAULT_MODEL;
+    const stored = localStorage.getItem('gemini_selected_model');
+    if (!stored || stored === 'gemini-2.5-flash' || stored === 'gemini-1.5-flash') {
+        return DEFAULT_MODEL; // gemini-2.0-flash
+    }
+    return stored;
 }
 
 /**
@@ -259,76 +260,68 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
 
     let serverErrorDetail = null;
 
-    // 1. Try Netlify Serverless Function first (with 1 automatic retry on transient error)
-    for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-            const netlifyResponse = await fetch('/.netlify/functions/gemini', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: promptText,
-                    model: preferredModel,
-                    apiKey: apiKey || '',
-                    responseMimeType: responseMimeType
-                })
-            });
+    // 1. Try Netlify Serverless Function first
+    try {
+        const netlifyResponse = await fetch('/.netlify/functions/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: AbortSignal.timeout(8500),
+            body: JSON.stringify({
+                prompt: promptText,
+                model: preferredModel,
+                apiKey: apiKey || '',
+                responseMimeType: responseMimeType
+            })
+        });
 
-            if (netlifyResponse.ok) {
-                const data = await netlifyResponse.json();
-                if (data.text) {
-                    hasNetlifyServerKey = true;
-                    updateApiKeyStatusUI();
-                    return {
-                        text: data.text,
-                        modelUsed: data.modelUsed || preferredModel
-                    };
-                }
-            } else {
-                const errData = await netlifyResponse.json().catch(() => ({}));
-                const errMsg = errData.error || (netlifyResponse.status === 404 ? 'Netlify backend not found' : `HTTP ${netlifyResponse.status}`);
-                serverErrorDetail = errMsg;
-                const errLower = errMsg.toLowerCase();
-
-                // If this is a transient 502/503/504 or rate-limit and we have a retry left, back off and retry once
-                if (attempt === 0 && (netlifyResponse.status === 502 || netlifyResponse.status === 503 || netlifyResponse.status === 504 || netlifyResponse.status === 429 || errLower.includes('high demand') || errLower.includes('overloaded'))) {
-                    await new Promise(r => setTimeout(r, 900));
-                    continue;
-                }
-
-                // If Netlify returned a specific error and we have NO client key, report accurate error
-                if (!apiKey) {
-                    if (errLower.includes('high demand') || errLower.includes('overloaded') || errLower.includes('resource exhausted') || errLower.includes('quota') || errLower.includes('rate limit')) {
-                        throw new Error("Google AI servers are temporarily experiencing high demand or rate limits. Retrying in a few moments, or selecting Gemini 1.5 Flash in Settings, will resolve this.");
-                    }
-                    if (errLower.includes('no gemini api key found') || errLower.includes('no api key')) {
-                        throw new Error("No Gemini API key found. Please enter an API key in Settings (⚙️) or configure GEMINI_API_KEY in Netlify.");
-                    }
-                    if (netlifyResponse.status !== 404) {
-                        throw new Error(errMsg);
-                    }
-                }
+        if (netlifyResponse.ok) {
+            const data = await netlifyResponse.json();
+            if (data.text) {
+                hasNetlifyServerKey = true;
+                updateApiKeyStatusUI();
+                return {
+                    text: data.text,
+                    modelUsed: data.modelUsed || preferredModel
+                };
             }
-            break; // Non-retryable response received
-        } catch (netlifyErr) {
-            // Propagate intentional descriptive errors thrown above
-            if (netlifyErr.message && (
-                netlifyErr.message.includes("Google AI servers") || 
-                netlifyErr.message.includes("No Gemini API key found")
-            )) {
-                throw netlifyErr;
-            }
-            serverErrorDetail = netlifyErr.message || 'Connection to AI server failed';
-            if (attempt === 0 && !apiKey) {
-                await new Promise(r => setTimeout(r, 600));
-                continue;
+        } else {
+            const errData = await netlifyResponse.json().catch(() => ({}));
+            const errMsg = errData.error || (netlifyResponse.status === 404 ? 'Netlify backend not found' : `HTTP ${netlifyResponse.status}`);
+            serverErrorDetail = errMsg;
+            const errLower = errMsg.toLowerCase();
+
+            // If Netlify returned a specific error and we have NO client key, report accurate error
+            if (!apiKey) {
+                if (netlifyResponse.status === 504 || errLower.includes('504') || errLower.includes('gateway timeout') || errLower.includes('timeout')) {
+                    throw new Error("AI request timed out while waiting for Google servers. Please try again in a moment, or enter your Gemini API key in Settings (⚙️) for a direct connection.");
+                }
+                if (errLower.includes('high demand') || errLower.includes('overloaded') || errLower.includes('resource exhausted') || errLower.includes('quota') || errLower.includes('rate limit')) {
+                    throw new Error("Google AI servers are temporarily experiencing high demand. Retrying in a few moments, or selecting Gemini 1.5 Flash in Settings, will resolve this.");
+                }
+                if (errLower.includes('no gemini api key found') || errLower.includes('no api key')) {
+                    throw new Error("No Gemini API key found. Please enter an API key in Settings (⚙️) or configure GEMINI_API_KEY in Netlify.");
+                }
+                if (netlifyResponse.status !== 404) {
+                    throw new Error(errMsg);
+                }
             }
         }
+    } catch (netlifyErr) {
+        // Propagate intentional descriptive errors thrown above
+        if (netlifyErr.message && (
+            netlifyErr.message.includes("AI request timed out") ||
+            netlifyErr.message.includes("Google AI servers") || 
+            netlifyErr.message.includes("No Gemini API key found")
+        )) {
+            throw netlifyErr;
+        }
+        serverErrorDetail = netlifyErr.name === 'TimeoutError' ? 'Request timed out' : (netlifyErr.message || 'Connection failed');
     }
 
     // 2. Direct Client-Side Fallback (if user provided key in UI or running offline)
     if (!apiKey) {
         if (hasNetlifyServerKey || (serverErrorDetail && !serverErrorDetail.includes('not found'))) {
-            throw new Error(`AI service temporarily unavailable (${serverErrorDetail || 'Network error'}). Please try again in a moment or enter an API key in Settings.`);
+            throw new Error(`AI service temporarily busy (${serverErrorDetail || 'Network error'}). Please try again in a moment or enter your Gemini API key in Settings (⚙️).`);
         }
         throw new Error("No Gemini API key found. Please enter an API key in Settings (⚙️) or configure GEMINI_API_KEY in Netlify.");
     }
