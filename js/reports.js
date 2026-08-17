@@ -221,18 +221,33 @@ export function generatePDFReport(options) {
     let finalWeightedScore = 0;
     const categoryScores = [];
     const auditGapsList = [];
+    const dynamicRiskItems = [];
     
     Object.entries(CATEGORIES).forEach(([catName, catData]) => {
         let catEarned = 0;
         let catMax = 0;
         let catIssues = [];
         
-        Object.entries(catData.indicators).forEach(([indName, multiplier]) => {
+        Object.entries(catData.indicators).forEach(([indName, defaultMultiplier]) => {
             const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", aiFeatures: "", aiGaps: "", aiActions: "", photoName: "", photoData: "" };
             const score = Number(item.score) || 3;
+            const isRiskMod = !!(item.riskApplied && item.customMultiplier != null && Number(item.customMultiplier) > 0);
+            const effectiveMultiplier = isRiskMod ? Number(item.customMultiplier) : defaultMultiplier;
             
-            catEarned += (score * multiplier);
-            catMax += (5 * multiplier);
+            catEarned += (score * effectiveMultiplier);
+            catMax += (5 * effectiveMultiplier);
+
+            if (isRiskMod) {
+                dynamicRiskItems.push({
+                    catName,
+                    indName,
+                    baseMultiplier: defaultMultiplier,
+                    effectiveMultiplier,
+                    severity: item.riskSeverity || "Modified",
+                    rationale: item.riskRationale || "Risk adjusted based on qualitative findings.",
+                    score
+                });
+            }
             
             const featText = (options.useAIEnhancedWriteups !== false && item.aiFeatures) ? item.aiFeatures : (item.features || "");
             const gapsText = (options.useAIEnhancedWriteups !== false && item.aiGaps) ? item.aiGaps : (item.gaps || "");
@@ -244,7 +259,7 @@ export function generatePDFReport(options) {
             const hasPhoto = item.photoName && String(item.photoName).trim() !== "";
 
             const isGap = score === 1 || score === 2 || hasGapsText || hasActionsText;
-            const hasModifications = item.reviewed || score !== 3 || hasFeaturesText || hasGapsText || hasActionsText || hasPhoto;
+            const hasModifications = item.reviewed || score !== 3 || hasFeaturesText || hasGapsText || hasActionsText || hasPhoto || isRiskMod;
             
             const shouldInclude = options.reportType === 'summary' ? isGap : hasModifications;
             
@@ -252,7 +267,11 @@ export function generatePDFReport(options) {
                 catIssues.push({
                     indName,
                     score,
-                    multiplier,
+                    multiplier: effectiveMultiplier,
+                    baseMultiplier: defaultMultiplier,
+                    isRiskMod,
+                    riskSeverity: item.riskSeverity || "",
+                    riskRationale: item.riskRationale || "",
                     features: options.reportType === 'summary' ? "" : featText,
                     gaps: gapsText,
                     actions: actText,
@@ -307,6 +326,8 @@ export function generatePDFReport(options) {
                     const indicatorsHTML = Object.entries(catData.indicators).map(([indName, multiplier]) => {
                         const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "", photoData: "" };
                         const score = Number(item.score) || 3;
+                        const isRiskMod = !!(item.riskApplied && item.customMultiplier != null && Number(item.customMultiplier) > 0);
+                        const effectiveMult = isRiskMod ? Number(item.customMultiplier) : multiplier;
                         
                         return `
                             <div class="flex flex-col gap-2.5 print-avoid-break pb-3 border-b border-slate-100 last:border-b-0">
@@ -314,7 +335,15 @@ export function generatePDFReport(options) {
                                     <span class="text-xs font-bold text-slate-800">${indName}</span>
                                     <div class="flex items-center gap-2">
                                         ${getPDFScoreBadge(score)}
-                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">Weight: ${multiplier}x</span>
+                                        ${isRiskMod ? `
+                                            <span class="text-[10px] font-extrabold px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
+                                                ⚡ Dynamic: ${effectiveMult}x (${item.riskSeverity || 'Modified'})
+                                            </span>
+                                        ` : `
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                                                Weight: ${multiplier}x
+                                            </span>
+                                        `}
                                     </div>
                                 </div>
                                 
@@ -463,6 +492,67 @@ export function generatePDFReport(options) {
                     </tbody>
                 </table>
             </div>
+
+            <!-- Dynamic Risk Adjustments & High-Liability Matrix (if any modified) -->
+            ${dynamicRiskItems.length > 0 ? `
+            <div class="flex flex-col gap-3 mt-8 print-avoid-break">
+                <div class="flex justify-between items-center border-b-2 border-purple-600 pb-2">
+                    <h3 class="text-xs font-extrabold text-purple-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="text-amber-500 font-bold">⚡</span>
+                        Dynamic Risk Adjustments &amp; Systemic Liability Modifiers
+                    </h3>
+                    <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                        ${dynamicRiskItems.length} Indicator(s) Dynamically Re-Weighted
+                    </span>
+                </div>
+                
+                <p class="text-xs text-slate-600 leading-relaxed font-medium">
+                    The following compliance indicators have had their risk multipliers dynamically adjusted based on qualitative audit findings, acute life-safety hazards, or verified remediation controls:
+                </p>
+                
+                <table class="w-full text-xs text-left border-collapse border border-slate-200 mt-1">
+                    <thead>
+                        <tr class="bg-purple-50/80 text-purple-950 uppercase border-b border-slate-200 text-[10px]">
+                            <th class="p-2.5 font-extrabold">Category &amp; Indicator</th>
+                            <th class="p-2.5 font-extrabold text-center">Base → Dynamic Weight</th>
+                            <th class="p-2.5 font-extrabold text-center">Assessed Severity</th>
+                            <th class="p-2.5 font-extrabold text-center">Score</th>
+                            <th class="p-2.5 font-extrabold">Risk Rationale &amp; Audit Findings</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${dynamicRiskItems.map(dri => `
+                            <tr class="border-b border-slate-100 hover:bg-slate-50/50">
+                                <td class="p-2.5 font-bold text-slate-800">
+                                    <span class="text-[10px] text-brand-600 uppercase block font-semibold">${dri.catName}</span>
+                                    ${dri.indName}
+                                </td>
+                                <td class="p-2.5 text-center font-bold">
+                                    <span class="text-slate-400 line-through mr-1">${dri.baseMultiplier}x</span>
+                                    <span class="text-purple-700 font-black">${dri.effectiveMultiplier}x</span>
+                                </td>
+                                <td class="p-2.5 text-center font-extrabold">
+                                    <span class="px-2 py-0.5 rounded text-[10px] ${
+                                        dri.severity === 'Critical' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                                        dri.severity === 'High' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                                        dri.severity === 'Low' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                        'bg-amber-100 text-amber-800 border border-amber-200'
+                                    }">
+                                        ${dri.severity}
+                                    </span>
+                                </td>
+                                <td class="p-2.5 text-center font-extrabold">
+                                    ${getPDFScoreBadge(dri.score)}
+                                </td>
+                                <td class="p-2.5 text-slate-600 font-medium text-xs leading-relaxed">
+                                    ${dri.rationale}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            ` : ''}
 
             <!-- AI-Synthesized Executive Briefing Section -->
             ${options.includeAISummary !== false && state.aiSummary && state.aiSummary.trim().length > 0 ? `
@@ -723,14 +813,46 @@ export function generateAuditLegend() {
                     </div>
                 </div>
 
-                <!-- Section 4: Rating Scale & Calculations -->
-                <div class="flex flex-col gap-4 print-avoid-break mt-6 pb-12">
+                <!-- Section 4: Dynamic Risk Modifier Engine -->
+                <div class="flex flex-col gap-4 print-avoid-break mt-6">
                     <h2 class="text-xl font-bold text-slate-900 font-serif border-b-2 border-slate-100 pb-2 flex items-center gap-2">
                         <span class="text-brand-500 font-black">4.</span>
+                        AI Dynamic Risk Modifier Engine
+                    </h2>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        To capture real-world campus hazards that standard baseline ratings may underestimate, Excelsis Advisors incorporates an intelligent <strong>Dynamic Risk Modifier Engine</strong> powered by AI analysis of qualitative audit findings:
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                        <div class="bg-purple-50/70 border border-purple-200 p-4 rounded-xl shadow-sm flex flex-col gap-1.5">
+                            <span class="font-extrabold text-[10px] uppercase text-purple-900 tracking-wider flex items-center gap-1.5">
+                                <span class="text-amber-500 font-bold">⚡</span>
+                                On-Site Findings Evaluation
+                            </span>
+                            <p class="text-slate-700 font-medium leading-relaxed text-xs">
+                                Written observations recorded in <em>Notable Features</em>, <em>Gaps Identified</em>, and <em>Actions Recommended</em> are evaluated for immediate systemic liability. Indicators with severe hazards (e.g. expired firefighting equipment, blocked exits, missing mandatory safety certificates) are proposed for elevated multipliers (up to 3x) and score adjustments.
+                            </p>
+                        </div>
+
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col gap-1.5">
+                            <span class="font-extrabold text-[10px] uppercase text-slate-800 tracking-wider flex items-center gap-1.5">
+                                ⚖️ Auditor Oversight &amp; Audit Trail
+                            </span>
+                            <p class="text-slate-700 font-medium leading-relaxed text-xs">
+                                Dynamic risk modifiers are advisory proposals. The lead auditor maintains absolute authority to accept, dismiss, or customize effective multipliers. All applied modifiers, assessed severity levels, and justifications are permanently recorded in audit exports and formal executive reports.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 5: Rating Scale & Calculations -->
+                <div class="flex flex-col gap-4 print-avoid-break mt-6 pb-12">
+                    <h2 class="text-xl font-bold text-slate-900 font-serif border-b-2 border-slate-100 pb-2 flex items-center gap-2">
+                        <span class="text-brand-500 font-black">5.</span>
                         Score Calculations &amp; Thresholds
                     </h2>
                     <p class="text-sm text-slate-600 leading-relaxed">
-                        Indicators are scored from 1 (Critical) to 5 (Exemplary). A category percentage is calculated as the ratio of earned weighted points to total potential weighted points. The final score is computed by applying category weights to these percentages.
+                        Indicators are scored from 1 (Critical) to 5 (Exemplary). A category percentage is calculated as the ratio of earned weighted points to total potential weighted points using the effective indicator multiplier (baseline or dynamic). The final score is computed by applying category weights to these percentages.
                     </p>
                     
                     <table class="w-full text-xs text-left border-collapse border border-slate-200 mt-2">

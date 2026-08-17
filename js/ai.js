@@ -875,3 +875,210 @@ export function handleAITextChange(catName, indName, field, value) {
     saveState();
 }
 
+/**
+ * Analyzes written qualitative findings (Notable Features, Gaps, Actions) with Gemini AI
+ * to dynamically evaluate Risk Severity and propose multiplier (1x-3x) and score adjustments.
+ */
+export async function analyzeDynamicRisk(catName, indName, showFeedback = true) {
+    const data = state.auditData[catName]?.[indName];
+    if (!data) return false;
+
+    const baseMultiplier = CATEGORIES[catName]?.indicators?.[indName] || 2;
+    const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
+    const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
+    const riskBtn = document.getElementById(`risk-btn-${catEscaped}-${indEscaped}`);
+
+    if (riskBtn) {
+        riskBtn.disabled = true;
+        riskBtn.innerHTML = `<span class="animate-spin inline-block text-[10px]">⚡</span><span class="text-[10px]">Analyzing Risk...</span>`;
+    }
+
+    try {
+        const apiKey = getGeminiApiKey();
+        const currentScore = Number(data.score) || 3;
+        const featuresText = [data.features, data.aiFeatures].filter(Boolean).join("\n");
+        const gapsText = [data.gaps, data.aiGaps].filter(Boolean).join("\n");
+        const actionsText = [data.actions, data.aiActions].filter(Boolean).join("\n");
+
+        if (!featuresText && !gapsText && !actionsText && currentScore === 3) {
+            if (showFeedback) showToast("Enter notes in Notable Features, Gaps, or Actions to analyze risk.", "warning");
+            if (riskBtn) {
+                riskBtn.disabled = false;
+                riskBtn.innerHTML = `<span class="text-amber-500 font-bold">⚡</span><span>Dynamic Risk</span>`;
+            }
+            return false;
+        }
+
+        const prompt = `You are a Chief Campus Safety, Risk & Regulatory Compliance Assessor.
+Evaluate the systemic liability and operational risk for this specific audit indicator based on the qualitative findings and write-ups.
+
+INDICATOR CONTEXT:
+- Macro Category: ${catName}
+- Indicator: ${indName}
+- Baseline Multiplier: ${baseMultiplier}x
+- Current Auditor Score: ${currentScore}/5 (1=Critical Failure, 2=Major Deficiencies, 3=Baseline/Moderate, 4=Compliant, 5=Exemplary)
+
+QUALITATIVE WRITE-UPS:
+- Notable Features / Strengths: ${featuresText || "(None recorded)"}
+- Gaps Identified / Hazards: ${gapsText || "(None recorded)"}
+- Actions Recommended / Remediation: ${actionsText || "(None recorded)"}
+
+EVALUATION RUBRIC:
+1. Risk Severity:
+   - "Critical": Direct life-safety threats, active fire/electrical hazards, child transit hazards, missing mandatory statutory certifications, unvetted staff. Suggested Multiplier = 3. Suggested Score = 1 or 2.
+   - "High": Significant operational, hygiene, structural, or documentation non-compliance that compromises campus safety if unaddressed within 30 days. Suggested Multiplier = 3 or 2. Suggested Score = 2 or 3.
+   - "Medium": Routine operational deficiencies, minor equipment wear, maintenance backlogs, standard non-critical procedural gaps. Suggested Multiplier = 2. Suggested Score = 3 or 4.
+   - "Low": Robust compliance, proactive maintenance, exemplary safety practices, or negligible administrative issues. Suggested Multiplier = 1. Suggested Score = 4 or 5.
+
+2. Instructions:
+   - Formulate a precise, authoritative 1-2 sentence risk rationale explaining why this multiplier and score are recommended.
+   - Calculate scoreDelta = suggestedScore - currentScore.
+   - Return ONLY a raw JSON object strictly adhering to this schema:
+{
+  "severity": "Critical" | "High" | "Medium" | "Low",
+  "suggestedMultiplier": 1 | 2 | 3,
+  "suggestedScore": 1 | 2 | 3 | 4 | 5,
+  "scoreDelta": 0,
+  "rationale": "1-2 sentence risk justification"
+}`;
+
+        const res = await callGeminiAPI(apiKey, prompt);
+        let cleanedText = res.text.trim();
+        if (cleanedText.startsWith('```')) {
+            cleanedText = cleanedText.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
+        }
+
+        let parsed = {};
+        try {
+            parsed = JSON.parse(cleanedText);
+        } catch (parseErr) {
+            const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                parsed = JSON.parse(jsonMatch[0]);
+            } else {
+                throw new Error("Unable to parse AI risk response JSON.");
+            }
+        }
+
+        data.suggestedRisk = {
+            severity: parsed.severity || "Medium",
+            suggestedMultiplier: Number(parsed.suggestedMultiplier) || baseMultiplier,
+            suggestedScore: Number(parsed.suggestedScore) || currentScore,
+            scoreDelta: Number(parsed.scoreDelta) || (Number(parsed.suggestedScore || currentScore) - currentScore),
+            rationale: parsed.rationale || "Evaluated based on qualitative observations and systemic risk potential."
+        };
+
+        saveState();
+        refreshCardDOM(catName, indName);
+
+        if (showFeedback) {
+            showToast(`Dynamic risk evaluated: ${data.suggestedRisk.severity} (${data.suggestedRisk.suggestedMultiplier}x Multiplier)`, "success");
+        }
+        return true;
+    } catch (err) {
+        console.error("Dynamic risk analysis error:", err);
+        if (showFeedback) showToast(`Risk analysis failed: ${err.message}`, "error");
+        refreshCardDOM(catName, indName);
+        return false;
+    }
+}
+
+/**
+ * Applies proposed or customized Dynamic Risk Modifier to the indicator.
+ */
+export function applyDynamicRiskModifier(catName, indName, customMultiplierOverride = null, applyScore = true) {
+    const data = state.auditData[catName]?.[indName];
+    if (!data) return;
+
+    const risk = data.suggestedRisk || {};
+    const baseMultiplier = CATEGORIES[catName]?.indicators?.[indName] || 2;
+    
+    const chosenMultiplier = customMultiplierOverride !== null 
+        ? Number(customMultiplierOverride) 
+        : (Number(risk.suggestedMultiplier) || baseMultiplier);
+
+    data.customMultiplier = chosenMultiplier;
+    data.riskSeverity = risk.severity || "Medium";
+    data.riskRationale = risk.rationale || "Applied dynamic risk modifier based on qualitative findings.";
+    data.riskScoreDelta = risk.scoreDelta || 0;
+    data.riskApplied = true;
+    data.reviewed = true;
+
+    if (applyScore && risk.suggestedScore && Number(risk.suggestedScore) >= 1 && Number(risk.suggestedScore) <= 5) {
+        data.score = Number(risk.suggestedScore);
+    }
+
+    // Clear pending suggestion
+    delete data.suggestedRisk;
+
+    saveState();
+    refreshCardDOM(catName, indName);
+    showToast(`Applied ${data.riskSeverity} (${data.customMultiplier}x Multiplier) to ${indName}.`, "success");
+}
+
+/**
+ * Dismisses pending dynamic risk suggestion without applying changes.
+ */
+export function dismissDynamicRiskModifier(catName, indName) {
+    const data = state.auditData[catName]?.[indName];
+    if (!data) return;
+
+    delete data.suggestedRisk;
+    saveState();
+    refreshCardDOM(catName, indName);
+    showToast("Risk proposal dismissed.", "info");
+}
+
+/**
+ * Resets an active dynamic risk modifier back to system baseline multiplier and ratings.
+ */
+export function resetDynamicRiskModifier(catName, indName) {
+    const data = state.auditData[catName]?.[indName];
+    if (!data) return;
+
+    data.customMultiplier = null;
+    data.riskSeverity = "";
+    data.riskRationale = "";
+    data.riskScoreDelta = 0;
+    data.riskApplied = false;
+    delete data.suggestedRisk;
+
+    saveState();
+    refreshCardDOM(catName, indName);
+    showToast(`Reset ${indName} to standard baseline multiplier.`, "info");
+}
+
+/**
+ * Evaluates dynamic risk across all filled indicators in a category.
+ */
+export async function analyzeCategoryDynamicRisks(catName) {
+    const catData = CATEGORIES[catName];
+    if (!catData) return;
+
+    const indicatorsToAnalyze = [];
+    Object.keys(catData.indicators).forEach(indName => {
+        const item = state.auditData[catName]?.[indName];
+        if (item && (item.features || item.gaps || item.actions || item.score !== 3)) {
+            indicatorsToAnalyze.push(indName);
+        }
+    });
+
+    if (indicatorsToAnalyze.length === 0) {
+        showToast(`No indicator notes found in "${catName}" to assess dynamic risk.`, "info");
+        return;
+    }
+
+    showToast(`Assessing dynamic risk across ${indicatorsToAnalyze.length} indicators in "${catName}"...`, "info");
+
+    let successCount = 0;
+    for (let i = 0; i < indicatorsToAnalyze.length; i++) {
+        const indName = indicatorsToAnalyze[i];
+        showToast(`Analyzing risk ${i + 1} of ${indicatorsToAnalyze.length}: "${indName}"...`, "info");
+        const ok = await analyzeDynamicRisk(catName, indName, false);
+        if (ok) successCount++;
+    }
+
+    showToast(`Evaluated Dynamic Risk for ${successCount} indicators in "${catName}"!`, "success");
+}
+
+

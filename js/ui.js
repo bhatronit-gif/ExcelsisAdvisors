@@ -3,8 +3,8 @@
  * Theme toggling, toasts, focus trap, DOM visibility search filtering (AUD-JS-M1), and card interaction handlers.
  */
 
-import { CATEGORIES } from './config.js';
-import { state, saveState, updateCalculations } from './state.js';
+import { CATEGORIES, RISK_SEVERITY_LEVELS } from './config.js';
+import { state, saveState, updateCalculations, getEffectiveMultiplier } from './state.js';
 
 // --- Focus Trap State ---
 let activeModalFocusTrap = null;
@@ -294,29 +294,50 @@ export function renderActiveCategoryIndicators() {
     }
 }
 
-export function renderCardHTML(catName, indName, multiplier) {
+export function renderCardHTML(catName, indName, baseMultiplier) {
     const data = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "", photoData: "", reviewed: false };
     const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
     const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
 
+    const effectiveMultiplier = getEffectiveMultiplier(catName, indName);
+    const isRiskModified = !!(data.riskApplied && data.customMultiplier != null);
+
     let badgeColorClass = "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300";
-    if (multiplier === 2) {
+    if (effectiveMultiplier === 2) {
         badgeColorClass = "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300";
-    } else if (multiplier === 3) {
+    } else if (effectiveMultiplier === 3) {
         badgeColorClass = "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300";
     }
+
+    if (isRiskModified) {
+        badgeColorClass = "bg-purple-100 text-purple-900 border border-purple-300 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-700 font-extrabold";
+    }
     
-    const hasModifications = data.reviewed || data.features || data.gaps || data.actions || data.aiFeatures || data.aiGaps || data.aiActions || data.score !== 3 || data.photoName;
-    const borderAccentClass = hasModifications 
-        ? "border-emerald-500/30 dark:border-emerald-500/20" 
-        : "border-slate-200 dark:border-[#1F2937]";
+    const hasModifications = data.reviewed || data.features || data.gaps || data.actions || data.aiFeatures || data.aiGaps || data.aiActions || data.score !== 3 || data.photoName || isRiskModified;
+    const borderAccentClass = isRiskModified 
+        ? "border-purple-500/40 dark:border-purple-500/30 ring-1 ring-purple-500/20"
+        : (hasModifications 
+            ? "border-emerald-500/30 dark:border-emerald-500/20" 
+            : "border-slate-200 dark:border-[#1F2937]");
     
     const modifiedClass = hasModifications ? "audit-card-modified" : "";
     const searchText = `${catName} ${indName}`.toLowerCase();
+
+    // Severity styling helper for suggestedRisk
+    const suggested = data.suggestedRisk;
+    let sevBadgeBg = "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300";
+    if (suggested?.severity === "Critical") {
+        sevBadgeBg = "bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300";
+    } else if (suggested?.severity === "High") {
+        sevBadgeBg = "bg-orange-100 text-orange-800 dark:bg-orange-900/60 dark:text-orange-300";
+    } else if (suggested?.severity === "Low") {
+        sevBadgeBg = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300";
+    }
+
     return `
         <div class="glass-card audit-card ${modifiedClass} rounded-2xl p-5 md:p-6 transition-all duration-300 border ${borderAccentClass} shadow-sm flex flex-col gap-4 relative" id="card-${catEscaped}-${indEscaped}" data-category="${catName}" data-indicator="${indName}" data-search-text="${searchText}">
             
-            <div class="absolute top-0 right-0 h-1.5 w-12 bg-emerald-500 rounded-bl-lg rounded-tr-2xl transition-transform duration-300 ${hasModifications ? 'scale-x-100' : 'scale-x-0'}"></div>
+            <div class="absolute top-0 right-0 h-1.5 w-12 ${isRiskModified ? 'bg-purple-500' : 'bg-emerald-500'} rounded-bl-lg rounded-tr-2xl transition-transform duration-300 ${hasModifications ? 'scale-x-100' : 'scale-x-0'}"></div>
             
             <!-- Card Header -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -327,7 +348,7 @@ export function renderCardHTML(catName, indName, multiplier) {
                     </h3>
                 </div>
                 
-                <div class="flex items-center gap-2 relative group focus-within:z-50">
+                <div class="flex items-center gap-2 relative group focus-within:z-50 flex-wrap">
                     <!-- AI Enhance Card Button -->
                     <button type="button" 
                             id="ai-btn-${catEscaped}-${indEscaped}"
@@ -338,24 +359,90 @@ export function renderCardHTML(catName, indName, multiplier) {
                         <span>AI Enhance</span>
                     </button>
 
+                    <!-- Dynamic Risk Button -->
+                    <button type="button" 
+                            id="risk-btn-${catEscaped}-${indEscaped}"
+                            onclick="analyzeDynamicRisk('${catName}', '${indName}')" 
+                            title="Calculate Dynamic Risk Modifier based on Notable Features, Gaps, and Actions"
+                            class="text-xs font-bold px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:from-amber-500/20 hover:to-orange-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/20 flex items-center gap-1.5 transition-all-custom cursor-pointer active:scale-95">
+                        <span class="text-amber-500 dark:text-amber-400 font-bold">⚡</span>
+                        <span>Dynamic Risk</span>
+                    </button>
+
                     <!-- Risk Multiplier Tooltip Trigger -->
                     <button type="button" 
                             id="tooltip-trigger-${catEscaped}-${indEscaped}"
                             aria-describedby="tooltip-desc-${catEscaped}-${indEscaped}"
                             class="text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 ${badgeColorClass} cursor-help focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition-all">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                        Risk Multiplier: ${multiplier}x
+                        ${isRiskModified ? `⚡ Dynamic: ${effectiveMultiplier}x` : `Risk Multiplier: ${effectiveMultiplier}x`}
                     </button>
                     <!-- Hover & Focus Tooltip -->
                     <div id="tooltip-desc-${catEscaped}-${indEscaped}"
                          role="tooltip"
-                         class="absolute bottom-full right-0 mb-2 hidden group-hover:block group-focus-within:block w-64 bg-slate-900 dark:bg-slate-800 text-white text-xs p-2.5 rounded-xl shadow-xl z-50 text-left font-semibold leading-relaxed border border-slate-200/10 pointer-events-none transition-all duration-200">
-                        ${multiplier === 3 ? '<strong>3x Critical Risk</strong>: Standard safety, health, or statutory requirements. Failures present immediate physical, medical, or legal closure hazards.' : 
-                          multiplier === 2 ? '<strong>2x Moderate Risk</strong>: Operational infrastructure and campus standards. Core educational spaces, facilities, and standard compliance processes.' : 
-                          '<strong>1x Low Risk</strong>: Support systems or administrative checks. Secondary rooms, routine records, or general campus operations.'}
+                         class="absolute bottom-full right-0 mb-2 hidden group-hover:block group-focus-within:block w-72 bg-slate-900 dark:bg-slate-800 text-white text-xs p-2.5 rounded-xl shadow-xl z-50 text-left font-semibold leading-relaxed border border-slate-200/10 pointer-events-none transition-all duration-200">
+                        ${isRiskModified 
+                            ? `<strong>⚡ Dynamic Risk Active (${effectiveMultiplier}x)</strong>: Adjusted from baseline ${baseMultiplier}x. Severity: <em>${data.riskSeverity || 'Modified'}</em>.<br><span class="text-slate-300">${data.riskRationale || ''}</span>`
+                            : (effectiveMultiplier === 3 ? '<strong>3x Critical Risk</strong>: Standard safety, health, or statutory requirements. Failures present immediate physical, medical, or legal closure hazards.' : 
+                               effectiveMultiplier === 2 ? '<strong>2x Moderate Risk</strong>: Operational infrastructure and campus standards. Core educational spaces, facilities, and standard compliance processes.' : 
+                               '<strong>1x Low Risk</strong>: Support systems or administrative checks. Secondary rooms, routine records, or general campus operations.')
+                        }
                     </div>
                 </div>
             </div>
+
+            <!-- Dynamic Risk Proposal Notification Widget (if pending suggestion) -->
+            ${suggested ? `
+            <div id="risk-box-${catEscaped}-${indEscaped}" class="p-3.5 rounded-xl bg-gradient-to-r from-amber-50/90 to-orange-50/90 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200 dark:border-amber-800/60 shadow-sm flex flex-col gap-2 animate-fadeIn">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${sevBadgeBg}">
+                            ⚡ ${suggested.severity} Risk
+                        </span>
+                        <span class="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            Suggested Multiplier: <strong class="text-brand-600 dark:text-brand-400">${suggested.suggestedMultiplier}x</strong> <span class="text-slate-400 font-normal text-[11px]">(Baseline: ${baseMultiplier}x)</span>
+                        </span>
+                        ${suggested.scoreDelta !== 0 ? `
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                Suggested Rating: ${data.score} → <strong class="text-purple-600 dark:text-purple-400">${suggested.suggestedScore}</strong> (${suggested.scoreDelta > 0 ? '+' : ''}${suggested.scoreDelta})
+                            </span>
+                        ` : ''}
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button type="button" onclick="applyDynamicRiskModifier('${catName}', '${indName}')" title="Apply proposed multiplier and rating" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-sm transition-colors cursor-pointer flex items-center gap-1 active:scale-95">
+                            ✓ Apply Modifier
+                        </button>
+                        <select onchange="if(this.value){applyDynamicRiskModifier('${catName}', '${indName}', this.value); this.value='';}" aria-label="Custom risk multiplier selection" class="px-2 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                            <option value="" disabled selected>Custom Weight...</option>
+                            <option value="1">Set to 1x (Low)</option>
+                            <option value="2">Set to 2x (Moderate)</option>
+                            <option value="3">Set to 3x (Critical)</option>
+                        </select>
+                        <button type="button" onclick="dismissDynamicRiskModifier('${catName}', '${indName}')" title="Dismiss risk proposal" class="px-1.5 py-1 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 text-xs font-bold transition-colors cursor-pointer">✕</button>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed italic bg-white/60 dark:bg-[#121827]/60 p-2 rounded-lg border border-amber-200/50 dark:border-amber-800/30">
+                    <strong class="not-italic text-slate-900 dark:text-slate-100 font-bold">AI Rationale:</strong> ${suggested.rationale}
+                </p>
+            </div>
+            ` : ''}
+
+            <!-- Active Dynamic Risk Status Banner (if already applied) -->
+            ${isRiskModified && !suggested ? `
+            <div class="p-2.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-200/80 dark:border-purple-800/40 flex items-center justify-between flex-wrap gap-2 text-xs">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="px-2 py-0.5 rounded-md font-black uppercase text-[10px] bg-purple-200 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                        ⚡ Dynamic Modifier: ${effectiveMultiplier}x (${data.riskSeverity || 'Modified'})
+                    </span>
+                    <span class="text-slate-600 dark:text-slate-400 font-medium italic text-[11px]">
+                        ${data.riskRationale || 'Adjusted based on qualitative audit findings.'}
+                    </span>
+                </div>
+                <button type="button" onclick="resetDynamicRiskModifier('${catName}', '${indName}')" title="Revert to standard baseline multiplier" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer">
+                    Reset to Baseline (${baseMultiplier}x)
+                </button>
+            </div>
+            ` : ''}
             
             <!-- Score Selection Pill Control -->
             <div class="flex flex-col gap-1.5">

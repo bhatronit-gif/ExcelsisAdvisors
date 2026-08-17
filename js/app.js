@@ -24,7 +24,9 @@ import {
     openAISummaryModal, closeAISummaryModal, setAIActiveTab, toggleAISettingsDrawer,
     saveGeminiApiKeyFromUI, testGeminiApiKey, triggerAISummaryGeneration,
     handleAISummaryEditorChange, copyAISummaryToClipboard, clearAISummary,
-    enhanceIndicatorCard, enhanceActiveCategoryWriteups, applyAIEnhancement, handleAITextChange
+    enhanceIndicatorCard, enhanceActiveCategoryWriteups, applyAIEnhancement, handleAITextChange,
+    analyzeDynamicRisk, applyDynamicRiskModifier, dismissDynamicRiskModifier,
+    resetDynamicRiskModifier, analyzeCategoryDynamicRisks
 } from './ai.js';
 import { refreshCardDOM } from './ui.js';
 
@@ -76,6 +78,11 @@ window.enhanceIndicatorCard = enhanceIndicatorCard;
 window.enhanceActiveCategoryWriteups = enhanceActiveCategoryWriteups;
 window.applyAIEnhancement = applyAIEnhancement;
 window.handleAITextChange = handleAITextChange;
+window.analyzeDynamicRisk = analyzeDynamicRisk;
+window.applyDynamicRiskModifier = applyDynamicRiskModifier;
+window.dismissDynamicRiskModifier = dismissDynamicRiskModifier;
+window.resetDynamicRiskModifier = resetDynamicRiskModifier;
+window.analyzeCategoryDynamicRisks = analyzeCategoryDynamicRisks;
 window.refreshCardDOM = refreshCardDOM;
 window.confirmReset = () => {
     if (!confirm("Reset active view back to blank defaults? (Saved drafts remain in history)")) return;

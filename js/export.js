@@ -17,7 +17,11 @@ export function exportToCSV() {
         "Date",
         "Category",
         "Indicator",
-        "Risk Multiplier",
+        "Base Multiplier",
+        "Effective Multiplier",
+        "Risk Modified",
+        "Risk Severity",
+        "Risk Rationale",
         "Score",
         "Notable Features",
         "AI Notable Features",
@@ -43,6 +47,8 @@ export function exportToCSV() {
     Object.entries(CATEGORIES).forEach(([catName, catData]) => {
         Object.entries(catData.indicators).forEach(([indName, multiplier]) => {
             const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", aiFeatures: "", aiGaps: "", aiActions: "", photoName: "" };
+            const isModified = !!(item.riskApplied && item.customMultiplier != null);
+            const effectiveMult = isModified ? item.customMultiplier : multiplier;
             
             const row = [
                 filename,
@@ -52,6 +58,10 @@ export function exportToCSV() {
                 catName,
                 indName,
                 `${multiplier}x`,
+                `${effectiveMult}x`,
+                isModified ? "Yes" : "No",
+                item.riskSeverity || "",
+                item.riskRationale || "",
                 item.score,
                 item.features || "",
                 item.aiFeatures || "",
@@ -156,6 +166,23 @@ export function importFromJSON(input) {
 }
 
 export function parseCSV(text) {
+    if (!text) return [];
+    text = text.replace(/^\uFEFF/, '');
+    
+    // Auto-detect delimiter if not comma: check first non-empty line
+    let delimiter = ',';
+    const firstLine = text.split(/\r\n|\r|\n/)[0] || '';
+    if (firstLine) {
+        const commaCount = (firstLine.match(/,/g) || []).length;
+        const semiCount = (firstLine.match(/;/g) || []).length;
+        const tabCount = (firstLine.match(/\t/g) || []).length;
+        if (semiCount > commaCount && semiCount >= tabCount) {
+            delimiter = ';';
+        } else if (tabCount > commaCount && tabCount > semiCount) {
+            delimiter = '\t';
+        }
+    }
+
     const lines = [];
     let row = [""];
     let inQuotes = false;
@@ -171,7 +198,7 @@ export function parseCSV(text) {
             } else {
                 inQuotes = !inQuotes;
             }
-        } else if (c === ',' && !inQuotes) {
+        } else if (c === delimiter && !inQuotes) {
             row.push('');
         } else if ((c === '\r' || c === '\n') && !inQuotes) {
             if (c === '\r' && next === '\n') {
@@ -183,10 +210,52 @@ export function parseCSV(text) {
             row[row.length - 1] += c;
         }
     }
-    if (row.length > 1 || row[0] !== '') {
+    if (row.length > 1 || (row.length === 1 && row[0].trim() !== '')) {
         lines.push(row);
     }
     return lines;
+}
+
+function findHeaderIndex(headers, candidates, excludePatterns = []) {
+    const clean = (s) => (s || '').toString().toLowerCase().replace(/[\uFEFF\x00-\x1F\x7F-\x9F]/g, '').replace(/[^a-z0-9]/g, '');
+    const cleanHeaders = headers.map(clean);
+    const cleanExcludes = excludePatterns.map(clean);
+    
+    // 1. Exact match
+    for (const cand of candidates) {
+        const cleanCand = clean(cand);
+        for (let i = 0; i < cleanHeaders.length; i++) {
+            const h = cleanHeaders[i];
+            const isExcluded = cleanExcludes.some(ex => h.includes(ex));
+            if (!isExcluded && h === cleanCand) return i;
+        }
+    }
+    
+    // 2. Starts-with or prefix match
+    for (const cand of candidates) {
+        const cleanCand = clean(cand);
+        for (let i = 0; i < cleanHeaders.length; i++) {
+            const h = cleanHeaders[i];
+            const isExcluded = cleanExcludes.some(ex => h.includes(ex));
+            if (!isExcluded && (h.startsWith(cleanCand) || (cleanCand.length >= 4 && cleanCand.startsWith(h)))) {
+                return i;
+            }
+        }
+    }
+    
+    // 3. Substring match
+    for (const cand of candidates) {
+        const cleanCand = clean(cand);
+        if (cleanCand.length >= 4) {
+            for (let i = 0; i < cleanHeaders.length; i++) {
+                const h = cleanHeaders[i];
+                const isExcluded = cleanExcludes.some(ex => h.includes(ex));
+                if (!isExcluded && h.includes(cleanCand)) return i;
+            }
+        }
+    }
+    
+    return -1;
 }
 
 export function importFromCSV(input) {
@@ -199,70 +268,147 @@ export function importFromCSV(input) {
                 const csvText = e.target.result;
                 const parsed = parseCSV(csvText);
                 
-                if (parsed.length < 2) {
+                if (!parsed || parsed.length < 2) {
                     showToast("Empty CSV file uploaded.", "error");
                     return;
                 }
                 
-                const headers = parsed[0].map(h => h.trim().replace(/^"|"$/g, ''));
+                const headers = parsed[0].map(h => (h || '').trim().replace(/^"|"$/g, '').trim());
                 
-                const filenameIdx = headers.indexOf("File Name");
-                const schoolIdx = headers.indexOf("School");
-                const auditorIdx = headers.indexOf("Auditor");
-                const dateIdx = headers.indexOf("Date");
-                const catIdx = headers.indexOf("Category");
-                const indIdx = headers.indexOf("Indicator");
-                const scoreIdx = headers.indexOf("Score");
-                const featuresIdx = headers.indexOf("Notable Features");
-                const gapsIdx = headers.indexOf("Gaps Identified");
-                const actionsIdx = headers.indexOf("Actions Recommended");
-                const photoNameIdx = headers.indexOf("Photo Attachment");
+                const filenameIdx = findHeaderIndex(headers, ["File Name", "Filename", "Audit Name", "File", "Title"]);
+                const schoolIdx = findHeaderIndex(headers, ["School", "School Name", "Institution", "Campus"]);
+                const auditorIdx = findHeaderIndex(headers, ["Auditor", "Auditor Name", "Inspector", "Evaluator", "Assessor", "User"]);
+                const dateIdx = findHeaderIndex(headers, ["Date", "Audit Date", "Inspection Date"]);
+                const catIdx = findHeaderIndex(headers, ["Category", "Category Name", "Domain", "Section", "Cat"]);
+                const indIdx = findHeaderIndex(headers, ["Indicator", "Indicator Name", "Subcategory", "Item", "Parameter", "Ind"]);
+                const scoreIdx = findHeaderIndex(headers, ["Score", "Score (1-5)", "Score 1-5", "Score(1-5)", "Rating", "Mark", "Points", "Value"]);
+                
+                const aiFeaturesIdx = findHeaderIndex(headers, ["AI Notable Features", "AI Features", "AI Strengths"]);
+                const featuresIdx = findHeaderIndex(headers, ["Notable Features", "Features", "Strengths", "Positive Findings", "Notable"], ["AI"]);
+                
+                const aiGapsIdx = findHeaderIndex(headers, ["AI Gaps Identified", "AI Gaps", "AI Weaknesses"]);
+                const gapsIdx = findHeaderIndex(headers, ["Gaps Identified", "Gaps", "Weaknesses", "Deficiencies", "Areas of Concern"], ["AI"]);
+                
+                const aiActionsIdx = findHeaderIndex(headers, ["AI Actions Recommended", "AI Actions", "AI Recommendations"]);
+                const actionsIdx = findHeaderIndex(headers, ["Actions Recommended", "Actions", "Recommendations", "Corrective Actions"], ["AI"]);
+                
+                const photoNameIdx = findHeaderIndex(headers, ["Photo Attachment", "Photo Filename", "Photo Name", "Photo", "Attachment", "Image"]);
+                const riskModifiedIdx = findHeaderIndex(headers, ["Risk Modified", "Risk Mod", "Risk Adjusted"]);
+                const effMultIdx = findHeaderIndex(headers, ["Effective Multiplier", "Multiplier", "Weight"]);
+                const riskSeverityIdx = findHeaderIndex(headers, ["Risk Severity", "Severity", "Risk Level"]);
+                const riskRationaleIdx = findHeaderIndex(headers, ["Risk Rationale", "Rationale", "Risk Notes", "Risk Reason"]);
                 
                 if (catIdx === -1 || indIdx === -1 || scoreIdx === -1) {
-                    showToast("Invalid CSV headers. Must contain Category, Indicator, and Score.", "error");
+                    const missing = [];
+                    if (catIdx === -1) missing.push("Category");
+                    if (indIdx === -1) missing.push("Indicator");
+                    if (scoreIdx === -1) missing.push("Score");
+                    showToast(`Invalid CSV headers. Missing: ${missing.join(", ")}.`, "error");
                     return;
                 }
                 
                 const firstDataRow = parsed[1];
-                if (filenameIdx !== -1 && firstDataRow[filenameIdx]) state.filename = firstDataRow[filenameIdx];
+                if (filenameIdx !== -1 && firstDataRow[filenameIdx]) {
+                    const fnVal = firstDataRow[filenameIdx].trim();
+                    if (fnVal) state.filename = fnVal;
+                }
                 if (schoolIdx !== -1 && firstDataRow[schoolIdx]) {
-                    const csvSchool = firstDataRow[schoolIdx];
-                    if (SCHOOLS.includes(csvSchool)) {
-                        state.school = csvSchool;
+                    const csvSchool = firstDataRow[schoolIdx].trim();
+                    const matchedSchool = SCHOOLS.find(s => s.toLowerCase() === csvSchool.toLowerCase());
+                    if (matchedSchool) {
+                        state.school = matchedSchool;
                     }
                 }
-                if (dateIdx !== -1 && firstDataRow[dateIdx]) state.date = firstDataRow[dateIdx];
+                if (dateIdx !== -1 && firstDataRow[dateIdx]) {
+                    const dateVal = firstDataRow[dateIdx].trim();
+                    if (dateVal) state.date = dateVal;
+                }
                 
                 if (auditorIdx !== -1 && firstDataRow[auditorIdx]) {
-                    const csvAuditor = firstDataRow[auditorIdx];
-                    if (AUDITOR_HASHES[csvAuditor]) {
-                        state.auditor = csvAuditor;
+                    const csvAuditor = firstDataRow[auditorIdx].trim();
+                    const matchedAuditor = Object.keys(AUDITOR_HASHES).find(a => a.toLowerCase() === csvAuditor.toLowerCase());
+                    if (matchedAuditor) {
+                        state.auditor = matchedAuditor;
                     }
                 }
+                
+                // Build normalized lookup for categories and indicators (case/whitespace insensitive)
+                const normalizedCategories = {};
+                Object.entries(CATEGORIES).forEach(([cName, cObj]) => {
+                    const cNorm = cName.trim().toLowerCase();
+                    const indNormMap = {};
+                    Object.entries(cObj.indicators).forEach(([iName]) => {
+                        indNormMap[iName.trim().toLowerCase()] = iName;
+                    });
+                    normalizedCategories[cNorm] = {
+                        exactName: cName,
+                        indicatorsMap: indNormMap
+                    };
+                });
+                
+                const minCols = Math.max(catIdx, indIdx, scoreIdx);
+                let importedRowsCount = 0;
                 
                 for (let i = 1; i < parsed.length; i++) {
                     const row = parsed[i];
-                    if (row.length < headers.length) continue;
+                    if (!row || row.length <= minCols) continue;
                     
-                    const category = row[catIdx];
-                    const indicator = row[indIdx];
+                    const rawCat = (row[catIdx] || '').trim();
+                    const rawInd = (row[indIdx] || '').trim();
+                    if (!rawCat && !rawInd) continue;
                     
-                    if (CATEGORIES[category] && CATEGORIES[category].indicators.hasOwnProperty(indicator)) {
-                        const scoreVal = Math.max(1, Math.min(5, parseInt(row[scoreIdx]) || 3));
+                    let targetCatName = null;
+                    let targetIndName = null;
+                    
+                    if (CATEGORIES[rawCat] && CATEGORIES[rawCat].indicators.hasOwnProperty(rawInd)) {
+                        targetCatName = rawCat;
+                        targetIndName = rawInd;
+                    } else {
+                        const catEntry = normalizedCategories[rawCat.toLowerCase()];
+                        if (catEntry) {
+                            targetCatName = catEntry.exactName;
+                            targetIndName = catEntry.indicatorsMap[rawInd.toLowerCase()];
+                        }
+                    }
+                    
+                    if (targetCatName && targetIndName) {
+                        const rawScoreStr = (row[scoreIdx] || '').toString();
+                        const parsedScore = parseInt(rawScoreStr.replace(/[^0-9]/g, ''), 10) || 3;
+                        const scoreVal = Math.max(1, Math.min(5, parsedScore));
                         
-                        const existingData = state.auditData[category]?.[indicator] || {};
-                        const csvPhotoName = photoNameIdx !== -1 ? row[photoNameIdx] : "";
+                        const existingData = state.auditData[targetCatName]?.[targetIndName] || {};
+                        const csvPhotoName = photoNameIdx !== -1 && row[photoNameIdx] ? row[photoNameIdx].trim() : "";
                         const photoDataVal = (existingData.photoName === csvPhotoName) ? (existingData.photoData || "") : "";
                         
-                        state.auditData[category][indicator] = {
+                        const isRiskMod = riskModifiedIdx !== -1 && row[riskModifiedIdx]?.trim().toLowerCase() === "yes";
+                        let customMultVal = null;
+                        if (isRiskMod && effMultIdx !== -1 && row[effMultIdx]) {
+                            const parsedM = parseInt(row[effMultIdx].toString().replace(/[^0-9]/g, ''), 10);
+                            if (parsedM >= 1 && parsedM <= 5) customMultVal = parsedM;
+                        }
+                        
+                        if (!state.auditData[targetCatName]) {
+                            state.auditData[targetCatName] = {};
+                        }
+
+                        state.auditData[targetCatName][targetIndName] = {
                             score: scoreVal,
-                            features: featuresIdx !== -1 ? row[featuresIdx] : "",
-                            gaps: gapsIdx !== -1 ? row[gapsIdx] : "",
-                            actions: actionsIdx !== -1 ? row[actionsIdx] : "",
+                            features: (featuresIdx !== -1 && row[featuresIdx]) ? row[featuresIdx] : "",
+                            aiFeatures: (aiFeaturesIdx !== -1 && row[aiFeaturesIdx]) ? row[aiFeaturesIdx] : "",
+                            gaps: (gapsIdx !== -1 && row[gapsIdx]) ? row[gapsIdx] : "",
+                            aiGaps: (aiGapsIdx !== -1 && row[aiGapsIdx]) ? row[aiGapsIdx] : "",
+                            actions: (actionsIdx !== -1 && row[actionsIdx]) ? row[actionsIdx] : "",
+                            aiActions: (aiActionsIdx !== -1 && row[aiActionsIdx]) ? row[aiActionsIdx] : "",
                             photoName: csvPhotoName,
                             photoData: photoDataVal,
-                            reviewed: true
+                            reviewed: true,
+                            customMultiplier: customMultVal,
+                            riskSeverity: (riskSeverityIdx !== -1 && row[riskSeverityIdx]) ? row[riskSeverityIdx] : "",
+                            riskRationale: (riskRationaleIdx !== -1 && row[riskRationaleIdx]) ? row[riskRationaleIdx] : "",
+                            riskScoreDelta: 0,
+                            riskApplied: isRiskMod
                         };
+                        importedRowsCount++;
                     }
                 }
                 
@@ -284,7 +430,11 @@ export function importFromCSV(input) {
                 renderActiveCategoryIndicators();
                 updateCalculations();
                 
-                showToast(`Successfully loaded CSV audit draft: "${state.filename}"`);
+                if (importedRowsCount > 0) {
+                    showToast(`Successfully loaded CSV audit draft: "${state.filename}" (${importedRowsCount} indicators)`);
+                } else {
+                    showToast("CSV loaded, but no matching indicators were found. Please check category/indicator names.", "warning");
+                }
             } catch(err) {
                 console.error(err);
                 showToast("Failed to parse CSV file content.", "error");
@@ -297,8 +447,16 @@ export function importFromCSV(input) {
 }
 
 export function downloadCSVTemplate() {
-    const headers = ["Category", "Indicator", "Score (1-5)", "Notable Features", "Gaps Identified", "Actions Recommended", "Photo Filename"];
-    let csvRows = [headers.join(",")];
+    const headers = [
+        "Category",
+        "Indicator",
+        "Score",
+        "Notable Features",
+        "Gaps Identified",
+        "Actions Recommended",
+        "Photo Attachment"
+    ];
+    let csvRows = [headers.map(h => `"${h}"`).join(",")];
     
     Object.entries(CATEGORIES).forEach(([catName, catData]) => {
         Object.keys(catData.indicators).forEach(indName => {

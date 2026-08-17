@@ -94,6 +94,13 @@ export const RATING_THRESHOLDS = {
     CRITICAL_RISK: { min: 0.0, label: "Critical Risk", shortLabel: "CritRsk", color: "#EF4444" }
 };
 
+export const RISK_SEVERITY_LEVELS = {
+    CRITICAL: { label: "Critical Risk", color: "#EF4444", bgLight: "bg-red-50 dark:bg-red-950/30", textCol: "text-red-700 dark:text-red-400", borderCol: "border-red-300 dark:border-red-800", defaultMultiplier: 3 },
+    HIGH: { label: "High Risk", color: "#F97316", bgLight: "bg-orange-50 dark:bg-orange-950/30", textCol: "text-orange-700 dark:text-orange-400", borderCol: "border-orange-300 dark:border-orange-800", defaultMultiplier: 3 },
+    MEDIUM: { label: "Moderate Risk", color: "#F59E0B", bgLight: "bg-amber-50 dark:bg-amber-950/30", textCol: "text-amber-700 dark:text-amber-400", borderCol: "border-amber-300 dark:border-amber-800", defaultMultiplier: 2 },
+    LOW: { label: "Low / Managed Risk", color: "#10B981", bgLight: "bg-emerald-50 dark:bg-emerald-950/30", textCol: "text-emerald-700 dark:text-emerald-400", borderCol: "border-emerald-300 dark:border-emerald-800", defaultMultiplier: 1 }
+};
+
 export const AUDIT_CATEGORIES = CATEGORIES;
 export const INDICATORS_DATA = CATEGORIES;
 export const INITIAL_STATE_DEFAULTS = {

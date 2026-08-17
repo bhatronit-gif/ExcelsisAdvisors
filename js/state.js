@@ -45,8 +45,21 @@ export async function loadState() {
                     aiActions: "",
                     photoName: "",
                     photoData: "",
-                    reviewed: false
+                    reviewed: false,
+                    customMultiplier: null,
+                    riskSeverity: "",
+                    riskRationale: "",
+                    riskScoreDelta: 0,
+                    riskApplied: false
                 };
+            } else {
+                // Ensure dynamic risk fields exist on loaded legacy records
+                const ind = state.auditData[catName][indName];
+                if (ind.customMultiplier === undefined) ind.customMultiplier = null;
+                if (ind.riskSeverity === undefined) ind.riskSeverity = "";
+                if (ind.riskRationale === undefined) ind.riskRationale = "";
+                if (ind.riskScoreDelta === undefined) ind.riskScoreDelta = 0;
+                if (ind.riskApplied === undefined) ind.riskApplied = false;
             }
         }
     }
@@ -66,6 +79,18 @@ export async function saveStateNow() {
 export const saveState = debounce(saveStateNow, 400);
 
 /**
+ * Helper to determine an indicator's active risk multiplier.
+ */
+export function getEffectiveMultiplier(catName, indName) {
+    const defaultMult = CATEGORIES[catName]?.indicators?.[indName] || 2;
+    const item = state.auditData[catName]?.[indName];
+    if (item && item.riskApplied && item.customMultiplier != null && Number(item.customMultiplier) > 0) {
+        return Number(item.customMultiplier);
+    }
+    return defaultMult;
+}
+
+/**
  * Calculates final weighted compliance score (0.00 to 1.00 ratio).
  */
 export function calculateScore() {
@@ -74,11 +99,14 @@ export function calculateScore() {
         let catEarned = 0;
         let catMax = 0;
         
-        Object.entries(catData.indicators).forEach(([indName, multiplier]) => {
+        Object.entries(catData.indicators).forEach(([indName, defaultMultiplier]) => {
             const item = state.auditData[catName]?.[indName] || { score: 3 };
+            const effectiveMultiplier = (item.riskApplied && item.customMultiplier != null && Number(item.customMultiplier) > 0)
+                ? Number(item.customMultiplier)
+                : defaultMultiplier;
             const score = Number(item.score) || 3;
-            catEarned += (score * multiplier);
-            catMax += (5 * multiplier);
+            catEarned += (score * effectiveMultiplier);
+            catMax += (5 * effectiveMultiplier);
         });
         
         if (catMax > 0) {
@@ -101,17 +129,20 @@ export function updateCalculations() {
         let catEarned = 0;
         let catMax = 0;
         
-        Object.entries(catData.indicators).forEach(([indName, multiplier]) => {
+        Object.entries(catData.indicators).forEach(([indName, defaultMultiplier]) => {
             const item = state.auditData[catName]?.[indName] || { score: 3, reviewed: false, features: "", gaps: "", actions: "", photoName: "" };
             
             totalIndicators++;
-            if (item.reviewed || item.features || item.gaps || item.actions || item.score !== 3 || item.photoName) {
+            if (item.reviewed || item.features || item.gaps || item.actions || item.score !== 3 || item.photoName || item.riskApplied) {
                 reviewedIndicators++;
             }
             
+            const effectiveMultiplier = (item.riskApplied && item.customMultiplier != null && Number(item.customMultiplier) > 0)
+                ? Number(item.customMultiplier)
+                : defaultMultiplier;
             const score = Number(item.score) || 3;
-            catEarned += (score * multiplier);
-            catMax += (5 * multiplier);
+            catEarned += (score * effectiveMultiplier);
+            catMax += (5 * effectiveMultiplier);
         });
         
         if (catMax > 0) {
