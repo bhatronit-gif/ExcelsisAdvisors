@@ -369,18 +369,22 @@ export function renderCardHTML(catName, indName, baseMultiplier) {
                         <span>Dynamic Risk</span>
                     </button>
 
-                    <!-- Risk Multiplier Tooltip Trigger -->
+                    <!-- Interactive Clickable Risk Multiplier Pill -->
                     <button type="button" 
                             id="tooltip-trigger-${catEscaped}-${indEscaped}"
+                            onclick="cycleRiskMultiplier('${catName}', '${indName}')"
                             aria-describedby="tooltip-desc-${catEscaped}-${indEscaped}"
-                            class="text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 ${badgeColorClass} cursor-help focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition-all">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                        ${isRiskModified ? `⚡ Dynamic: ${effectiveMultiplier}x` : `Risk Multiplier: ${effectiveMultiplier}x`}
+                            title="Click to change Risk Multiplier (1x ➔ 2x ➔ 3x)"
+                            class="text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 ${badgeColorClass} cursor-pointer hover:opacity-90 active:scale-95 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all shadow-sm group/btn">
+                        <svg class="w-3.5 h-3.5 ${isRiskModified ? 'text-purple-600 dark:text-purple-300' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span>${isRiskModified ? `⚡ ${effectiveMultiplier}x (${data.riskSeverity || 'Modified'})` : `Multiplier: ${effectiveMultiplier}x`}</span>
+                        <span class="text-[10px] opacity-70 group-hover/btn:opacity-100 group-hover/btn:scale-110 transition-transform font-black" title="Click to change multiplier">↻</span>
                     </button>
                     <!-- Hover & Focus Tooltip -->
                     <div id="tooltip-desc-${catEscaped}-${indEscaped}"
                          role="tooltip"
                          class="absolute bottom-full right-0 mb-2 hidden group-hover:block group-focus-within:block w-72 bg-slate-900 dark:bg-slate-800 text-white text-xs p-2.5 rounded-xl shadow-xl z-50 text-left font-semibold leading-relaxed border border-slate-200/10 pointer-events-none transition-all duration-200">
+                        <div class="text-[11px] text-amber-300 font-bold mb-1">💡 Click badge to cycle (1x ➔ 2x ➔ 3x)</div>
                         ${isRiskModified 
                             ? `<strong>⚡ Dynamic Risk Active (${effectiveMultiplier}x)</strong>: Adjusted from baseline ${baseMultiplier}x. Severity: <em>${data.riskSeverity || 'Modified'}</em>.<br><span class="text-slate-300">${data.riskRationale || ''}</span>`
                             : (effectiveMultiplier === 3 ? '<strong>3x Critical Risk</strong>: Standard safety, health, or statutory requirements. Failures present immediate physical, medical, or legal closure hazards.' : 
@@ -865,5 +869,73 @@ export function handleMetaChange(field, val) {
     saveState();
 }
 
+/**
+ * Cycles an indicator's risk multiplier directly on click (1x -> 2x -> 3x -> baseline).
+ */
+export function cycleRiskMultiplier(catName, indName) {
+    const data = state.auditData[catName]?.[indName];
+    if (!data) return;
+
+    const baseMultiplier = CATEGORIES[catName]?.indicators?.[indName] || 2;
+    const currentEffective = getEffectiveMultiplier(catName, indName);
+    
+    // Cycle: 1 -> 2 -> 3 -> 1
+    let nextMultiplier = currentEffective === 1 ? 2 : (currentEffective === 2 ? 3 : 1);
+
+    if (nextMultiplier === baseMultiplier) {
+        // Reverted to baseline
+        data.customMultiplier = null;
+        data.riskApplied = false;
+        data.riskSeverity = "";
+        data.riskRationale = "";
+        data.riskScoreDelta = 0;
+        showToast(`${indName}: Reset to default ${baseMultiplier}x baseline multiplier.`, "info");
+    } else {
+        data.customMultiplier = nextMultiplier;
+        data.riskApplied = true;
+        data.riskSeverity = nextMultiplier === 3 ? "Critical" : (nextMultiplier === 2 ? "Moderate" : "Low");
+        data.riskRationale = `Manually set to ${nextMultiplier}x by auditor.`;
+        data.reviewed = true;
+        showToast(`${indName}: Set to ${nextMultiplier}x (${data.riskSeverity} Risk).`, "success");
+    }
+
+    saveState();
+    updateCalculations();
+    refreshCardDOM(catName, indName);
+}
+
+/**
+ * Sets an indicator's risk multiplier directly.
+ */
+export function setIndicatorMultiplier(catName, indName, multValue) {
+    const data = state.auditData[catName]?.[indName];
+    if (!data) return;
+
+    const baseMultiplier = CATEGORIES[catName]?.indicators?.[indName] || 2;
+    const nextMultiplier = parseInt(multValue, 10);
+    if (!nextMultiplier || nextMultiplier < 1 || nextMultiplier > 3) return;
+
+    if (nextMultiplier === baseMultiplier) {
+        data.customMultiplier = null;
+        data.riskApplied = false;
+        data.riskSeverity = "";
+        data.riskRationale = "";
+        data.riskScoreDelta = 0;
+        showToast(`${indName}: Reset to default ${baseMultiplier}x baseline multiplier.`, "info");
+    } else {
+        data.customMultiplier = nextMultiplier;
+        data.riskApplied = true;
+        data.riskSeverity = nextMultiplier === 3 ? "Critical" : (nextMultiplier === 2 ? "Moderate" : "Low");
+        data.riskRationale = `Manually set to ${nextMultiplier}x by auditor.`;
+        data.reviewed = true;
+        showToast(`${indName}: Set to ${nextMultiplier}x (${data.riskSeverity} Risk).`, "success");
+    }
+
+    saveState();
+    updateCalculations();
+    refreshCardDOM(catName, indName);
+}
+
 export const mountAllIndicatorsGrid = initIndicatorsGrid;
+
 

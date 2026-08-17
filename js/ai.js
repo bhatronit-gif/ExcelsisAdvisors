@@ -257,53 +257,80 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
     const preferredModel = modelOverride || getGeminiModel() || DEFAULT_MODEL;
     const responseMimeType = options.responseMimeType || null;
 
-    // 1. Try Netlify Serverless Function first (Uses process.env.GEMINI_API_KEY)
-    try {
-        const netlifyResponse = await fetch('/.netlify/functions/gemini', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: promptText,
-                model: preferredModel,
-                apiKey: apiKey || '',
-                responseMimeType: responseMimeType
-            })
-        });
+    let serverErrorDetail = null;
 
-        if (netlifyResponse.ok) {
-            const data = await netlifyResponse.json();
-            if (data.text) {
-                hasNetlifyServerKey = true;
-                updateApiKeyStatusUI();
-                return {
-                    text: data.text,
-                    modelUsed: data.modelUsed || preferredModel
-                };
-            }
-        } else {
-            const errData = await netlifyResponse.json().catch(() => ({}));
-            const errMsg = errData.error || '';
-            const errLower = errMsg.toLowerCase();
-            
-            // If Netlify returned a rate/demand error or non-auth error and we have NO client key, report helpful message
-            if (!apiKey) {
-                if (errLower.includes('high demand') || errLower.includes('overloaded')) {
-                    throw new Error("Google's servers are temporarily experiencing high demand across standard models. Retrying in a few moments, or selecting Gemini 1.5 Flash in Settings, will resolve this.");
+    // 1. Try Netlify Serverless Function first (with 1 automatic retry on transient error)
+    for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+            const netlifyResponse = await fetch('/.netlify/functions/gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: promptText,
+                    model: preferredModel,
+                    apiKey: apiKey || '',
+                    responseMimeType: responseMimeType
+                })
+            });
+
+            if (netlifyResponse.ok) {
+                const data = await netlifyResponse.json();
+                if (data.text) {
+                    hasNetlifyServerKey = true;
+                    updateApiKeyStatusUI();
+                    return {
+                        text: data.text,
+                        modelUsed: data.modelUsed || preferredModel
+                    };
                 }
-                if (errMsg && !errMsg.includes("No Gemini API Key found")) {
-                    throw new Error(errMsg);
+            } else {
+                const errData = await netlifyResponse.json().catch(() => ({}));
+                const errMsg = errData.error || (netlifyResponse.status === 404 ? 'Netlify backend not found' : `HTTP ${netlifyResponse.status}`);
+                serverErrorDetail = errMsg;
+                const errLower = errMsg.toLowerCase();
+
+                // If this is a transient 502/503/504 or rate-limit and we have a retry left, back off and retry once
+                if (attempt === 0 && (netlifyResponse.status === 502 || netlifyResponse.status === 503 || netlifyResponse.status === 504 || netlifyResponse.status === 429 || errLower.includes('high demand') || errLower.includes('overloaded'))) {
+                    await new Promise(r => setTimeout(r, 900));
+                    continue;
+                }
+
+                // If Netlify returned a specific error and we have NO client key, report accurate error
+                if (!apiKey) {
+                    if (errLower.includes('high demand') || errLower.includes('overloaded') || errLower.includes('resource exhausted') || errLower.includes('quota') || errLower.includes('rate limit')) {
+                        throw new Error("Google AI servers are temporarily experiencing high demand or rate limits. Retrying in a few moments, or selecting Gemini 1.5 Flash in Settings, will resolve this.");
+                    }
+                    if (errLower.includes('no gemini api key found') || errLower.includes('no api key')) {
+                        throw new Error("No Gemini API key found. Please enter an API key in Settings (⚙️) or configure GEMINI_API_KEY in Netlify.");
+                    }
+                    if (netlifyResponse.status !== 404) {
+                        throw new Error(errMsg);
+                    }
                 }
             }
-        }
-    } catch (netlifyErr) {
-        if (!apiKey && !hasNetlifyServerKey) {
-            throw netlifyErr;
+            break; // Non-retryable response received
+        } catch (netlifyErr) {
+            // Propagate intentional descriptive errors thrown above
+            if (netlifyErr.message && (
+                netlifyErr.message.includes("Google AI servers") || 
+                netlifyErr.message.includes("No Gemini API key found")
+            )) {
+                throw netlifyErr;
+            }
+            serverErrorDetail = netlifyErr.message || 'Connection to AI server failed';
+            if (attempt === 0 && !apiKey) {
+                await new Promise(r => setTimeout(r, 600));
+                continue;
+            }
         }
     }
 
     // 2. Direct Client-Side Fallback (if user provided key in UI or running offline)
     if (!apiKey) {
-        throw new Error("No Gemini API key found. Please enter an API key in Settings or configure GEMINI_API_KEY in Netlify.");
+        if (hasNetlifyServerKey || (serverErrorDetail && !serverErrorDetail.includes('not found'))) {
+            throw new Error(`AI service temporarily unavailable (${serverErrorDetail || 'Network error'}). Please try again in a moment or enter an API key in Settings.`);
+        }
+        throw new Error("No Gemini API key found. Please enter an API key in Settings (⚙️) or configure GEMINI_API_KEY in Netlify.");
     }
 
     const cleanPreferredModel = preferredModel.replace(/^models\//, '');
@@ -1110,12 +1137,14 @@ export function parseAIRiskResponse(rawText, baseMultiplier = 2, currentScore = 
         detectedSev = "Critical";
     } else if (/\b(high risk|severe|urgent|deficiency|non-compliant)\b/i.test(text)) {
         detectedSev = "High";
-    } else if (/\b(low risk|compliant|exemplary|good|minor)\b/i.test(text)) {
+    } else if (/\b(low risk|compliant|exemplary|good|minor|exceptional|world-class|best-in-class|international standard|flawless|industry-leading)\b/i.test(text)) {
         detectedSev = "Low";
     }
 
     const suggestedMultiplier = (detectedSev === "Critical" || detectedSev === "High") ? 3 : (detectedSev === "Low" ? 1 : 2);
-    const suggestedScore = detectedSev === "Critical" ? 1 : (detectedSev === "High" ? 2 : (detectedSev === "Low" ? 5 : 3));
+    // Only suggest 5 if explicit exceptional excellence keywords are matched, otherwise 4 for compliant/low risk
+    const isTrulyExceptional = /\b(exceptional|world-class|best-in-class|international standard|flawless|industry-leading)\b/i.test(text);
+    const suggestedScore = detectedSev === "Critical" ? 1 : (detectedSev === "High" ? 2 : (detectedSev === "Low" ? (isTrulyExceptional ? 5 : 4) : 3));
 
     return {
         severity: detectedSev,
@@ -1175,13 +1204,20 @@ QUALITATIVE WRITE-UPS:
 - Actions Recommended / Remediation: ${actionsText || "(None recorded)"}
 
 EVALUATION RUBRIC:
-1. Risk Severity:
+1. Risk Severity & Suggested Score Calibration:
    - "Critical": Direct life-safety threats, active fire/electrical hazards, child transit hazards, missing mandatory statutory certifications, unvetted staff. Suggested Multiplier = 3. Suggested Score = 1 or 2.
    - "High": Significant operational, hygiene, structural, or documentation non-compliance that compromises campus safety if unaddressed within 30 days. Suggested Multiplier = 3 or 2. Suggested Score = 2 or 3.
    - "Medium": Routine operational deficiencies, minor equipment wear, maintenance backlogs, standard non-critical procedural gaps. Suggested Multiplier = 2. Suggested Score = 3 or 4.
-   - "Low": Robust compliance, proactive maintenance, exemplary safety practices, or negligible administrative issues. Suggested Multiplier = 1. Suggested Score = 4 or 5.
+   - "Low": Robust compliance, proactive maintenance, exemplary safety practices, or negligible administrative issues. Suggested Multiplier = 1. Suggested Score = 4 (Compliant/Good).
 
-2. Instructions:
+2. CRITICAL CALIBRATION FOR SCORE 5 (EXEMPLARY):
+   - Only suggest an increase to Score 5 in truly EXCEPTIONAL and rare circumstances where:
+     (a) There are zero recorded gaps or vulnerabilities,
+     (b) Notable Features explicitly demonstrate industry-leading innovations, state-of-the-art systems, or international best practices, AND
+     (c) The school's measures vastly exceed standard regulatory requirements.
+   - For all standard compliant, well-maintained, or satisfactory operations without extraordinary institutional innovation, default to Score 4.
+
+3. Instructions:
    - Formulate a precise, authoritative 1-2 sentence risk rationale explaining why this multiplier and score are recommended.
    - Calculate scoreDelta = suggestedScore - currentScore.
    - Return ONLY a raw JSON object strictly adhering to this schema:
@@ -1287,34 +1323,57 @@ export function resetDynamicRiskModifier(catName, indName) {
 /**
  * Evaluates dynamic risk across all filled indicators in a category.
  */
-export async function analyzeCategoryDynamicRisks(catName) {
-    const catData = CATEGORIES[catName];
-    if (!catData) return;
-
-    const indicatorsToAnalyze = [];
-    Object.keys(catData.indicators).forEach(indName => {
-        const item = state.auditData[catName]?.[indName];
-        if (item && (item.features || item.gaps || item.actions || item.score !== 3)) {
-            indicatorsToAnalyze.push(indName);
-        }
-    });
-
-    if (indicatorsToAnalyze.length === 0) {
-        showToast(`No indicator notes found in "${catName}" to assess dynamic risk.`, "info");
+export async function analyzeCategoryDynamicRisks(catName = null) {
+    const targetCat = catName || state.activeCategory || Object.keys(CATEGORIES)[0];
+    const catData = CATEGORIES[targetCat];
+    if (!catData) {
+        showToast("Invalid category selected.", "error");
         return;
     }
 
-    showToast(`Assessing dynamic risk across ${indicatorsToAnalyze.length} indicators in "${catName}"...`, "info");
-
-    let successCount = 0;
-    for (let i = 0; i < indicatorsToAnalyze.length; i++) {
-        const indName = indicatorsToAnalyze[i];
-        showToast(`Analyzing risk ${i + 1} of ${indicatorsToAnalyze.length}: "${indName}"...`, "info");
-        const ok = await analyzeDynamicRisk(catName, indName, false);
-        if (ok) successCount++;
+    const catRiskBtn = document.getElementById('category-ai-risk-btn');
+    if (catRiskBtn) {
+        catRiskBtn.disabled = true;
+        catRiskBtn.innerHTML = `<span class="animate-spin inline-block mr-1">⌛</span><span>Assessing Risk...</span>`;
     }
 
-    showToast(`Evaluated Dynamic Risk for ${successCount} indicators in "${catName}"!`, "success");
+    try {
+        const indicatorsToAnalyze = [];
+        Object.keys(catData.indicators).forEach(indName => {
+            const item = state.auditData[targetCat]?.[indName];
+            if (item && (item.features || item.gaps || item.actions || item.aiFeatures || item.aiGaps || item.aiActions || item.score !== 3 || item.photoName)) {
+                indicatorsToAnalyze.push(indName);
+            }
+        });
+
+        if (indicatorsToAnalyze.length === 0) {
+            showToast(`No write-ups or active ratings recorded in "${targetCat}" to evaluate risk.`, "info");
+            return;
+        }
+
+        showToast(`Assessing dynamic risk across ${indicatorsToAnalyze.length} indicators in "${targetCat}"...`, "info");
+
+        let successCount = 0;
+        for (let i = 0; i < indicatorsToAnalyze.length; i++) {
+            const indName = indicatorsToAnalyze[i];
+            showToast(`Analyzing risk ${i + 1} of ${indicatorsToAnalyze.length}: "${indName}"...`, "info");
+            const ok = await analyzeDynamicRisk(targetCat, indName, false);
+            if (ok) successCount++;
+        }
+
+        showToast(`Evaluated Dynamic Risk for ${successCount} indicators in "${targetCat}"!`, "success");
+    } catch (err) {
+        console.error("Error in category risk assessment:", err);
+        showToast(`Category risk assessment error: ${err.message}`, "error");
+    } finally {
+        if (catRiskBtn) {
+            catRiskBtn.disabled = false;
+            catRiskBtn.innerHTML = `
+                <span class="text-amber-200 font-black">⚡</span>
+                <span>Assess Category Risk</span>
+            `;
+        }
+    }
 }
 
 

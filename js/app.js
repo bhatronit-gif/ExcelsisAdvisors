@@ -11,7 +11,8 @@ import {
     setupTheme, toggleTheme, toggleMobileDrawer, toggleDataDropdown, showToast,
     renderCategoryNavigation, initIndicatorsGrid, renderActiveCategoryIndicators,
     handleCategorySelect, handleScoreChange, handleScoreKeyDown, handleTextChange,
-    handlePhotoUpload, removePhoto, handleSearch, clearSearch, handleFilenameChange, handleMetaChange
+    handlePhotoUpload, removePhoto, handleSearch, clearSearch, handleFilenameChange, handleMetaChange,
+    cycleRiskMultiplier, setIndicatorMultiplier
 } from './ui.js';
 import { 
     exportToCSV, exportToJSON, importFromJSON, importFromCSV, downloadCSVTemplate,
@@ -31,6 +32,8 @@ import {
 import { refreshCardDOM } from './ui.js';
 
 // --- Window Bridge Bindings (Ensures 100% backward compatibility for inline HTML event attributes) ---
+window.cycleRiskMultiplier = cycleRiskMultiplier;
+window.setIndicatorMultiplier = setIndicatorMultiplier;
 window.handleCategorySelect = handleCategorySelect;
 window.handleScoreChange = handleScoreChange;
 window.handleScoreKeyDown = handleScoreKeyDown;

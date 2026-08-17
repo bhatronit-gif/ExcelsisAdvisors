@@ -46,7 +46,13 @@ exports.handler = async (event, context) => {
         return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
     }
 
-    const envKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+    const rawEnvKey = process.env.GEMINI_API_KEY || 
+                      process.env.VITE_GEMINI_API_KEY || 
+                      process.env.GOOGLE_API_KEY || 
+                      process.env.GOOGLE_GEMINI_API_KEY ||
+                      process.env.GEMINI_KEY ||
+                      process.env.API_KEY || '';
+    const envKey = rawEnvKey.trim();
 
     // GET request: Healthcheck & check if server has key configured
     if (event.httpMethod === 'GET') {
