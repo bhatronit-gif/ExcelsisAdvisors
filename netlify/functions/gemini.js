@@ -35,6 +35,31 @@ async function discoverAvailableModels(apiKey) {
     return [];
 }
 
+function extractCandidateText(data) {
+    if (!data) return "";
+    const candidate = data.candidates?.[0];
+    if (!candidate) return "";
+
+    const parts = candidate.content?.parts;
+    if (Array.isArray(parts)) {
+        const textParts = parts
+            .filter(p => p && typeof p.text === 'string')
+            .map(p => p.text.trim())
+            .filter(t => t.length > 0);
+        if (textParts.length > 0) {
+            return textParts.join('\n\n');
+        }
+    }
+
+    if (typeof candidate.text === 'string' && candidate.text.trim()) {
+        return candidate.text.trim();
+    }
+    if (typeof candidate.output === 'string' && candidate.output.trim()) {
+        return candidate.output.trim();
+    }
+    return "";
+}
+
 exports.handler = async (event, context) => {
     const startTime = Date.now();
     const MAX_EXECUTION_MS = 7500; // Return clean response before Netlify 10s gateway timeout
@@ -222,14 +247,11 @@ exports.handler = async (event, context) => {
                 }
 
                 const data = await response.json();
-                const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                const candidateText = extractCandidateText(data);
 
                 if (!candidateText) {
-                    return {
-                        statusCode: 502,
-                        headers,
-                        body: JSON.stringify({ error: 'Gemini returned an empty response. Please try again.' })
-                    };
+                    lastError = new Error(`Model ${model} returned empty content (finishReason: ${data.candidates?.[0]?.finishReason || 'unknown'})`);
+                    continue;
                 }
 
                 return {
