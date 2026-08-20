@@ -9,18 +9,15 @@ import { CATEGORIES } from './config.js';
 import { state, saveState, calculateScore } from './state.js';
 import { showToast, refreshCardDOM } from './ui.js';
 
-export const DEFAULT_MODEL = 'gemini-3.6-flash';
+export const DEFAULT_MODEL = 'gemini-2.5-flash';
 export const CANDIDATE_MODELS = [
-    'gemini-3.6-flash',
-    'gemini-3.5-flash',
-    'gemini-3.0-flash',
     'gemini-2.5-flash',
-    'gemini-3.6-pro',
-    'gemini-3.5-pro',
-    'gemini-3.0-pro',
-    'gemini-2.5-pro',
     'gemini-2.0-flash',
-    'gemini-1.5-flash'
+    'gemini-1.5-flash',
+    'gemini-2.5-pro',
+    'gemini-2.0-flash-lite',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro'
 ];
 
 let clientModelCache = {
@@ -70,12 +67,14 @@ async function discoverClientModels(apiKey) {
                 .sort((a, b) => {
                     const getScore = (modelName) => {
                         const n = modelName.toLowerCase();
-                        if (n.includes('flash') && (n.includes('3.6') || n.includes('3.5'))) return 100;
-                        if (n.includes('flash') && (n.includes('3.0') || n.includes('2.5') || n.includes('2.0') || n.includes('1.5'))) return 90;
-                        if (n.includes('flash')) return 85;
-                        if (n.includes('gemini-3')) return 80;
-                        if (n.includes('gemini-2.5') || n.includes('gemini-2.0')) return 70;
-                        if (n.includes('gemini-1.5')) return 60;
+                        if (n === 'gemini-2.5-flash') return 100;
+                        if (n === 'gemini-2.0-flash') return 95;
+                        if (n === 'gemini-1.5-flash' || n === 'gemini-1.5-flash-latest') return 90;
+                        if (n === 'gemini-2.0-flash-lite') return 85;
+                        if (n === 'gemini-2.5-pro') return 80;
+                        if (n === 'gemini-1.5-pro' || n === 'gemini-1.5-pro-latest') return 75;
+                        if (n.includes('flash')) return 70;
+                        if (n.includes('pro')) return 65;
                         if (n.includes('gemma')) return 20;
                         return 50;
                     };
@@ -398,18 +397,19 @@ export function setGeminiApiKey(key) {
  */
 export function getGeminiModel() {
     const stored = localStorage.getItem('gemini_selected_model');
-    const obsoleteModels = [
-        'gemini-2.0-flash',
-        'gemini-1.5-flash-latest',
-        'gemini-1.5-flash',
-        'gemini-1.5-pro',
-        'gemini-2.0-flash-lite',
+    const invalidOrHallucinated = [
+        'gemini-3.6-flash',
+        'gemini-3.5-flash',
+        'gemini-3.0-flash',
+        'gemini-3.6-pro',
+        'gemini-3.5-pro',
+        'gemini-3.0-pro',
         'gemini-2.0-flash-exp',
         'gemini-2.5-flash-preview-tts',
         'gemini-2.5-pro-preview-tts'
     ];
-    if (!stored || obsoleteModels.includes(stored.trim())) {
-        return DEFAULT_MODEL; // gemini-3.6-flash
+    if (!stored || invalidOrHallucinated.includes(stored.trim())) {
+        return DEFAULT_MODEL; // gemini-2.5-flash
     }
     return stored.trim();
 }

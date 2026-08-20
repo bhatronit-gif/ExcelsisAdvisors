@@ -4,18 +4,15 @@
  * Allows secure server-side execution without exposing the API key on the frontend.
  */
 
-const DEFAULT_MODEL = 'gemini-3.6-flash';
+const DEFAULT_MODEL = 'gemini-2.5-flash';
 const CANDIDATE_MODELS = [
-    'gemini-3.6-flash',
-    'gemini-3.5-flash',
-    'gemini-3.0-flash',
     'gemini-2.5-flash',
-    'gemini-3.6-pro',
-    'gemini-3.5-pro',
-    'gemini-3.0-pro',
-    'gemini-2.5-pro',
     'gemini-2.0-flash',
-    'gemini-1.5-flash'
+    'gemini-1.5-flash',
+    'gemini-2.5-pro',
+    'gemini-2.0-flash-lite',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro'
 ];
 
 let modelDiscoveryCache = {
@@ -68,12 +65,14 @@ async function discoverAvailableModels(apiKey) {
                 .sort((a, b) => {
                     const getScore = (modelName) => {
                         const n = modelName.toLowerCase();
-                        if (n.includes('flash') && (n.includes('3.6') || n.includes('3.5'))) return 100;
-                        if (n.includes('flash') && (n.includes('3.0') || n.includes('2.5') || n.includes('2.0') || n.includes('1.5'))) return 90;
-                        if (n.includes('flash')) return 85;
-                        if (n.includes('gemini-3')) return 80;
-                        if (n.includes('gemini-2.5') || n.includes('gemini-2.0')) return 70;
-                        if (n.includes('gemini-1.5')) return 60;
+                        if (n === 'gemini-2.5-flash') return 100;
+                        if (n === 'gemini-2.0-flash') return 95;
+                        if (n === 'gemini-1.5-flash' || n === 'gemini-1.5-flash-latest') return 90;
+                        if (n === 'gemini-2.0-flash-lite') return 85;
+                        if (n === 'gemini-2.5-pro') return 80;
+                        if (n === 'gemini-1.5-pro' || n === 'gemini-1.5-pro-latest') return 75;
+                        if (n.includes('flash')) return 70;
+                        if (n.includes('pro')) return 65;
                         if (n.includes('gemma')) return 20;
                         return 50;
                     };
