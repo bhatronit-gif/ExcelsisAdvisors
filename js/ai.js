@@ -9,10 +9,10 @@ import { CATEGORIES } from './config.js';
 import { state, saveState, calculateScore } from './state.js';
 import { showToast, refreshCardDOM } from './ui.js';
 
-export const DEFAULT_MODEL = 'gemini-2.5-flash';
+export const DEFAULT_MODEL = 'gemini-2.0-flash';
 export const CANDIDATE_MODELS = [
-    'gemini-2.5-flash',
     'gemini-2.0-flash',
+    'gemini-2.5-flash',
     'gemini-1.5-flash',
     'gemini-2.5-pro',
     'gemini-2.0-flash-lite',
@@ -67,8 +67,8 @@ async function discoverClientModels(apiKey) {
                 .sort((a, b) => {
                     const getScore = (modelName) => {
                         const n = modelName.toLowerCase();
-                        if (n === 'gemini-2.5-flash') return 100;
-                        if (n === 'gemini-2.0-flash') return 95;
+                        if (n === 'gemini-2.0-flash') return 100;
+                        if (n === 'gemini-2.5-flash') return 95;
                         if (n === 'gemini-1.5-flash' || n === 'gemini-1.5-flash-latest') return 90;
                         if (n === 'gemini-2.0-flash-lite') return 85;
                         if (n === 'gemini-2.5-pro') return 80;
@@ -613,7 +613,7 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
     // 1. Try Netlify Serverless Function first
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 9800);
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
         let netlifyResponse;
         try {
             netlifyResponse = await fetch('/.netlify/functions/gemini', {
@@ -1123,7 +1123,7 @@ export async function triggerAISummaryGeneration() {
 
     try {
         const prompt = buildAuditContextPrompt();
-        const result = await callGeminiAPI(apiKey, prompt, null, { maxOutputTokens: 1800 });
+        const result = await callGeminiAPI(apiKey, prompt, null, { maxOutputTokens: 1200 });
         
         state.aiSummary = result.text;
         saveState();

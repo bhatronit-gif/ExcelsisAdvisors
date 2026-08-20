@@ -4,10 +4,10 @@
  * Allows secure server-side execution without exposing the API key on the frontend.
  */
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-2.0-flash';
 const CANDIDATE_MODELS = [
-    'gemini-2.5-flash',
     'gemini-2.0-flash',
+    'gemini-2.5-flash',
     'gemini-1.5-flash',
     'gemini-2.5-pro',
     'gemini-2.0-flash-lite',
@@ -65,8 +65,8 @@ async function discoverAvailableModels(apiKey) {
                 .sort((a, b) => {
                     const getScore = (modelName) => {
                         const n = modelName.toLowerCase();
-                        if (n === 'gemini-2.5-flash') return 100;
-                        if (n === 'gemini-2.0-flash') return 95;
+                        if (n === 'gemini-2.0-flash') return 100;
+                        if (n === 'gemini-2.5-flash') return 95;
                         if (n === 'gemini-1.5-flash' || n === 'gemini-1.5-flash-latest') return 90;
                         if (n === 'gemini-2.0-flash-lite') return 85;
                         if (n === 'gemini-2.5-pro') return 80;
@@ -495,8 +495,7 @@ exports.handler = async (event, context) => {
                     genConfig.responseMimeType = responseMimeType;
                 }
 
-                const maxPerAttempt = (modelsToTry.length - i > 1) ? 4200 : 8500;
-                const remainingMs = Math.max(1800, Math.min(maxPerAttempt, MAX_EXECUTION_MS - (Date.now() - startTime)));
+                const remainingMs = Math.max(1500, Math.min(8500, MAX_EXECUTION_MS - (Date.now() - startTime) - 300));
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), remainingMs);
 
