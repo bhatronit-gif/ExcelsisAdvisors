@@ -1515,6 +1515,11 @@ export function parseAIRiskResponse(rawText, baseMultiplier = 2, currentScore = 
         let mult = parseInt(obj.suggestedMultiplier || obj.multiplier || obj.weight || obj.effectiveMultiplier, 10);
         if (isNaN(mult) || mult < 1 || mult > 3) {
             mult = (sev === "Critical" || sev === "High") ? 3 : (sev === "Low" ? 1 : 2);
+        } else {
+            // Enforce logical consistency between Severity and Multiplier
+            if (sev === "Critical" && mult < 3) mult = 3;
+            if (sev === "High" && mult < 2) mult = 3; // High risk requires 2x or 3x, never 1x
+            if (sev === "Low" && mult > 1) mult = 1;
         }
 
         let score = parseInt(obj.suggestedScore || obj.score || obj.rating || obj.suggestedRating, 10);
@@ -1681,11 +1686,11 @@ QUALITATIVE WRITE-UPS:
 - Actions Recommended / Remediation: ${actionsText || "(None recorded)"}
 
 EVALUATION RUBRIC:
-1. Risk Severity & Suggested Score Calibration:
-   - "Critical": Direct life-safety threats, active fire/electrical hazards, child transit hazards, missing mandatory statutory certifications, unvetted staff. Suggested Multiplier = 3. Suggested Score = 1 or 2.
-   - "High": Significant operational, hygiene, structural, or documentation non-compliance that compromises campus safety if unaddressed within 30 days. Suggested Multiplier = 3 or 2. Suggested Score = 2 or 3.
+1. Risk Severity & Suggested Multiplier Calibration:
+   - "Critical": Direct life-safety threats, active fire/electrical hazards, child transit hazards, missing mandatory statutory certifications, unvetted staff. Suggested Multiplier = 3 (Never 1 or 2). Suggested Score = 1 or 2.
+   - "High": Significant operational, hygiene, structural, or documentation non-compliance that compromises campus safety if unaddressed within 30 days. Suggested Multiplier = 3 or 2 (Never 1). Suggested Score = 2 or 3.
    - "Medium": Routine operational deficiencies, minor equipment wear, maintenance backlogs, standard non-critical procedural gaps. Suggested Multiplier = 2. Suggested Score = 3 or 4.
-   - "Low": Robust compliance, proactive maintenance, exemplary safety practices, or negligible administrative issues. Suggested Multiplier = 1. Suggested Score = 4 (Compliant/Good).
+   - "Low": Robust compliance, proactive maintenance, exemplary safety practices, or negligible administrative issues. Suggested Multiplier = 1 (Never 2 or 3). Suggested Score = 4 (Compliant/Good).
 
 2. CRITICAL CALIBRATION FOR SCORE 5 (EXEMPLARY):
    - Only suggest an increase to Score 5 in truly EXCEPTIONAL and rare circumstances where:
@@ -2061,11 +2066,11 @@ INDICATORS:
 ${indicatorsContext}
 
 EVALUATION RUBRIC:
-1. Risk Severity & Suggested Score Calibration:
-   - "Critical": Direct life-safety threats, active fire/electrical hazards, child transit hazards, missing mandatory statutory certifications, unvetted staff. Suggested Multiplier = 3. Suggested Score = 1 or 2.
-   - "High": Significant operational, hygiene, structural, or documentation non-compliance that compromises campus safety if unaddressed within 30 days. Suggested Multiplier = 3 or 2. Suggested Score = 2 or 3.
+1. Risk Severity & Suggested Multiplier Calibration:
+   - "Critical": Direct life-safety threats, active fire/electrical hazards, child transit hazards, missing mandatory statutory certifications, unvetted staff. Suggested Multiplier = 3 (Never 1 or 2). Suggested Score = 1 or 2.
+   - "High": Significant operational, hygiene, structural, or documentation non-compliance that compromises campus safety if unaddressed within 30 days. Suggested Multiplier = 3 or 2 (Never 1). Suggested Score = 2 or 3.
    - "Medium": Routine operational deficiencies, minor equipment wear, maintenance backlogs, standard non-critical procedural gaps. Suggested Multiplier = 2. Suggested Score = 3 or 4.
-   - "Low": Robust compliance, proactive maintenance, exemplary safety practices, or negligible administrative issues. Suggested Multiplier = 1. Suggested Score = 4.
+   - "Low": Robust compliance, proactive maintenance, exemplary safety practices, or negligible administrative issues. Suggested Multiplier = 1 (Never 2 or 3). Suggested Score = 4.
 
 2. CRITICAL CALIBRATION FOR SCORE 5 (EXEMPLARY):
    - Only suggest Score 5 in rare circumstances with zero gaps and state-of-the-art innovation. Otherwise, default compliant operations to Score 4.
@@ -2094,14 +2099,19 @@ EVALUATION RUBRIC:
             const data = state.auditData[catName][targetIndName];
             const baseMultiplier = catData.indicators[targetIndName] || 2;
             const currentScore = Number(data.score) || 3;
+            const sev = val.severity || "Medium";
             
-            const mult = Number(val.suggestedMultiplier);
-            const validMult = (mult >= 1 && mult <= 5) ? mult : baseMultiplier;
+            let mult = Number(val.suggestedMultiplier);
+            let validMult = (mult >= 1 && mult <= 3) ? mult : baseMultiplier;
+            if (sev === "Critical" && validMult < 3) validMult = 3;
+            if (sev === "High" && validMult < 2) validMult = 3; // High risk requires 2x or 3x, never 1x
+            if (sev === "Low" && validMult > 1) validMult = 1;
+
             const score = Number(val.suggestedScore);
             const validScore = (score >= 1 && score <= 5) ? score : currentScore;
 
             data.suggestedRisk = {
-                severity: val.severity || "Medium",
+                severity: sev,
                 suggestedMultiplier: validMult,
                 suggestedScore: validScore,
                 scoreDelta: val.scoreDelta !== undefined ? Number(val.scoreDelta) : (validScore - currentScore),

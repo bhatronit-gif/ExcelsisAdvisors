@@ -180,6 +180,7 @@ export function submitPDFReport() {
     const includeHeaders = document.getElementById('pdf-include-headers')?.checked ?? true;
     const includeAISummary = document.getElementById('pdf-include-ai-summary')?.checked ?? true;
     const useAIEnhancedWriteups = document.getElementById('pdf-use-ai-writeups')?.checked ?? true;
+    const includeRiskAdjustments = document.getElementById('pdf-include-risk-adjustments')?.checked ?? false;
     
     closePDFModal();
     
@@ -189,7 +190,8 @@ export function submitPDFReport() {
         includePhotos,
         includeHeaders,
         includeAISummary,
-        useAIEnhancedWriteups
+        useAIEnhancedWriteups,
+        includeRiskAdjustments
     });
 }
 
@@ -494,7 +496,7 @@ export function generatePDFReport(options) {
             </div>
 
             <!-- Dynamic Risk Adjustments & High-Liability Matrix (if any modified) -->
-            ${dynamicRiskItems.length > 0 ? `
+            ${options.includeRiskAdjustments && dynamicRiskItems.length > 0 ? `
             <div class="flex flex-col gap-3 mt-8 print-avoid-break">
                 <div class="flex justify-between items-center border-b-2 border-purple-600 pb-2">
                     <h3 class="text-xs font-extrabold text-purple-900 uppercase tracking-wider flex items-center gap-1.5">
