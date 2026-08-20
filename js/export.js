@@ -7,6 +7,7 @@ import { SCHOOLS, CATEGORIES, AUDITOR_HASHES } from './config.js';
 import { state, saveState, calculateScore, updateCalculations, startNewAudit } from './state.js';
 import { dbGet, dbGetAll, saveLocalDraftToDB, deleteLocalDraftFromDB } from './storage.js';
 import { showToast, renderCategoryNavigation, renderActiveCategoryIndicators, initIndicatorsGrid } from './ui.js';
+import { runFullAuditAIPipeline } from './ai.js';
 
 export function exportToCSV() {
     saveState.flush();
@@ -432,6 +433,10 @@ export function importFromCSV(input) {
                 
                 if (importedRowsCount > 0) {
                     showToast(`Successfully loaded CSV audit draft: "${state.filename}" (${importedRowsCount} indicators)`);
+                    // Automatically trigger full-audit AI pipeline across all categories
+                    runFullAuditAIPipeline().catch(err => {
+                        console.error("Auto AI pipeline error on CSV import:", err);
+                    });
                 } else {
                     showToast("CSV loaded, but no matching indicators were found. Please check category/indicator names.", "warning");
                 }

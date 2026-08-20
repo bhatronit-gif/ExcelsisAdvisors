@@ -27,7 +27,10 @@ import {
     handleAISummaryEditorChange, copyAISummaryToClipboard, clearAISummary,
     enhanceIndicatorCard, enhanceActiveCategoryWriteups, applyAIEnhancement, handleAITextChange,
     analyzeDynamicRisk, applyDynamicRiskModifier, dismissDynamicRiskModifier,
-    resetDynamicRiskModifier, analyzeCategoryDynamicRisks
+    resetDynamicRiskModifier, analyzeCategoryDynamicRisks,
+    enhanceCategoryBatch, analyzeCategoryDynamicRisksBatch,
+    showAIPipelineModal, closeAIPipelineModal, cancelAIPipeline, resumeAIPipelineWithKey,
+    runFullAuditAIPipeline
 } from './ai.js';
 import { refreshCardDOM } from './ui.js';
 
@@ -79,13 +82,20 @@ window.copyAISummaryToClipboard = copyAISummaryToClipboard;
 window.clearAISummary = clearAISummary;
 window.enhanceIndicatorCard = enhanceIndicatorCard;
 window.enhanceActiveCategoryWriteups = enhanceActiveCategoryWriteups;
+window.enhanceCategoryBatch = enhanceCategoryBatch;
 window.applyAIEnhancement = applyAIEnhancement;
 window.handleAITextChange = handleAITextChange;
 window.analyzeDynamicRisk = analyzeDynamicRisk;
+window.analyzeCategoryDynamicRisksBatch = analyzeCategoryDynamicRisksBatch;
 window.applyDynamicRiskModifier = applyDynamicRiskModifier;
 window.dismissDynamicRiskModifier = dismissDynamicRiskModifier;
 window.resetDynamicRiskModifier = resetDynamicRiskModifier;
 window.analyzeCategoryDynamicRisks = analyzeCategoryDynamicRisks;
+window.showAIPipelineModal = showAIPipelineModal;
+window.closeAIPipelineModal = closeAIPipelineModal;
+window.cancelAIPipeline = cancelAIPipeline;
+window.resumeAIPipelineWithKey = resumeAIPipelineWithKey;
+window.runFullAuditAIPipeline = runFullAuditAIPipeline;
 window.refreshCardDOM = refreshCardDOM;
 window.confirmReset = () => {
     if (!confirm("Reset active view back to blank defaults? (Saved drafts remain in history)")) return;
@@ -95,6 +105,10 @@ window.confirmReset = () => {
 // Global Escape key listener for active modals
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
+        const pipelineModal = document.getElementById('ai-pipeline-progress-modal');
+        if (pipelineModal && !pipelineModal.classList.contains('hidden')) {
+            cancelAIPipeline();
+        }
         const pdfModal = document.getElementById('pdf-modal-overlay');
         if (pdfModal && !pdfModal.classList.contains('hidden')) {
             closePDFModal();

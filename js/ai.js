@@ -6,8 +6,8 @@
  */
 
 import { CATEGORIES } from './config.js';
-import { state, saveState, calculateScore } from './state.js';
-import { showToast, refreshCardDOM } from './ui.js';
+import { state, saveState, saveStateNow, calculateScore, updateCalculations } from './state.js';
+import { showToast, refreshCardDOM, renderCategoryNavigation, renderActiveCategoryIndicators } from './ui.js';
 
 export const DEFAULT_SUMMARY_MODEL = 'gemini-3.7-flash';
 export const DEFAULT_ENHANCE_MODEL = 'gemini-3.5-flash-lite';
@@ -1850,6 +1850,440 @@ export async function analyzeCategoryDynamicRisks(catName = null) {
                 <span>Assess Category Risk</span>
             `;
         }
+    }
+}
+
+/**
+ * Parses batch AI enhancement JSON response safely.
+ */
+export function parseAIEnhancementBatchResponse(rawText) {
+    if (!rawText) return {};
+    if (typeof rawText === 'object' && !Array.isArray(rawText)) {
+        if (rawText.indicators && typeof rawText.indicators === 'object') {
+            return rawText.indicators;
+        }
+        return rawText;
+    }
+    let text = typeof rawText === 'string' ? rawText.trim() : '';
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+    try {
+        const parsed = JSON.parse(text);
+        if (parsed.indicators && typeof parsed.indicators === 'object') {
+            return parsed.indicators;
+        }
+        if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+            return parsed;
+        }
+    } catch (e) {
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        if (start !== -1 && end !== -1 && end > start) {
+            try {
+                const subParsed = JSON.parse(text.slice(start, end + 1));
+                if (subParsed.indicators && typeof subParsed.indicators === 'object') {
+                    return subParsed.indicators;
+                }
+                if (typeof subParsed === 'object' && !Array.isArray(subParsed)) {
+                    return subParsed;
+                }
+            } catch (err2) {
+                console.warn("Batch enhancement JSON parse failed:", err2);
+            }
+        }
+    }
+    return {};
+}
+
+/**
+ * Enhances all filled indicators in a category via a single batched Gemini API call.
+ */
+export async function enhanceCategoryBatch(catName) {
+    const catData = CATEGORIES[catName];
+    if (!catData) return { enhancedCount: 0 };
+
+    const indicatorsToEnhance = [];
+    Object.keys(catData.indicators).forEach(indName => {
+        const item = state.auditData[catName]?.[indName];
+        if (item && (item.features || item.gaps || item.actions || item.score !== 3 || item.photoName)) {
+            indicatorsToEnhance.push({
+                name: indName,
+                score: item.score || 3,
+                features: item.features || '',
+                gaps: item.gaps || '',
+                actions: item.actions || ''
+            });
+        }
+    });
+
+    if (indicatorsToEnhance.length === 0) {
+        return { enhancedCount: 0 };
+    }
+
+    const apiKey = getGeminiApiKey();
+
+    const indicatorsContext = indicatorsToEnhance.map(ind => {
+        return `### Indicator: "${ind.name}"
+- Score: ${ind.score}/5
+- Notable Features: ${ind.features || "(None recorded)"}
+- Gaps Identified: ${ind.gaps || "(None recorded)"}
+- Actions Recommended: ${ind.actions || "(None recorded)"}`;
+    }).join("\n\n");
+
+    const prompt = `You are a Senior Campus Safety and Regulatory Compliance Auditor.
+Enhance and formalize the auditor's raw write-ups for the indicators in this macro compliance category: "${catName}".
+
+INDICATORS:
+${indicatorsContext}
+
+INSTRUCTIONS:
+1. Polish the raw notes into formal, executive-ready, regulatory audit language.
+2. Preserve 100% of the auditor's specific facts, measurements, equipment names, locations, and ratings.
+3. If Notable Features has notes, enhance them into concise, professional compliance observations. If it was empty, return empty string "".
+4. If Gaps Identified has notes, enhance them into clear, prioritized regulatory vulnerability statements. If it was empty, return empty string "".
+5. If Actions Recommended has notes, enhance them into structured, actionable remediation tasks with clear scope. If Actions Recommended was empty BUT a gap was identified or score is <= 2, intelligently generate the appropriate standard remedial action.
+6. You MUST return ONLY a valid, raw JSON object (with no markdown code blocks, backticks, or commentary) strictly matching this schema:
+{
+  "indicators": {
+    "<Exact Indicator Name>": {
+      "aiFeatures": "Enhanced notable features text (or empty string)",
+      "aiGaps": "Enhanced gaps identified text (or empty string)",
+      "aiActions": "Enhanced actions recommended text (or empty string)"
+    }
+  }
+}`;
+
+    const res = await callGeminiAPI(apiKey, prompt, DEFAULT_ENHANCE_MODEL, { responseMimeType: 'application/json', maxOutputTokens: 2500 });
+    const parsed = parseAIEnhancementBatchResponse(res.text);
+
+    let enhancedCount = 0;
+    Object.entries(parsed).forEach(([indName, val]) => {
+        if (!val || typeof val !== 'object') return;
+        const targetIndName = Object.keys(catData.indicators).find(k => k.toLowerCase() === indName.toLowerCase()) || indName;
+        if (state.auditData[catName]?.[targetIndName]) {
+            const data = state.auditData[catName][targetIndName];
+            data.aiFeatures = val.aiFeatures || '';
+            data.aiGaps = val.aiGaps || '';
+            data.aiActions = val.aiActions || '';
+            enhancedCount++;
+            refreshCardDOM(catName, targetIndName);
+        }
+    });
+
+    saveState();
+    return { enhancedCount };
+}
+
+/**
+ * Parses batch Dynamic Risk JSON response safely.
+ */
+export function parseAIRiskBatchResponse(rawText) {
+    if (!rawText) return {};
+    if (typeof rawText === 'object' && !Array.isArray(rawText)) {
+        if (rawText.indicators && typeof rawText.indicators === 'object') {
+            return rawText.indicators;
+        }
+        return rawText;
+    }
+    let text = typeof rawText === 'string' ? rawText.trim() : '';
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+    try {
+        const parsed = JSON.parse(text);
+        if (parsed.indicators && typeof parsed.indicators === 'object') {
+            return parsed.indicators;
+        }
+        if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+            return parsed;
+        }
+    } catch (e) {
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        if (start !== -1 && end !== -1 && end > start) {
+            try {
+                const subParsed = JSON.parse(text.slice(start, end + 1));
+                if (subParsed.indicators && typeof subParsed.indicators === 'object') {
+                    return subParsed.indicators;
+                }
+                if (typeof subParsed === 'object' && !Array.isArray(subParsed)) {
+                    return subParsed;
+                }
+            } catch (err2) {
+                console.warn("Batch risk JSON parse failed:", err2);
+            }
+        }
+    }
+    return {};
+}
+
+/**
+ * Evaluates dynamic risk across all filled indicators in a category via a single batched Gemini API call.
+ */
+export async function analyzeCategoryDynamicRisksBatch(catName) {
+    const catData = CATEGORIES[catName];
+    if (!catData) return { analyzedCount: 0 };
+
+    const indicatorsToAnalyze = [];
+    Object.keys(catData.indicators).forEach(indName => {
+        const item = state.auditData[catName]?.[indName];
+        if (item && (item.features || item.gaps || item.actions || item.aiFeatures || item.aiGaps || item.aiActions || item.score !== 3 || item.photoName)) {
+            const baseMultiplier = catData.indicators[indName] || 2;
+            indicatorsToAnalyze.push({
+                name: indName,
+                baseMultiplier,
+                score: item.score || 3,
+                features: [item.features, item.aiFeatures].filter(Boolean).join("\n"),
+                gaps: [item.gaps, item.aiGaps].filter(Boolean).join("\n"),
+                actions: [item.actions, item.aiActions].filter(Boolean).join("\n")
+            });
+        }
+    });
+
+    if (indicatorsToAnalyze.length === 0) {
+        return { analyzedCount: 0 };
+    }
+
+    const apiKey = getGeminiApiKey();
+
+    const indicatorsContext = indicatorsToAnalyze.map(ind => {
+        return `### Indicator: "${ind.name}"
+- Baseline Multiplier: ${ind.baseMultiplier}x
+- Auditor Score: ${ind.score}/5
+- Notable Features: ${ind.features || "(None recorded)"}
+- Gaps Identified: ${ind.gaps || "(None recorded)"}
+- Actions Recommended: ${ind.actions || "(None recorded)"}`;
+    }).join("\n\n");
+
+    const prompt = `You are a Chief Campus Safety, Risk & Regulatory Compliance Assessor.
+Evaluate the systemic liability and operational risk for each indicator in Macro Compliance Category: "${catName}".
+
+INDICATORS:
+${indicatorsContext}
+
+EVALUATION RUBRIC:
+1. Risk Severity & Suggested Score Calibration:
+   - "Critical": Direct life-safety threats, active fire/electrical hazards, child transit hazards, missing mandatory statutory certifications, unvetted staff. Suggested Multiplier = 3. Suggested Score = 1 or 2.
+   - "High": Significant operational, hygiene, structural, or documentation non-compliance that compromises campus safety if unaddressed within 30 days. Suggested Multiplier = 3 or 2. Suggested Score = 2 or 3.
+   - "Medium": Routine operational deficiencies, minor equipment wear, maintenance backlogs, standard non-critical procedural gaps. Suggested Multiplier = 2. Suggested Score = 3 or 4.
+   - "Low": Robust compliance, proactive maintenance, exemplary safety practices, or negligible administrative issues. Suggested Multiplier = 1. Suggested Score = 4.
+
+2. CRITICAL CALIBRATION FOR SCORE 5 (EXEMPLARY):
+   - Only suggest Score 5 in rare circumstances with zero gaps and state-of-the-art innovation. Otherwise, default compliant operations to Score 4.
+
+3. Return ONLY a valid, raw JSON object (with no markdown code blocks, backticks, or commentary) strictly matching this schema:
+{
+  "indicators": {
+    "<Exact Indicator Name>": {
+      "severity": "Critical" | "High" | "Medium" | "Low",
+      "suggestedMultiplier": 1 | 2 | 3,
+      "suggestedScore": 1 | 2 | 3 | 4 | 5,
+      "scoreDelta": 0,
+      "rationale": "1-2 sentence risk justification"
+    }
+  }
+}`;
+
+    const res = await callGeminiAPI(apiKey, prompt, DEFAULT_RISK_MODEL, { responseMimeType: 'application/json', maxOutputTokens: 2500 });
+    const parsed = parseAIRiskBatchResponse(res.text);
+
+    let analyzedCount = 0;
+    Object.entries(parsed).forEach(([indName, val]) => {
+        if (!val || typeof val !== 'object') return;
+        const targetIndName = Object.keys(catData.indicators).find(k => k.toLowerCase() === indName.toLowerCase()) || indName;
+        if (state.auditData[catName]?.[targetIndName]) {
+            const data = state.auditData[catName][targetIndName];
+            const baseMultiplier = catData.indicators[targetIndName] || 2;
+            const currentScore = Number(data.score) || 3;
+            
+            const mult = Number(val.suggestedMultiplier);
+            const validMult = (mult >= 1 && mult <= 5) ? mult : baseMultiplier;
+            const score = Number(val.suggestedScore);
+            const validScore = (score >= 1 && score <= 5) ? score : currentScore;
+
+            data.suggestedRisk = {
+                severity: val.severity || "Medium",
+                suggestedMultiplier: validMult,
+                suggestedScore: validScore,
+                scoreDelta: val.scoreDelta !== undefined ? Number(val.scoreDelta) : (validScore - currentScore),
+                rationale: (val.rationale || "Evaluated based on qualitative findings.").slice(0, 300)
+            };
+            analyzedCount++;
+            refreshCardDOM(catName, targetIndName);
+        }
+    });
+
+    saveState();
+    return { analyzedCount };
+}
+
+// === Automated Full-Audit AI Pipeline Controller ===
+
+let isPipelineCancelled = false;
+let pendingKeyResolution = null;
+
+export function showAIPipelineModal() {
+    isPipelineCancelled = false;
+    const modal = document.getElementById('ai-pipeline-progress-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+    const keyPrompt = document.getElementById('ai-pipeline-key-prompt');
+    if (keyPrompt) {
+        keyPrompt.classList.add('hidden');
+    }
+    updateAIPipelineProgress('Phase 1 of 3: AI Category Enhancement', 0, 'Initializing AI audit synthesis...');
+}
+
+export function closeAIPipelineModal() {
+    const modal = document.getElementById('ai-pipeline-progress-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+export function updateAIPipelineProgress(phaseText, percentage, statusText) {
+    const phaseBadge = document.getElementById('ai-pipeline-phase-badge');
+    if (phaseBadge) phaseBadge.textContent = phaseText;
+    
+    const pctLabel = document.getElementById('ai-pipeline-percentage');
+    if (pctLabel) pctLabel.textContent = `${Math.min(100, Math.max(0, Math.round(percentage)))}%`;
+    
+    const progressBar = document.getElementById('ai-pipeline-progress-bar');
+    if (progressBar) progressBar.style.width = `${Math.min(100, Math.max(0, Math.round(percentage)))}%`;
+    
+    const statusLabel = document.getElementById('ai-pipeline-status-text');
+    if (statusLabel) statusLabel.textContent = statusText;
+}
+
+export function cancelAIPipeline() {
+    isPipelineCancelled = true;
+    if (pendingKeyResolution) {
+        pendingKeyResolution(false);
+        pendingKeyResolution = null;
+    }
+    closeAIPipelineModal();
+    showToast("AI processing pipeline cancelled.", "info");
+}
+
+export function resumeAIPipelineWithKey() {
+    const input = document.getElementById('ai-pipeline-api-key-input');
+    const key = input ? input.value.trim() : '';
+    if (!key) {
+        showToast("Please enter a valid Gemini API Key.", "warning");
+        return;
+    }
+    setGeminiApiKey(key);
+    updateApiKeyStatusUI();
+    const keyPrompt = document.getElementById('ai-pipeline-key-prompt');
+    if (keyPrompt) keyPrompt.classList.add('hidden');
+    showToast("Gemini API key saved.", "success");
+    if (pendingKeyResolution) {
+        pendingKeyResolution(true);
+        pendingKeyResolution = null;
+    }
+}
+
+/**
+ * Runs the automated full-audit AI pipeline across all categories and generates the Executive Summary.
+ */
+export async function runFullAuditAIPipeline() {
+    showAIPipelineModal();
+
+    // Verify Gemini API Key or Serverless Key Availability
+    let apiKey = getGeminiApiKey();
+    if (!apiKey && !hasNetlifyServerKey) {
+        const serverKeyAvailable = await checkNetlifyServerKey();
+        if (!serverKeyAvailable) {
+            const keyPrompt = document.getElementById('ai-pipeline-key-prompt');
+            if (keyPrompt) {
+                keyPrompt.classList.remove('hidden');
+                const keyInput = document.getElementById('ai-pipeline-api-key-input');
+                if (keyInput) keyInput.focus();
+            }
+            updateAIPipelineProgress('API Key Required', 0, 'Awaiting Google Gemini API key...');
+            const keyEntered = await new Promise(resolve => {
+                pendingKeyResolution = resolve;
+            });
+            if (!keyEntered || isPipelineCancelled) {
+                closeAIPipelineModal();
+                return false;
+            }
+        }
+    }
+
+    const categoryNames = Object.keys(CATEGORIES);
+    const totalCategories = categoryNames.length;
+
+    try {
+        // === Phase 1: AI Category Enhancement across all categories ===
+        for (let i = 0; i < totalCategories; i++) {
+            if (isPipelineCancelled) return false;
+            const catName = categoryNames[i];
+            const pct = Math.round((i / totalCategories) * 45);
+            updateAIPipelineProgress(
+                'Phase 1 of 3: AI Category Enhancement',
+                pct,
+                `Enhancing Category (${i + 1}/${totalCategories}): "${catName}"...`
+            );
+            try {
+                await enhanceCategoryBatch(catName);
+            } catch (catErr) {
+                console.warn(`Category enhancement error in "${catName}":`, catErr);
+            }
+        }
+
+        // === Phase 2: AI Dynamic Risk Assessment across all categories ===
+        for (let i = 0; i < totalCategories; i++) {
+            if (isPipelineCancelled) return false;
+            const catName = categoryNames[i];
+            const pct = 45 + Math.round((i / totalCategories) * 40);
+            updateAIPipelineProgress(
+                'Phase 2 of 3: AI Dynamic Risk Assessment',
+                pct,
+                `Evaluating Risk (${i + 1}/${totalCategories}): "${catName}"...`
+            );
+            try {
+                await analyzeCategoryDynamicRisksBatch(catName);
+            } catch (riskErr) {
+                console.warn(`Category risk evaluation error in "${catName}":`, riskErr);
+            }
+        }
+
+        // === Phase 3: AI Executive Summary ===
+        if (isPipelineCancelled) return false;
+        updateAIPipelineProgress(
+            'Phase 3 of 3: AI Executive Summary',
+            90,
+            'Synthesizing full compliance audit findings & executive roadmap...'
+        );
+
+        try {
+            await triggerAISummaryGeneration();
+        } catch (sumErr) {
+            console.error("AI Summary generation error in pipeline:", sumErr);
+        }
+
+        updateAIPipelineProgress('Complete', 100, 'Audit synthesis complete!');
+
+        saveState.flush();
+        await saveStateNow();
+        updateCalculations();
+        renderCategoryNavigation();
+        renderActiveCategoryIndicators();
+
+        await new Promise(r => setTimeout(r, 400));
+        closeAIPipelineModal();
+
+        // Automatically open AI Executive Summary modal in Preview tab
+        openAISummaryModal();
+        setAIActiveTab('preview');
+        showToast("Full AI Analysis & Executive Summary complete!", "success");
+        return true;
+    } catch (err) {
+        console.error("Error in full audit AI pipeline:", err);
+        showToast(`AI Pipeline Error: ${err.message}`, "error");
+        closeAIPipelineModal();
+        return false;
     }
 }
 
