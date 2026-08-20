@@ -78,6 +78,7 @@ export const AUDITOR_HASHES = {
     "Rohit Bhat": "c9418fdb1cf29997c31a1037b36431a6e8441687a6b2a3acee70c1cd7d2e6ae0", // "rohit2026"
     "Sangeeta Puri": "19ab86af37d71e46f1b0969f42fb4f675c2c320426818aa2740e8fc29be3e93d", // "sangeeta2026"
     "Monica Bhat": "aaa102a36e47286add39c27f1565547ec95666abd5efc1a5513b6f7fc9f052d1", // "monica2026"
+    "Samit Bhat": "e4442b6c95b0a78c8ab7e1864ae7bddeb6daeec989c074137def82c26abbaddd", // "samit2026"
     "Superadmin": "6051fc84a7a0d74c225fb18a496b09952da5642e60723ecae543298edd7d82d6" // "admin2026"
 };
 

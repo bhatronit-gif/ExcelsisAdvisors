@@ -9,15 +9,17 @@ import { CATEGORIES } from './config.js';
 import { state, saveState, calculateScore } from './state.js';
 import { showToast, refreshCardDOM } from './ui.js';
 
-export const DEFAULT_MODEL = 'gemini-2.0-flash';
+export const DEFAULT_SUMMARY_MODEL = 'gemini-3.7-flash';
+export const DEFAULT_ENHANCE_MODEL = 'gemini-3.5-flash-lite';
+export const DEFAULT_RISK_MODEL = 'gemini-3.5-flash-lite';
+export const DEFAULT_MODEL = 'gemini-3.7-flash';
+
 export const CANDIDATE_MODELS = [
-    'gemini-2.0-flash',
-    'gemini-2.5-flash',
-    'gemini-1.5-flash',
-    'gemini-2.5-pro',
-    'gemini-2.0-flash-lite',
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-pro'
+    'gemini-3.7-flash',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite'
 ];
 
 let clientModelCache = {
@@ -52,10 +54,10 @@ async function discoverClientModels(apiKey) {
                     if (!m.supportedGenerationMethods || !m.supportedGenerationMethods.includes('generateContent')) {
                         return false;
                     }
-                    // Exclude non-text/audio/TTS/embedding models
+                    // Exclude non-text/audio/TTS/embedding/image models
                     if (name.includes('-tts') || name.includes('-audio') || name.includes('preview-tts') ||
-                        name.includes('-embedding') || name.includes('imagen') || name.includes('whisper') ||
-                        name.includes('speech')) {
+                        name.includes('-embedding') || name.includes('imagen') || name.includes('image') ||
+                        name.includes('whisper') || name.includes('speech')) {
                         return false;
                     }
                     if (m.outputModalities && Array.isArray(m.outputModalities) && !m.outputModalities.includes('TEXT')) {
@@ -67,16 +69,16 @@ async function discoverClientModels(apiKey) {
                 .sort((a, b) => {
                     const getScore = (modelName) => {
                         const n = modelName.toLowerCase();
-                        if (n === 'gemini-2.0-flash') return 100;
-                        if (n === 'gemini-2.5-flash') return 95;
-                        if (n === 'gemini-1.5-flash' || n === 'gemini-1.5-flash-latest') return 90;
-                        if (n === 'gemini-2.0-flash-lite') return 85;
-                        if (n === 'gemini-2.5-pro') return 80;
-                        if (n === 'gemini-1.5-pro' || n === 'gemini-1.5-pro-latest') return 75;
-                        if (n.includes('flash')) return 70;
-                        if (n.includes('pro')) return 65;
-                        if (n.includes('gemma')) return 20;
-                        return 50;
+                        if (n === 'gemini-3.7-flash') return 100;
+                        if (n === 'gemini-3.6-flash') return 90;
+                        if (n === 'gemini-3.5-flash') return 80;
+                        if (n === 'gemini-3.5-flash-lite') return 70;
+                        if (n === 'gemini-3.1-flash-lite') return 60;
+                        if (n.includes('3.7')) return 55;
+                        if (n.includes('3.6')) return 50;
+                        if (n.includes('3.5')) return 45;
+                        if (n.includes('3.1')) return 40;
+                        return 10;
                     };
                     return getScore(b) - getScore(a);
                 });
@@ -397,19 +399,15 @@ export function setGeminiApiKey(key) {
  */
 export function getGeminiModel() {
     const stored = localStorage.getItem('gemini_selected_model');
-    const invalidOrHallucinated = [
+    const validModels = [
+        'gemini-3.7-flash',
         'gemini-3.6-flash',
         'gemini-3.5-flash',
-        'gemini-3.0-flash',
-        'gemini-3.6-pro',
-        'gemini-3.5-pro',
-        'gemini-3.0-pro',
-        'gemini-2.0-flash-exp',
-        'gemini-2.5-flash-preview-tts',
-        'gemini-2.5-pro-preview-tts'
+        'gemini-3.5-flash-lite',
+        'gemini-3.1-flash-lite'
     ];
-    if (!stored || invalidOrHallucinated.includes(stored.trim())) {
-        return DEFAULT_MODEL; // gemini-2.5-flash
+    if (!stored || !validModels.includes(stored.trim())) {
+        return DEFAULT_MODEL; // gemini-3.7-flash
     }
     return stored.trim();
 }
@@ -812,13 +810,20 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
                 lastError = new Error(`Model ${model}: ${errMsg}`);
 
                 // Dynamically parse suggested replacement model from API error message if provided
-                const suggestedMatch = errMsg.match(/(?:use|models\/)\s*(?:models\/)?(gemini-[a-zA-Z0-9_.-]+|gemma-[a-zA-Z0-9_.-]+)/i);
-                if (suggestedMatch && suggestedMatch[1]) {
-                    const suggestedModel = suggestedMatch[1].trim().replace(/^models\//, '');
-                    const cleanLower = suggestedModel.toLowerCase();
-                    if (!cleanLower.includes('tts') && !cleanLower.includes('audio') && !cleanLower.includes('embedding') && !cleanLower.includes('imagen') && !modelsToTry.includes(suggestedModel)) {
-                        console.log(`[AI Client] Dynamically queuing suggested model from API: ${suggestedModel}`);
-                        modelsToTry.splice(i + 1, 0, suggestedModel);
+                const suggestedMatches = Array.from(errMsg.matchAll(/models\/([a-zA-Z0-9_.-]+)/gi));
+                for (const match of suggestedMatches) {
+                    const candidateName = match[1].trim();
+                    const cleanLower = candidateName.toLowerCase();
+                    if (candidateName !== model && 
+                        !cleanLower.includes('tts') && 
+                        !cleanLower.includes('audio') && 
+                        !cleanLower.includes('embedding') && 
+                        !cleanLower.includes('image') && 
+                        !cleanLower.includes('imagen') && 
+                        !modelsToTry.includes(candidateName)) {
+                        console.log(`[AI Client] Dynamically queuing suggested model from API: ${candidateName}`);
+                        modelsToTry.splice(i + 1, 0, candidateName);
+                        break;
                     }
                 }
 
@@ -1123,7 +1128,8 @@ export async function triggerAISummaryGeneration() {
 
     try {
         const prompt = buildAuditContextPrompt();
-        const result = await callGeminiAPI(apiKey, prompt, null, { maxOutputTokens: 1200 });
+        const modelToUse = getGeminiModel() || DEFAULT_SUMMARY_MODEL;
+        const result = await callGeminiAPI(apiKey, prompt, modelToUse, { maxOutputTokens: 1500 });
         
         state.aiSummary = result.text;
         saveState();
@@ -1366,7 +1372,7 @@ INSTRUCTIONS:
   "aiActions": "Enhanced actions recommended text (or empty string)"
 }`;
 
-        const res = await callGeminiAPI(apiKey, prompt, null, { responseMimeType: 'application/json', maxOutputTokens: 1000 });
+        const res = await callGeminiAPI(apiKey, prompt, DEFAULT_ENHANCE_MODEL, { responseMimeType: 'application/json', maxOutputTokens: 1000 });
         const parsed = parseAIEnhancementResponse(res.text);
 
         data.aiFeatures = parsed.aiFeatures || "";
@@ -1700,7 +1706,7 @@ EVALUATION RUBRIC:
   "rationale": "1-2 sentence risk justification"
 }`;
 
-        const res = await callGeminiAPI(apiKey, prompt, null, { responseMimeType: 'application/json', maxOutputTokens: 500 });
+        const res = await callGeminiAPI(apiKey, prompt, DEFAULT_RISK_MODEL, { responseMimeType: 'application/json', maxOutputTokens: 500 });
         const parsed = parseAIRiskResponse(res.text, baseMultiplier, currentScore);
 
         data.suggestedRisk = {
