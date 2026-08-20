@@ -374,7 +374,7 @@ function extractCandidateText(data) {
 
 exports.handler = async (event, context) => {
     const startTime = Date.now();
-    const MAX_EXECUTION_MS = 24000; // Netlify functions configured with 26s timeout
+    const MAX_EXECUTION_MS = 9200; // Return clean response before Netlify 10s gateway timeout
 
     // CORS headers
     const headers = {
@@ -495,8 +495,8 @@ exports.handler = async (event, context) => {
                     genConfig.responseMimeType = responseMimeType;
                 }
 
-                const maxPerAttempt = (modelsToTry.length - i > 1) ? 5500 : 20000;
-                const remainingMs = Math.max(2500, Math.min(maxPerAttempt, MAX_EXECUTION_MS - (Date.now() - startTime)));
+                const maxPerAttempt = (modelsToTry.length - i > 1) ? 4200 : 8500;
+                const remainingMs = Math.max(1800, Math.min(maxPerAttempt, MAX_EXECUTION_MS - (Date.now() - startTime)));
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), remainingMs);
 

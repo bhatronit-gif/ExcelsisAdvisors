@@ -613,7 +613,7 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
     // 1. Try Netlify Serverless Function first
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 25000);
+        const timeoutId = setTimeout(() => controller.abort(), 9800);
         let netlifyResponse;
         try {
             netlifyResponse = await fetch('/.netlify/functions/gemini', {
@@ -734,7 +734,7 @@ export async function callGeminiAPI(apiKey, promptText, modelOverride = null, op
                 genConfig.responseMimeType = responseMimeType;
             }
 
-            const perAttemptMs = (modelsToTry.length - i > 1) ? 6000 : 25000;
+            const perAttemptMs = (modelsToTry.length - i > 1) ? 6000 : 15000;
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), perAttemptMs);
 
