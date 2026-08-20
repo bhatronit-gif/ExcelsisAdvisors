@@ -4,12 +4,12 @@
  * Allows secure server-side execution without exposing the API key on the frontend.
  */
 
-const DEFAULT_MODEL = 'gemini-3.7-flash';
+const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const CANDIDATE_MODELS = [
+    'gemini-3.5-flash-lite',
     'gemini-3.7-flash',
     'gemini-3.6-flash',
     'gemini-3.5-flash',
-    'gemini-3.5-flash-lite',
     'gemini-3.1-flash-lite'
 ];
 
@@ -63,14 +63,14 @@ async function discoverAvailableModels(apiKey) {
                 .sort((a, b) => {
                     const getScore = (modelName) => {
                         const n = modelName.toLowerCase();
-                        if (n === 'gemini-3.7-flash') return 100;
-                        if (n === 'gemini-3.6-flash') return 90;
-                        if (n === 'gemini-3.5-flash') return 80;
-                        if (n === 'gemini-3.5-flash-lite') return 70;
+                        if (n === 'gemini-3.5-flash-lite') return 100;
+                        if (n === 'gemini-3.7-flash') return 90;
+                        if (n === 'gemini-3.6-flash') return 80;
+                        if (n === 'gemini-3.5-flash') return 70;
                         if (n === 'gemini-3.1-flash-lite') return 60;
-                        if (n.includes('3.7')) return 55;
-                        if (n.includes('3.6')) return 50;
-                        if (n.includes('3.5')) return 45;
+                        if (n.includes('3.5')) return 55;
+                        if (n.includes('3.7')) return 50;
+                        if (n.includes('3.6')) return 45;
                         if (n.includes('3.1')) return 40;
                         return 10;
                     };
