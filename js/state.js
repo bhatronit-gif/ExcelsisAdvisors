@@ -3,12 +3,13 @@
  * Core state management, debounced persistence pipeline (AUD-JS-H1), and weighted audit score calculations.
  */
 
-import { SCHOOLS, CATEGORIES, STORAGE_KEY } from './config.js';
+import { SCHOOLS, CATEGORIES, STORAGE_KEY, getDefaultAcademicYear } from './config.js';
 import { dbGet, dbSet, dbDelete, debounce } from './storage.js';
 
 export let state = {
     filename: "Untitled_Audit_" + new Date().toISOString().split('T')[0],
     school: SCHOOLS[0],
+    academicYear: getDefaultAcademicYear(),
     auditor: "",
     date: new Date().toISOString().split('T')[0],
     activeCategory: Object.keys(CATEGORIES)[0],
@@ -27,6 +28,10 @@ export async function loadState() {
         } catch(e) {
             console.error("Failed to load active state.");
         }
+    }
+    
+    if (!state.academicYear) {
+        state.academicYear = getDefaultAcademicYear(state.date);
     }
     
     for (const [catName, catData] of Object.entries(CATEGORIES)) {
@@ -217,6 +222,7 @@ export async function startNewAudit(force = false) {
     
     state.filename = "Untitled_Audit_" + new Date().toISOString().split('T')[0];
     state.school = SCHOOLS[0];
+    state.academicYear = getDefaultAcademicYear();
     state.date = new Date().toISOString().split('T')[0];
     state.aiSummary = "";
     state.auditData = {};

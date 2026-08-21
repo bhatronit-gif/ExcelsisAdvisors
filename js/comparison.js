@@ -3,7 +3,7 @@
  * Comprehensive comparative analytics across multiple years (Longitudinal) or campus branches (Cross-Branch).
  */
 
-import { CATEGORIES, SCHOOLS, getSchoolGroup, getShortSchoolName } from './config.js';
+import { CATEGORIES, SCHOOLS, getSchoolGroup, getShortSchoolName, getDefaultAcademicYear } from './config.js';
 import { comparisonState, calculateAuditScore, calculateCategoryScores, getComplianceTier, state } from './state.js';
 import { dbGetAll } from './storage.js';
 import { showToast, trapFocus, releaseFocus } from './ui.js';
@@ -59,6 +59,7 @@ export async function refreshCandidateAudits() {
                 id: `${d.filename}|${d.auditor}`,
                 filename: d.filename || `Audit_${i + 1}`,
                 school: d.school || SCHOOLS[0],
+                academicYear: d.academicYear || d.academic_year || getDefaultAcademicYear(d.date),
                 date: d.date || (d.last_updated ? d.last_updated.split('T')[0] : "2026-08-20"),
                 auditor: d.auditor || "Auditor",
                 audit_data: auditData,
@@ -255,6 +256,7 @@ export async function handleExternalComparisonUpload(event) {
                 id: `external_${Date.now()}_${file.name}`,
                 filename: parsed.filename || file.name.replace('.json', ''),
                 school: parsed.school || "Uploaded Campus",
+                academicYear: parsed.academicYear || parsed.academic_year || getDefaultAcademicYear(parsed.date),
                 date: parsed.date || new Date().toISOString().split('T')[0],
                 auditor: "External Upload",
                 audit_data: auditData,
@@ -308,19 +310,20 @@ function parseCSVToAuditObject(csvText, fileName) {
                     inQuotes = !inQuotes;
                 }
             } else if (char === ',' && !inQuotes) {
-                result.push(current);
+                result.push(current.trim());
                 current = "";
             } else {
                 current += char;
             }
         }
-        result.push(current);
+        result.push(current.trim());
         return result;
     };
 
     const headers = parseCSVRow(lines[0]);
     const fileIdx = headers.indexOf("File Name");
     const schoolIdx = headers.indexOf("School");
+    const academicYearIdx = headers.indexOf("Academic Year");
     const auditorIdx = headers.indexOf("Auditor");
     const dateIdx = headers.indexOf("Date");
     const catIdx = headers.indexOf("Category");
@@ -352,6 +355,7 @@ function parseCSVToAuditObject(csvText, fileName) {
 
     let metaFilename = fileName.replace('.csv', '');
     let metaSchool = SCHOOLS[0];
+    let metaAcademicYear = "";
     let metaAuditor = "External CSV";
     let metaDate = new Date().toISOString().split('T')[0];
 
@@ -362,6 +366,7 @@ function parseCSVToAuditObject(csvText, fileName) {
         if (i === 1) {
             if (fileIdx !== -1 && row[fileIdx]) metaFilename = row[fileIdx];
             if (schoolIdx !== -1 && row[schoolIdx]) metaSchool = row[schoolIdx];
+            if (academicYearIdx !== -1 && row[academicYearIdx]) metaAcademicYear = row[academicYearIdx];
             if (auditorIdx !== -1 && row[auditorIdx]) metaAuditor = row[auditorIdx];
             if (dateIdx !== -1 && row[dateIdx]) metaDate = row[dateIdx];
         }
@@ -392,6 +397,7 @@ function parseCSVToAuditObject(csvText, fileName) {
         id: `external_csv_${Date.now()}_${metaFilename}`,
         filename: metaFilename,
         school: metaSchool,
+        academicYear: metaAcademicYear || getDefaultAcademicYear(metaDate),
         date: metaDate,
         auditor: metaAuditor,
         audit_data: auditData,
@@ -559,7 +565,7 @@ export function renderComparisonView() {
                             <select id="comparison-base-year-select" onchange="setBaselineAudit(this.value)" class="bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700/60 rounded-lg px-2 py-0.5 text-xs font-black text-brand-600 dark:text-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-500 shadow-sm cursor-pointer">
                                 ${audits.map((a, i) => {
                                     const dateYear = a.date ? a.date.split('-')[0] : '';
-                                    const label = preset === 'yoy' ? `${dateYear || a.date} — ${a.filename}` : `${a.filename} (${getShortSchoolName(a.school)})`;
+                                    const label = preset === 'yoy' ? `${a.academicYear || dateYear || a.date} — ${a.filename}` : `${a.filename} (${getShortSchoolName(a.school)}${a.academicYear ? ' ' + a.academicYear : ''})`;
                                     return `<option value="${i}" ${i === baselineIdx ? 'selected' : ''}>${label}</option>`;
                                 }).join('')}
                             </select>
@@ -590,7 +596,7 @@ export function renderComparisonView() {
                                 <input type="checkbox" ${isSel ? 'checked' : ''} onclick="event.stopPropagation(); toggleAuditSelection('${cand.id}')" class="rounded text-brand-600 focus:ring-brand-500 w-3.5 h-3.5 cursor-pointer">
                                 <div class="flex flex-col leading-tight">
                                     <span class="font-bold truncate max-w-[160px]">${cand.filename}</span>
-                                    <span class="text-[10px] text-slate-500 dark:text-slate-400">${getShortSchoolName(cand.school)} • ${cand.date}</span>
+                                    <span class="text-[10px] text-slate-500 dark:text-slate-400">${getShortSchoolName(cand.school)}${cand.academicYear ? ' • ' + cand.academicYear : ''} • ${cand.date}</span>
                                 </div>
                                 <span class="font-black text-xs ${candTier.bgClass} px-1.5 py-0.5 rounded-md">${candPct}%</span>
                                 ${isBase ? `<span class="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">${preset === 'yoy' ? 'Base Year' : 'Base'}</span>` : ''}
@@ -639,7 +645,7 @@ export function renderComparisonView() {
                                     <div class="flex flex-col">
                                         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Audit #${idx + 1}</span>
                                         <h4 class="font-extrabold text-sm text-slate-900 dark:text-white truncate" title="${audit.filename}">${audit.filename}</h4>
-                                        <span class="text-xs text-brand-600 dark:text-brand-400 font-semibold truncate">${audit.school}</span>
+                                        <span class="text-xs text-brand-600 dark:text-brand-400 font-semibold truncate">${audit.school}${audit.academicYear ? ' (' + audit.academicYear + ')' : ''}</span>
                                     </div>
 
                                     <div class="flex items-baseline justify-between pt-1">
@@ -711,7 +717,7 @@ export function renderComparisonView() {
                                     <th class="py-3 px-3 min-w-[130px] ${i === baselineIdx ? 'text-brand-600 dark:text-brand-400 bg-brand-500/5' : ''}">
                                         <div class="flex flex-col">
                                             <span class="truncate max-w-[130px]">${a.filename}</span>
-                                            <span class="text-[9px] font-normal opacity-70">${getShortSchoolName(a.school)} ${i === baselineIdx ? '(Base)' : ''}</span>
+                                            <span class="text-[9px] font-normal opacity-70">${getShortSchoolName(a.school)}${a.academicYear ? ' • ' + a.academicYear : ''} ${i === baselineIdx ? '(Base)' : ''}</span>
                                         </div>
                                     </th>
                                 `).join('')}

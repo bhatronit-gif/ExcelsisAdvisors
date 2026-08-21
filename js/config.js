@@ -13,6 +13,42 @@ export const SCHOOLS = [
     "Aspee Nutan Academy"
 ];
 
+export const ACADEMIC_YEARS = [
+    "2020-21",
+    "2021-22",
+    "2022-23",
+    "2023-24",
+    "2024-25",
+    "2025-26",
+    "2026-27",
+    "2027-28",
+    "2028-29",
+    "2029-30",
+    "2030-31"
+];
+
+/**
+ * Calculates current default academic year (June rollover) matching school calendar.
+ * If date is in or after June (month >= 5), start year is current year, else previous year.
+ */
+export function getDefaultAcademicYear(dateInput = new Date()) {
+    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    const validDate = isNaN(d.getTime()) ? new Date() : d;
+    const year = validDate.getFullYear();
+    const month = validDate.getMonth(); // 0-indexed (0=Jan, 5=Jun)
+    
+    const startYear = month >= 5 ? year : year - 1;
+    const endYearShort = String((startYear + 1) % 100).padStart(2, '0');
+    const academicYearStr = `${startYear}-${endYearShort}`;
+    
+    if (ACADEMIC_YEARS.includes(academicYearStr)) {
+        return academicYearStr;
+    }
+    if (startYear < 2020) return ACADEMIC_YEARS[0];
+    if (startYear > 2030) return ACADEMIC_YEARS[ACADEMIC_YEARS.length - 1];
+    return academicYearStr;
+}
+
 export const CATEGORIES = {
     "1. Infrastructure": {
         "weight": 0.10,
@@ -107,6 +143,7 @@ export const INDICATORS_DATA = CATEGORIES;
 export const INITIAL_STATE_DEFAULTS = {
     filename: "Untitled_Audit_" + new Date().toISOString().split('T')[0],
     school: SCHOOLS[0],
+    academicYear: getDefaultAcademicYear(),
     auditor: "",
     date: new Date().toISOString().split('T')[0],
     activeCategory: Object.keys(CATEGORIES)[0],

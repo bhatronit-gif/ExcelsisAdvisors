@@ -485,15 +485,18 @@ exports.handler = async (event, context) => {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(effectiveKey)}`;
                 
                 const genConfig = {
-                    temperature: 0.3,
+                    temperature: 0.2,
                     topP: 0.85,
-                    maxOutputTokens: typeof maxOutputTokens === 'number' && maxOutputTokens > 0 ? maxOutputTokens : 2000
+                    maxOutputTokens: typeof maxOutputTokens === 'number' && maxOutputTokens > 0 ? maxOutputTokens : 1500
                 };
                 if (responseMimeType && typeof responseMimeType === 'string') {
                     genConfig.responseMimeType = responseMimeType;
                 }
 
-                const remainingMs = Math.max(1500, Math.min(8500, MAX_EXECUTION_MS - (Date.now() - startTime) - 300));
+                // Allocate ample time for the primary attempt while respecting total serverless threshold
+                const remainingBudget = MAX_EXECUTION_MS - (Date.now() - startTime) - 200;
+                const perAttemptCap = (i === 0) ? 7500 : 4000;
+                const remainingMs = Math.max(1500, Math.min(perAttemptCap, remainingBudget));
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), remainingMs);
 

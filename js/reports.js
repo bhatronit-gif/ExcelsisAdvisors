@@ -116,7 +116,7 @@ function buildPrintHeadHTML(docTitle, headerText = "") {
 /**
  * 2. Shared Dedicated Cover Page Generator (AUD-JS-M2)
  */
-function buildPrintCoverPageHTML({ tag, title, subtitle, preparedForLabel, preparedForValue, meta1Label, meta1Value, meta2Label, meta2Value, refLabel, refValue }) {
+function buildPrintCoverPageHTML({ tag, title, subtitle, preparedForLabel, preparedForValue, meta1Label, meta1Value, meta2Label, meta2Value, academicYear, refLabel, refValue }) {
     return `
         <div class="flex flex-col justify-between h-[25.5cm] print:h-[26.5cm] print-page-break border-b-8 border-brand-500 pb-12 mb-12">
             <div class="flex flex-col gap-6 mt-12">
@@ -142,7 +142,13 @@ function buildPrintCoverPageHTML({ tag, title, subtitle, preparedForLabel, prepa
                         <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${meta2Label}</span>
                         <span class="text-slate-800">${meta2Value}</span>
                     </div>
-                    <div class="flex flex-col gap-0.5 col-span-2 mt-2">
+                    ${academicYear ? `
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Academic Year</span>
+                        <span class="text-slate-800 font-bold">${academicYear}</span>
+                    </div>
+                    ` : ''}
+                    <div class="flex flex-col gap-0.5 ${academicYear ? '' : 'col-span-2 mt-2'}">
                         <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${refLabel}</span>
                         <span class="text-slate-800 font-bold font-mono">${refValue}</span>
                     </div>
@@ -431,6 +437,7 @@ export function generatePDFReport(options) {
         meta1Value: state.date,
         meta2Label: "Lead Auditor",
         meta2Value: state.loggedInUser || "Certified Auditor",
+        academicYear: state.academicYear || "",
         refLabel: "Audit File Ref",
         refValue: state.filename
     });
@@ -457,7 +464,7 @@ export function generatePDFReport(options) {
                 </div>
                 
                 <p class="text-xs text-slate-600 leading-relaxed font-medium">
-                    This document summarizes the safety and compliance audit findings for <strong>${state.school}</strong> conducted on <strong>${state.date}</strong>. The final score is computed by applying category risk weights to indicator performance scores across all 10 macro compliance modules.
+                    This document summarizes the safety and compliance audit findings for <strong>${state.school}</strong> (Academic Year <strong>${state.academicYear || 'N/A'}</strong>) conducted on <strong>${state.date}</strong>. The final score is computed by applying category risk weights to indicator performance scores across all 10 macro compliance modules.
                 </p>
             </div>
 

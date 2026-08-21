@@ -3,7 +3,7 @@
  * RFC 4180 CSV export/import, JSON backup/restore, history listing, and Superadmin multi-audit draft consolidation.
  */
 
-import { SCHOOLS, CATEGORIES, AUDITOR_HASHES } from './config.js';
+import { SCHOOLS, CATEGORIES, AUDITOR_HASHES, ACADEMIC_YEARS, getDefaultAcademicYear } from './config.js';
 import { state, saveState, calculateScore, updateCalculations, startNewAudit } from './state.js';
 import { dbGet, dbGetAll, saveLocalDraftToDB, deleteLocalDraftFromDB } from './storage.js';
 import { showToast, renderCategoryNavigation, renderActiveCategoryIndicators, initIndicatorsGrid } from './ui.js';
@@ -14,6 +14,7 @@ export function exportToCSV() {
     const headers = [
         "File Name",
         "School",
+        "Academic Year",
         "Auditor",
         "Date",
         "Category",
@@ -42,6 +43,7 @@ export function exportToCSV() {
     
     const filename = state.filename || "Untitled_Audit";
     const school = state.school || "";
+    const academicYear = state.academicYear || getDefaultAcademicYear(state.date);
     const auditor = state.loggedInUser || "";
     const date = state.date || "";
     
@@ -54,6 +56,7 @@ export function exportToCSV() {
             const row = [
                 filename,
                 school,
+                academicYear,
                 auditor,
                 date,
                 catName,
@@ -102,6 +105,7 @@ export function exportToJSON() {
         version: "2.0",
         filename: state.filename,
         school: state.school,
+        academicYear: state.academicYear || getDefaultAcademicYear(state.date),
         date: state.date,
         aiSummary: state.aiSummary || "",
         auditData: state.auditData
@@ -134,6 +138,7 @@ export function importFromJSON(input) {
                 
                 state.filename = imported.filename;
                 state.school = imported.school;
+                state.academicYear = imported.academicYear || imported.academic_year || getDefaultAcademicYear(imported.date);
                 if (imported.date) state.date = imported.date;
                 state.aiSummary = imported.aiSummary || "";
                 state.auditData = imported.auditData;
@@ -143,6 +148,8 @@ export function importFromJSON(input) {
                 if (fileInput) fileInput.value = state.filename;
                 const schoolSelect = document.getElementById('meta-school');
                 if (schoolSelect) schoolSelect.value = state.school;
+                const yearSelect = document.getElementById('meta-academic-year');
+                if (yearSelect) yearSelect.value = state.academicYear;
                 const dateInput = document.getElementById('meta-date');
                 if (dateInput) dateInput.value = state.date;
                 
@@ -278,6 +285,7 @@ export function importFromCSV(input) {
                 
                 const filenameIdx = findHeaderIndex(headers, ["File Name", "Filename", "Audit Name", "File", "Title"]);
                 const schoolIdx = findHeaderIndex(headers, ["School", "School Name", "Institution", "Campus"]);
+                const academicYearIdx = findHeaderIndex(headers, ["Academic Year", "Academic year", "School Year", "Session", "AY", "Year"]);
                 const auditorIdx = findHeaderIndex(headers, ["Auditor", "Auditor Name", "Inspector", "Evaluator", "Assessor", "User"]);
                 const dateIdx = findHeaderIndex(headers, ["Date", "Audit Date", "Inspection Date"]);
                 const catIdx = findHeaderIndex(headers, ["Category", "Category Name", "Domain", "Section", "Cat"]);
@@ -318,6 +326,15 @@ export function importFromCSV(input) {
                     const matchedSchool = SCHOOLS.find(s => s.toLowerCase() === csvSchool.toLowerCase());
                     if (matchedSchool) {
                         state.school = matchedSchool;
+                    }
+                }
+                if (academicYearIdx !== -1 && firstDataRow[academicYearIdx]) {
+                    const csvYear = firstDataRow[academicYearIdx].trim();
+                    const matchedYear = ACADEMIC_YEARS.find(y => y.toLowerCase() === csvYear.toLowerCase());
+                    if (matchedYear) {
+                        state.academicYear = matchedYear;
+                    } else if (csvYear) {
+                        state.academicYear = csvYear;
                     }
                 }
                 if (dateIdx !== -1 && firstDataRow[dateIdx]) {
@@ -417,6 +434,8 @@ export function importFromCSV(input) {
                 if (fileInput) fileInput.value = state.filename;
                 const schoolSelect = document.getElementById('meta-school');
                 if (schoolSelect) schoolSelect.value = state.school;
+                const yearSelect = document.getElementById('meta-academic-year');
+                if (yearSelect) yearSelect.value = state.academicYear;
                 const dateInput = document.getElementById('meta-date');
                 if (dateInput) dateInput.value = state.date;
                 const activeAuditorLabel = document.getElementById('active-auditor-label');
@@ -521,23 +540,23 @@ export function renderHistoryList(history) {
         if (consolidateBtn) consolidateBtn.classList.add('hidden');
         return;
     }
-    
-    if (state.loggedInUser === "Superadmin") {
+       if (state.loggedInUser === "Superadmin") {
         if (consolidateBtn) consolidateBtn.classList.remove('hidden');
         
         listEl.innerHTML = history.map(item => {
             const roundedScore = (item.score * 100).toFixed(1);
+            const academicYearLabel = item.academicYear ? ` • ${item.academicYear}` : '';
             return `
                 <div onclick="loadAuditFromDatabaseForSuperadmin('${item.filename}', '${item.auditor}')" class="p-2.5 rounded-xl border border-slate-100 dark:border-[#1F2937] hover:border-brand-500/50 dark:hover:border-brand-500/50 hover:bg-slate-50 dark:hover:bg-[#1c273d]/50 cursor-pointer flex items-center justify-between gap-2 group transition-all-custom">
                     <div class="flex items-center gap-2 max-w-[75%] min-w-0">
                         <input type="checkbox" 
-                               class="consolidate-checkbox rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer w-4 h-4 shrink-0" 
-                               value="${item.filename}|${item.auditor}" 
-                               onclick="handleConsolidateCheckboxClick(event)"
+                                class="consolidate-checkbox rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer w-4 h-4 shrink-0" 
+                                value="${item.filename}|${item.auditor}" 
+                                onclick="handleConsolidateCheckboxClick(event)"
                         />
                         <div class="flex flex-col gap-0.5 min-w-0">
                             <span class="font-bold text-slate-700 dark:text-slate-300 truncate">${item.filename}</span>
-                            <span class="text-[11px] text-slate-600 dark:text-slate-300 font-medium truncate">${item.auditor} | ${item.school}</span>
+                            <span class="text-[11px] text-slate-600 dark:text-slate-300 font-medium truncate">${item.auditor} | ${item.school}${academicYearLabel}</span>
                         </div>
                     </div>
                     <div class="flex items-center gap-1.5 shrink-0">
@@ -554,11 +573,12 @@ export function renderHistoryList(history) {
         
         listEl.innerHTML = history.map(item => {
             const roundedScore = (item.score * 100).toFixed(1);
+            const academicYearLabel = item.academicYear ? ` | ${item.academicYear}` : '';
             return `
                 <div onclick="loadAuditFromDatabase('${item.filename}')" class="p-2.5 rounded-xl border border-slate-100 dark:border-[#1F2937] hover:border-brand-500/50 dark:hover:border-brand-500/50 hover:bg-slate-50 dark:hover:bg-[#1c273d]/50 cursor-pointer flex items-center justify-between gap-2 group transition-all-custom">
                     <div class="flex flex-col gap-0.5 max-w-[70%]">
                         <span class="font-bold text-slate-700 dark:text-slate-300 truncate">${item.filename}</span>
-                        <span class="text-[11px] text-slate-600 dark:text-slate-300 font-medium">${item.school} | ${item.date}</span>
+                        <span class="text-[11px] text-slate-600 dark:text-slate-300 font-medium">${item.school}${academicYearLabel} | ${item.date}</span>
                     </div>
                     <div class="flex items-center gap-1.5">
                         <span class="font-black text-brand-600 dark:text-brand-300 text-xs">${roundedScore}%</span>
@@ -592,6 +612,7 @@ export async function loadAuditFromDatabaseForAuditor(filename, auditor) {
     
     state.filename = filename;
     state.school = data.school;
+    state.academicYear = data.academicYear || data.academic_year || getDefaultAcademicYear(data.date);
     state.date = data.date;
     state.auditor = auditor;
     state.aiSummary = data.ai_summary || "";
@@ -602,6 +623,8 @@ export async function loadAuditFromDatabaseForAuditor(filename, auditor) {
     if (fileInput) fileInput.value = filename;
     const schoolSelect = document.getElementById('meta-school');
     if (schoolSelect) schoolSelect.value = data.school;
+    const yearSelect = document.getElementById('meta-academic-year');
+    if (yearSelect) yearSelect.value = state.academicYear;
     const dateInput = document.getElementById('meta-date');
     if (dateInput) dateInput.value = data.date;
     const activeAuditorLabel = document.getElementById('active-auditor-label');
@@ -770,6 +793,7 @@ export async function consolidateSelectedAudits() {
         
         state.filename = "Consolidated_" + new Date().toISOString().split('T')[0];
         state.school = loadedAudits[0].school;
+        state.academicYear = loadedAudits[0].academicYear || loadedAudits[0].academic_year || getDefaultAcademicYear();
         state.date = new Date().toISOString().split('T')[0];
         state.auditor = "Superadmin";
         state.auditData = finalAuditData;
@@ -778,6 +802,8 @@ export async function consolidateSelectedAudits() {
         if (fileInput) fileInput.value = state.filename;
         const schoolSelect = document.getElementById('meta-school');
         if (schoolSelect) schoolSelect.value = state.school;
+        const yearSelect = document.getElementById('meta-academic-year');
+        if (yearSelect) yearSelect.value = state.academicYear;
         const dateInput = document.getElementById('meta-date');
         if (dateInput) dateInput.value = state.date;
         const activeAuditorLabel = document.getElementById('active-auditor-label');

@@ -3,7 +3,7 @@
  * Imports ES modules, registers global window bridge handlers, and manages initialization sequence.
  */
 
-import { SCHOOLS } from './config.js';
+import { SCHOOLS, ACADEMIC_YEARS } from './config.js';
 import { initIndexedDB, migrateLocalStorageToIndexedDB } from './storage.js';
 import { state, loadState, saveState, updateCalculations, startNewAudit } from './state.js';
 import { checkAuthentication, showLoginOverlay, handleLoginSubmit, logOutAuditor } from './auth.js';
@@ -173,6 +173,11 @@ function initializeMetadataSelectors() {
     if (selectEl) {
         selectEl.innerHTML = SCHOOLS.map(s => `<option value="${s}">${s}</option>`).join('');
         selectEl.value = state.school;
+    }
+    const yearEl = document.getElementById('meta-academic-year');
+    if (yearEl) {
+        yearEl.innerHTML = ACADEMIC_YEARS.map(y => `<option value="${y}">${y}</option>`).join('');
+        yearEl.value = state.academicYear;
     }
     const dateEl = document.getElementById('meta-date');
     if (dateEl) dateEl.value = state.date;

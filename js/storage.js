@@ -3,7 +3,7 @@
  * Client-side IndexedDB with LocalStorage fallback, draft management, and timer debounce helper.
  */
 
-import { DB_NAME, DB_VERSION, STORAGE_KEY } from './config.js';
+import { DB_NAME, DB_VERSION, STORAGE_KEY, getDefaultAcademicYear } from './config.js';
 
 let dbInstance = null;
 let useLocalStorageFallback = false;
@@ -208,6 +208,7 @@ export async function saveLocalDraftToDB(filename, auditor, data, currentScore) 
     const draft = {
         filename: filename,
         school: data.school,
+        academicYear: data.academicYear || data.academic_year || getDefaultAcademicYear(data.date),
         auditor: auditor,
         date: data.date,
         score: currentScore,
