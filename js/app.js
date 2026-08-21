@@ -37,8 +37,10 @@ import {
     handleComparisonSchoolFilterChange, toggleAuditSelection, setBaselineAudit,
     toggleCategoryAccordion, toggleAllCategoryAccordions, toggleDiscrepancyFilter,
     handleExternalComparisonUpload, triggerAIComparison, handleAIComparisonSummaryEdit,
-    copyAIComparisonMarkdown, renderComparisonView
+    copyAIComparisonMarkdown, triggerAIBestPractices, setComparisonAITab,
+    handleAIBestPracticesSummaryEdit, copyAIBestPracticesMarkdown, renderComparisonView
 } from './comparison.js';
+import { generateCrossBranchBestPractices } from './ai.js';
 import { exportComparativeCSV } from './export.js';
 import { comparisonState } from './state.js';
 import { refreshCardDOM } from './ui.js';
@@ -58,6 +60,13 @@ window.handleExternalComparisonUpload = handleExternalComparisonUpload;
 window.triggerAIComparison = triggerAIComparison;
 window.handleAIComparisonSummaryEdit = handleAIComparisonSummaryEdit;
 window.copyAIComparisonMarkdown = copyAIComparisonMarkdown;
+window.triggerAIBestPractices = triggerAIBestPractices;
+window.setComparisonAITab = setComparisonAITab;
+window.handleAIBestPracticesSummaryEdit = handleAIBestPracticesSummaryEdit;
+window.copyAIBestPracticesMarkdown = copyAIBestPracticesMarkdown;
+window.generateCrossBranchBestPractices = generateCrossBranchBestPractices;
+window.generateComparativePDFReport = generateComparativePDFReport;
+window.exportComparativeCSV = exportComparativeCSV;
 window.renderComparisonView = renderComparisonView;
 window.generateComparativePDFReport = generateComparativePDFReport;
 window.exportComparativeCSV = exportComparativeCSV;

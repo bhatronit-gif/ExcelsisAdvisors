@@ -930,6 +930,7 @@ export function generateComparativePDFReport(audits = null, baselineIdx = null, 
     const baselineIndex = baselineIdx !== null ? baselineIdx : (window.comparisonState?.baselineIndex || 0);
     const baselineAudit = targetAudits[baselineIndex] || targetAudits[0];
     const aiText = aiSummary !== null ? aiSummary : (window.comparisonState?.aiComparisonSummary || "");
+    const bestPracticesText = window.comparisonState?.aiBestPracticesSummary || "";
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -948,45 +949,73 @@ export function generateComparativePDFReport(audits = null, baselineIdx = null, 
         <!DOCTYPE html>
         <html lang="en">
         ${buildPrintHeadHTML(reportTitle, "EXCELSIS ADVISORS • COMPARATIVE AUDIT BENCHMARK")}
-        <body class="bg-white text-slate-800 font-sans p-8 print:p-0 max-w-5xl mx-auto leading-normal">
-            
+        <body class="bg-white text-slate-800 font-sans p-8 print:p-0">
             <!-- Cover Page -->
-            ${buildPrintCoverPageHTML({
-                tag: isSameSchool ? "Longitudinal Compliance Matrix" : "Institutional Cohort Benchmark",
-                title: reportTitle,
-                subtitle: `Executive side-by-side compliance, safety risk evaluation, and progress velocity across ${targetAudits.length} audit datasets.`,
-                preparedForLabel: "Target Institution(s)",
-                preparedForValue: isSameSchool ? targetAudits[0].school : `${targetAudits.length} Educational Campuses`,
-                meta1Label: "Generated Date",
-                meta1Value: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-                meta2Label: "Executive Reviewer",
-                meta2Value: "Superadmin / Chief Auditor",
-                refLabel: "Baseline Reference",
-                refValue: `${baselineAudit.filename} (${baselineAudit.school}) • ${(baselineAudit.score * 100).toFixed(1)}%`
-            })}
+            <div class="min-h-[90vh] flex flex-col justify-between border-4 border-slate-900 p-12 print-avoid-break mb-8 bg-slate-50/30">
+                <div class="flex items-center justify-between border-b-2 border-slate-900 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center font-serif font-black text-xl">
+                            E
+                        </div>
+                        <div>
+                            <span class="font-serif font-black text-lg text-slate-900 tracking-wider">EXCELSIS ADVISORS</span>
+                            <span class="block text-[9px] uppercase tracking-widest text-slate-500">School Quality & Safety Audit Consortium</span>
+                        </div>
+                    </div>
+                    <span class="text-xs font-bold text-brand-600 bg-brand-50 border border-brand-200 px-3 py-1 rounded-full uppercase tracking-wider">
+                        Executive Comparative Report
+                    </span>
+                </div>
 
-            <div class="flex flex-col gap-10">
-                <!-- Section 1: Executive KPI Scoreboard -->
-                <div class="flex flex-col gap-4 print-avoid-break">
-                    <h2 class="text-xl font-bold text-slate-900 font-serif border-b-2 border-slate-100 pb-2 flex items-center gap-2">
-                        <span class="text-brand-500 font-black">1.</span>
-                        Executive Performance Scoreboard
-                    </h2>
-                    <p class="text-xs text-slate-600">
-                        Summary of risk-adjusted compliance scores, rating classifications, and variance relative to baseline. Cohort average score across all ${targetAudits.length} audits is <strong>${cohortAvg.toFixed(2)}%</strong>.
+                <div class="flex flex-col gap-4 my-auto py-12">
+                    <span class="text-xs font-black uppercase tracking-widest text-slate-400">Institutional Governance & Benchmarking</span>
+                    <h1 class="text-3xl font-extrabold text-slate-900 font-serif leading-tight">
+                        ${reportTitle}
+                    </h1>
+                    <p class="text-sm text-slate-600 max-w-xl">
+                        Comprehensive side-by-side compliance analytics, risk multiplier evaluations, performance variances, and strategic board recommendations across ${targetAudits.length} audit iterations.
                     </p>
+                </div>
 
-                    <div class="grid grid-cols-${Math.min(targetAudits.length, 5)} gap-4 mt-2">
+                <div class="grid grid-cols-3 gap-6 pt-6 border-t border-slate-300 text-xs">
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Audits Compared</span>
+                        <span class="font-bold text-slate-800">${targetAudits.length} Audits</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Baseline Benchmark</span>
+                        <span class="font-bold text-slate-800">${baselineAudit.filename} (${baselineAudit.school})</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Generation Date</span>
+                        <span class="font-bold text-slate-800">${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Body -->
+            <div class="flex flex-col gap-8">
+                <!-- Section 1: Executive Scoreboard -->
+                <div class="flex flex-col gap-4 print-avoid-break">
+                    <div class="flex items-center justify-between border-b-2 border-slate-100 pb-2">
+                        <h2 class="text-xl font-bold text-slate-900 font-serif flex items-center gap-2">
+                            <span class="text-brand-500 font-black">1.</span>
+                            Executive Performance Scoreboard
+                        </h2>
+                        <span class="text-xs text-slate-500">Cohort Average: <strong class="text-brand-600 font-bold">${cohortAvg.toFixed(2)}%</strong></span>
+                    </div>
+
+                    <div class="grid grid-cols-${Math.min(targetAudits.length, 5)} gap-4">
                         ${targetAudits.map((a, idx) => {
                             const isBase = idx === baselineIndex;
                             const scorePct = (a.score * 100).toFixed(2);
+                            const tier = a.score >= 0.90 ? "Outstanding" : a.score >= 0.75 ? "Compliant" : a.score >= 0.60 ? "Needs Imp." : "Critical Risk";
+                            const tierColor = a.score >= 0.90 ? "border-emerald-600 text-emerald-800" : a.score >= 0.75 ? "border-blue-600 text-blue-800" : a.score >= 0.60 ? "border-amber-600 text-amber-800" : "border-rose-600 text-rose-800";
                             const deltaVsBase = (a.score * 100) - (baselineAudit.score * 100);
                             const deltaVsCohort = (a.score * 100) - cohortAvg;
-                            const tier = a.score >= 0.90 ? "Outstanding" : a.score >= 0.75 ? "Compliant" : a.score >= 0.60 ? "Needs Improvement" : "Critical Risk";
-                            const tierColor = a.score >= 0.90 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : a.score >= 0.75 ? "text-blue-700 bg-blue-50 border-blue-200" : a.score >= 0.60 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
 
                             return `
-                                <div class="p-4 rounded-xl border ${isBase ? 'border-brand-500 bg-brand-50/20' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
+                                <div class="border rounded-xl p-3 flex flex-col justify-between ${isBase ? 'border-brand-500 bg-brand-50/20' : 'border-slate-200'}">
                                     <div class="flex flex-col gap-1">
                                         <div class="flex items-center justify-between">
                                             <span class="text-[9px] font-bold uppercase text-slate-400">Audit #${idx + 1}</span>
@@ -994,24 +1023,14 @@ export function generateComparativePDFReport(audits = null, baselineIdx = null, 
                                         </div>
                                         <h4 class="font-bold text-xs text-slate-900 leading-tight">${a.filename}</h4>
                                         <span class="text-[10px] text-slate-500">${a.school} • ${a.date}</span>
-                                        
                                         <div class="pt-2">
                                             <span class="text-2xl font-black text-slate-900">${scorePct}%</span>
                                             <span class="block text-[9px] font-bold px-1.5 py-0.5 rounded border ${tierColor} w-fit mt-1">${tier}</span>
                                         </div>
                                     </div>
-
                                     <div class="pt-3 mt-3 border-t border-slate-200 text-[10px] flex flex-col gap-0.5">
-                                        ${!isBase ? `
-                                            <div class="flex justify-between">
-                                                <span class="text-slate-500">vs Base:</span>
-                                                <span class="font-bold ${deltaVsBase >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${deltaVsBase >= 0 ? '+' : ''}${deltaVsBase.toFixed(2)}%</span>
-                                            </div>
-                                        ` : '<div class="text-slate-400 italic">Reference Target</div>'}
-                                        <div class="flex justify-between">
-                                            <span class="text-slate-500">vs Cohort:</span>
-                                            <span class="font-semibold ${deltaVsCohort >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${deltaVsCohort >= 0 ? '+' : ''}${deltaVsCohort.toFixed(2)}%</span>
-                                        </div>
+                                        ${!isBase ? `<div class="flex justify-between"><span class="text-slate-500">vs Base:</span><span class="font-bold ${deltaVsBase >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${deltaVsBase >= 0 ? '+' : ''}${deltaVsBase.toFixed(2)}%</span></div>` : ''}
+                                        <div class="flex justify-between"><span class="text-slate-500">vs Cohort:</span><span class="font-semibold ${deltaVsCohort >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${deltaVsCohort >= 0 ? '+' : ''}${deltaVsCohort.toFixed(2)}%</span></div>
                                     </div>
                                 </div>
                             `;
@@ -1025,22 +1044,16 @@ export function generateComparativePDFReport(audits = null, baselineIdx = null, 
                         <span class="text-brand-500 font-black">2.</span>
                         10-Category Benchmark Matrix
                     </h2>
-                    
                     <table class="w-full text-xs text-left border-collapse border border-slate-200">
                         <thead>
                             <tr class="bg-slate-100 text-slate-700 uppercase text-[10px] border-b border-slate-200">
                                 <th class="p-2.5 font-bold">Category & Weight</th>
-                                ${targetAudits.map((a, i) => `
-                                    <th class="p-2.5 font-bold ${i === baselineIndex ? 'bg-brand-50 text-brand-700' : ''}">
-                                        ${a.filename} ${i === baselineIndex ? '(Base)' : ''}
-                                    </th>
-                                `).join('')}
+                                ${targetAudits.map((a, i) => `<th class="p-2.5 font-bold ${i === baselineIndex ? 'bg-brand-50 text-brand-700' : ''}">${a.filename} ${i === baselineIndex ? '(Base)' : ''}</th>`).join('')}
                                 <th class="p-2.5 text-center font-bold">Max Delta</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${Object.entries(CATEGORIES).map(([catName, catDef]) => {
-                                const weightPct = (catDef.weight * 100).toFixed(0);
                                 const scores = targetAudits.map(a => {
                                     let catEarned = 0, catMax = 0;
                                     Object.entries(catDef.indicators).forEach(([ind, mult]) => {
@@ -1055,28 +1068,11 @@ export function generateComparativePDFReport(audits = null, baselineIdx = null, 
                                 const minSc = Math.min(...scores);
                                 const maxSc = Math.max(...scores);
                                 const delta = maxSc - minSc;
-
                                 return `
                                     <tr class="border-b border-slate-100">
-                                        <td class="p-2.5 font-bold text-slate-900">
-                                            ${catName} <span class="text-[10px] text-slate-400 font-normal">(${weightPct}%)</span>
-                                        </td>
-                                        ${scores.map((sc, i) => {
-                                            const diff = sc - baseScore;
-                                            return `
-                                                <td class="p-2.5 ${i === baselineIndex ? 'bg-brand-50/50 font-bold' : ''}">
-                                                    <span>${sc.toFixed(1)}%</span>
-                                                    ${i !== baselineIndex ? `
-                                                        <span class="text-[9px] font-bold ml-1 ${diff >= 0 ? 'text-emerald-600' : 'text-rose-600'}">
-                                                            (${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%)
-                                                        </span>
-                                                    ` : ''}
-                                                </td>
-                                            `;
-                                        }).join('')}
-                                        <td class="p-2.5 text-center font-bold ${delta > 15 ? 'text-rose-600' : 'text-slate-600'}">
-                                            ±${delta.toFixed(1)}%
-                                        </td>
+                                        <td class="p-2.5 font-bold text-slate-900">${catName}</td>
+                                        ${scores.map((sc, i) => `<td class="p-2.5 ${i === baselineIndex ? 'bg-brand-50/50 font-bold' : ''}">${sc.toFixed(1)}% ${i !== baselineIndex ? `<span class="text-[9px] font-bold ${sc - baseScore >= 0 ? 'text-emerald-600' : 'text-rose-600'}">(${(sc - baseScore) >= 0 ? '+' : ''}${(sc - baseScore).toFixed(1)}%)</span>` : ''}</td>`).join('')}
+                                        <td class="p-2.5 text-center font-bold text-slate-600">±${delta.toFixed(1)}%</td>
                                     </tr>
                                 `;
                             }).join('')}
@@ -1084,7 +1080,7 @@ export function generateComparativePDFReport(audits = null, baselineIdx = null, 
                     </table>
                 </div>
 
-                <!-- Section 3: AI Comparative Strategic Synthesis -->
+                <!-- Section 3A: AI Comparative Intelligence -->
                 ${aiText ? `
                     <div class="flex flex-col gap-4 print-page-break">
                         <h2 class="text-xl font-bold text-slate-900 font-serif border-b-2 border-slate-100 pb-2 flex items-center gap-2">
@@ -1093,6 +1089,19 @@ export function generateComparativePDFReport(audits = null, baselineIdx = null, 
                         </h2>
                         <div class="prose max-w-none text-xs leading-relaxed text-slate-700">
                             ${renderMarkdown(aiText)}
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- Section 3B: Cross-Branch Best Practices & Standardization Playbook -->
+                ${bestPracticesText ? `
+                    <div class="flex flex-col gap-4 print-page-break">
+                        <h2 class="text-xl font-bold text-slate-900 font-serif border-b-2 border-slate-100 pb-2 flex items-center gap-2">
+                            <span class="text-amber-500 font-black">🌟</span>
+                            Cross-Branch Best Practices & Standardization Playbook
+                        </h2>
+                        <div class="prose max-w-none text-xs leading-relaxed text-slate-700">
+                            ${renderMarkdown(bestPracticesText)}
                         </div>
                     </div>
                 ` : ''}

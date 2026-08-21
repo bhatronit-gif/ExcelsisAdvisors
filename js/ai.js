@@ -2405,3 +2405,100 @@ Keep the report concise, data-driven, and authoritative. Do not include raw JSON
     return result.text;
 }
 
+/**
+ * Synthesizes a dedicated Group-Wide Best Practices & Institutional Standardization Playbook
+ * extracted from high-scoring campus branches across each pillar.
+ */
+export async function generateCrossBranchBestPractices(audits) {
+    if (!audits || audits.length < 2) {
+        throw new Error("At least 2 campus branch audits are required to benchmark best practices.");
+    }
+
+    const apiKey = getGeminiApiKey();
+
+    // Extract exemplary practices (scores 4-5★) and positive narratives per branch across all 10 categories
+    const branchExemplars = audits.map((a, idx) => {
+        const totalScorePct = ((a.score !== undefined ? a.score : 0) * 100).toFixed(1);
+        const standoutPillars = {};
+
+        Object.entries(CATEGORIES).forEach(([catName, catData]) => {
+            let catEarned = 0;
+            let catMax = 0;
+            const topPractices = [];
+
+            Object.entries(catData.indicators).forEach(([indName, defaultMult]) => {
+                const item = a.audit_data?.[catName]?.[indName] || { score: 3 };
+                const mult = (item.riskApplied && item.customMultiplier) ? Number(item.customMultiplier) : defaultMult;
+                const sc = Number(item.score) || 3;
+                catEarned += (sc * mult);
+                catMax += (5 * mult);
+
+                if (sc >= 4) {
+                    const featText = (item.features && item.features.trim()) ? `: ${item.features.trim().slice(0, 120)}` : '';
+                    topPractices.push(`${indName} (${sc}/5★)${featText}`);
+                }
+            });
+
+            const catPct = catMax > 0 ? ((catEarned / catMax) * 100).toFixed(1) : "60.0";
+            if (Number(catPct) >= 75 || topPractices.length > 0) {
+                standoutPillars[catName] = {
+                    scorePercent: `${catPct}%`,
+                    practices: topPractices.slice(0, 4)
+                };
+            }
+        });
+
+        return {
+            branchName: a.school || `Branch ${idx + 1}`,
+            auditDate: a.date || "Recent",
+            auditor: a.auditor || "Auditor",
+            overallScore: `${totalScorePct}%`,
+            standoutPillars: standoutPillars
+        };
+    });
+
+    const groupNames = Array.from(new Set(audits.map(a => getSchoolGroup(a.school)))).join(' / ');
+
+    const promptText = `
+You are an expert Institutional Quality & Best Practices Advisor for Excelsis Advisors.
+Analyze the following comparative campus audit data across ${audits.length} branches and generate a dedicated, actionable **"Group-Wide Best Practices & Institutional Standardization Playbook"**.
+
+### CONTEXT:
+- **School Group Network**: ${groupNames}
+- **Branches Analyzed**: ${audits.map(a => `${a.school} (${((a.score || 0)*100).toFixed(1)}%)`).join(', ')}
+
+### EXEMPLAR BRANCH DATASETS:
+\`\`\`json
+${JSON.stringify(branchExemplars, null, 2)}
+\`\`\`
+
+### REQUIRED REPORT STRUCTURE (Output in clean, executive GitHub-flavored Markdown):
+
+# 🌟 Excelsis Advisors - Cross-Branch Best Practices & Standardization Playbook
+
+## 1. Executive Exemplar Matrix
+- Construct a Markdown table mapping each of the 10 compliance & safety pillars to its highest-performing campus branch benchmark.
+- High-level verdict on institutional strengths to celebrate, protect, and standardize group-wide.
+
+## 2. Pillar-by-Pillar Gold Standards & Operational Innovations
+For the standout pillars (e.g. Fire & Life Safety, Infrastructure & Hygiene, Transportation & ARD AMC, Student Well-being/CARE, Governance & Documentation):
+- **Benchmark Campus**: Leading branch name.
+- **Operating Procedure / Gold Standard**: Specific routines, checklists, inspection schedules, equipment specs, or facilities management practices that created audit success.
+- **Measurable Benefit**: Impact on student safety, regulatory compliance, and audit score.
+
+## 3. Group-Wide Standardization & Peer-to-Peer Transfer Plan
+- Practical roadmap for scaling winning practices from leading branches to sister branches.
+- **Phase 1 (Quick Wins - 0 to 30 Days)**: Low-cost operational routines and checklist adoptions.
+- **Phase 2 (Structured Standardization - 1 to 3 Months)**: Equipment alignments, vendor standardizations, and staff training.
+
+## 4. Centralized Group Templates & Asset Repository Recommendations
+- Specific unified templates to centralize (e.g. Master Fire Drill Log, CCTV Maintenance Tracker, Visitor Gatepass SOP, Chemical Lab Inventory Ledger).
+
+Write in a formal, inspiring, and data-driven tone suitable for the Managing Director, Board of Trustees, and Campus Principals. Do not include raw JSON code blocks.
+`;
+
+    const result = await callGeminiAPI(apiKey, promptText, getGeminiModel() || DEFAULT_SUMMARY_MODEL, { maxOutputTokens: 1500 });
+    return result.text;
+}
+
+

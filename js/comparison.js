@@ -7,7 +7,7 @@ import { CATEGORIES, SCHOOLS, getSchoolGroup, getShortSchoolName, getDefaultAcad
 import { comparisonState, calculateAuditScore, calculateCategoryScores, getComplianceTier, state } from './state.js';
 import { dbGetAll } from './storage.js';
 import { showToast, trapFocus, releaseFocus } from './ui.js';
-import { generateComparativeExecutiveSummary, renderMarkdown } from './ai.js';
+import { generateComparativeExecutiveSummary, generateCrossBranchBestPractices, renderMarkdown } from './ai.js';
 import { generateComparativePDFReport } from './reports.js';
 import { exportComparativeCSV } from './export.js';
 
@@ -227,10 +227,43 @@ export function toggleAllCategoryAccordions(expandAll = true) {
 }
 
 /**
+ * Evaluates whether an indicator presents score discrepancy across audits or high risk / low-score failure.
+ */
+export function isIndicatorDiscrepancyOrRisk(catName, indName, defaultMultiplier, audits) {
+    if (!audits || audits.length === 0) return false;
+    
+    const scores = audits.map(a => Number(a.audit_data?.[catName]?.[indName]?.score || 3));
+    const maxSc = Math.max(...scores);
+    const minSc = Math.min(...scores);
+    
+    // 1. Score variance across compared audits (at least 1 star variance between any audits)
+    const hasVariance = (maxSc - minSc) >= 1;
+    
+    // 2. Critical score failure / low score in any audit (score 1 or 2)
+    const hasLowScore = minSc <= 2;
+    
+    // 3. Dynamic risk escalation in any audit
+    const hasEscalatedRisk = audits.some(a => {
+        const item = a.audit_data?.[catName]?.[indName];
+        return item && (item.riskApplied || item.riskSeverity === 'Critical' || item.riskSeverity === 'High' || (item.customMultiplier && item.customMultiplier >= 3));
+    });
+
+    return hasVariance || hasLowScore || hasEscalatedRisk;
+}
+
+/**
  * Toggles discrepancy-only filter for the indicator deep-dive.
  */
 export function toggleDiscrepancyFilter() {
     comparisonState.filterDiscrepanciesOnly = !comparisonState.filterDiscrepanciesOnly;
+    if (comparisonState.filterDiscrepanciesOnly) {
+        Object.keys(CATEGORIES).forEach(cat => {
+            comparisonState.expandedCategories[cat] = true;
+        });
+        showToast("Filter active: Showing High Variance & High Risk indicators only.", "info");
+    } else {
+        showToast("Showing all 56 indicators across all categories.", "info");
+    }
     renderComparisonView();
 }
 
@@ -450,6 +483,57 @@ export function copyAIComparisonMarkdown() {
     if (!comparisonState.aiComparisonSummary) return;
     navigator.clipboard.writeText(comparisonState.aiComparisonSummary).then(() => {
         showToast("Comparative summary markdown copied to clipboard!", "info");
+    });
+}
+
+/**
+ * Triggers dedicated AI Best Practices & Standardization Playbook generation using Gemini.
+ */
+export async function triggerAIBestPractices() {
+    if (!comparisonState.selectedAudits || comparisonState.selectedAudits.length < 2) {
+        showToast("Please select at least 2 branch audits to synthesize best practices.", "error");
+        return;
+    }
+
+    comparisonState.isAIBestPracticesLoading = true;
+    comparisonState.activeAITab = 'best_practices';
+    renderComparisonView();
+
+    try {
+        const markdown = await generateCrossBranchBestPractices(comparisonState.selectedAudits);
+        comparisonState.aiBestPracticesSummary = markdown;
+        showToast("Group Best Practices Playbook synthesized successfully!", "success");
+    } catch (e) {
+        console.error("Best practices synthesis failed:", e);
+        showToast(`Best Practices AI Error: ${e.message}`, "error");
+    } finally {
+        comparisonState.isAIBestPracticesLoading = false;
+        renderComparisonView();
+    }
+}
+
+/**
+ * Switches between Strategic Synthesis and Best Practices Playbook tabs.
+ */
+export function setComparisonAITab(tab) {
+    comparisonState.activeAITab = tab;
+    renderComparisonView();
+}
+
+/**
+ * Handles manual inline editing of the AI Best Practices summary.
+ */
+export function handleAIBestPracticesSummaryEdit(val) {
+    comparisonState.aiBestPracticesSummary = val;
+}
+
+/**
+ * Copies the Best Practices summary markdown to clipboard.
+ */
+export function copyAIBestPracticesMarkdown() {
+    if (!comparisonState.aiBestPracticesSummary) return;
+    navigator.clipboard.writeText(comparisonState.aiBestPracticesSummary).then(() => {
+        showToast("Best practices playbook markdown copied to clipboard!", "info");
     });
 }
 
@@ -782,209 +866,319 @@ export function renderComparisonView() {
 
             <!-- ================= SECTION 3: 56-INDICATOR GRANULAR DEEP-DIVE ================= -->
             <div class="flex flex-col gap-3 pt-8">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h3 class="text-base font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                            3. 56-Indicator Granular Deep-Dive & Write-up Matrix
-                        </h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Side-by-side indicator score ratings (1-5), risk multipliers, notable strengths, and gap recommendations.</p>
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                        <!-- Discrepancy Only Filter Toggle -->
-                        <label class="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700">
-                            <input type="checkbox" ${comparisonState.filterDiscrepanciesOnly ? 'checked' : ''} onchange="toggleDiscrepancyFilter()" class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer">
-                            <span>High Variance / High Risk Only</span>
-                        </label>
-
-                        <!-- Expand / Collapse All -->
-                        <div class="flex items-center gap-1">
-                            <button onclick="toggleAllCategoryAccordions(true)" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 cursor-pointer">Expand All</button>
-                            <button onclick="toggleAllCategoryAccordions(false)" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 cursor-pointer">Collapse All</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Category Accordions -->
-                <div class="flex flex-col gap-3">
-                    ${Object.entries(CATEGORIES).map(([catName, catDef]) => {
-                        const isExpanded = comparisonState.expandedCategories[catName] !== false; // default expanded
-
-                        // Filter indicators in category if filterDiscrepanciesOnly is true
-                        const indicatorEntries = Object.entries(catDef.indicators).filter(([indName, defaultMult]) => {
-                            if (!comparisonState.filterDiscrepanciesOnly) return true;
-                            
-                            // Check score discrepancy (max - min >= 2) or high risk (any risk applied / multiplier >= 3)
-                            const scores = audits.map(a => Number(a.audit_data?.[catName]?.[indName]?.score || 3));
-                            const maxSc = Math.max(...scores);
-                            const minSc = Math.min(...scores);
-                            const hasRisk = audits.some(a => {
-                                const item = a.audit_data?.[catName]?.[indName];
-                                return item && (item.riskApplied || item.riskSeverity === 'Critical' || item.riskSeverity === 'High' || defaultMult === 3);
-                            });
-
-                            return (maxSc - minSc >= 2) || hasRisk;
+                ${(() => {
+                    // Pre-calculate total discrepancy count across all 56 indicators
+                    let totalDiscrepanciesCount = 0;
+                    Object.entries(CATEGORIES).forEach(([cName, cDef]) => {
+                        Object.entries(cDef.indicators).forEach(([iName, dMult]) => {
+                            if (isIndicatorDiscrepancyOrRisk(cName, iName, dMult, audits)) {
+                                totalDiscrepanciesCount++;
+                            }
                         });
+                    });
 
-                        if (comparisonState.filterDiscrepanciesOnly && indicatorEntries.length === 0) {
-                            return ''; // Skip categories with no discrepancies when filter is active
-                        }
+                    return `
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-base font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                                    <span>3. 56-Indicator Granular Deep-Dive & Write-up Matrix</span>
+                                    ${comparisonState.filterDiscrepanciesOnly ? `
+                                        <span class="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/30">
+                                            Filter Active: ${totalDiscrepanciesCount} Discrepancies
+                                        </span>
+                                    ` : `
+                                        <span class="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold">
+                                            All 56 Indicators
+                                        </span>
+                                    `}
+                                </h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Side-by-side indicator score ratings (1-5), risk multipliers, notable strengths, and gap recommendations.</p>
+                            </div>
 
-                        return `
-                            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
-                                <!-- Category Accordion Header -->
-                                <button onclick="toggleCategoryAccordion('${catName}')" class="w-full flex items-center justify-between p-4 bg-slate-50/80 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left cursor-pointer">
-                                    <div class="flex items-center gap-2.5">
-                                        <svg class="w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                                        <span class="font-extrabold text-sm text-slate-900 dark:text-white">${catName}</span>
-                                        <span class="text-xs text-slate-500 font-medium">(${indicatorEntries.length} Indicators)</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        ${audits.map((a, idx) => {
-                                            const catScore = auditCategoryMaps[idx][catName]?.percentage || 60;
-                                            return `
-                                                <span class="text-xs font-bold px-2 py-0.5 rounded ${catScore >= 75 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}">
-                                                    ${getShortSchoolName(a.school)}: ${catScore.toFixed(0)}%
-                                                </span>
-                                            `;
-                                        }).join('')}
-                                    </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <!-- Discrepancy Only Filter Toggle Button -->
+                                <button onclick="toggleDiscrepancyFilter()" class="flex items-center gap-2 text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all cursor-pointer border ${comparisonState.filterDiscrepanciesOnly ? 'bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'}" title="Toggle filtering to show only indicators with score variance (diff >= 1★), low scores (<=2★), or escalated risks">
+                                    <span class="w-2.5 h-2.5 rounded-full ${comparisonState.filterDiscrepanciesOnly ? 'bg-white animate-pulse' : 'bg-amber-500'}"></span>
+                                    <span>${comparisonState.filterDiscrepanciesOnly ? `Showing ${totalDiscrepanciesCount} Variances & Risks` : `High Variance / High Risk Only (${totalDiscrepanciesCount})`}</span>
                                 </button>
 
-                                <!-- Indicators Table -->
-                                ${isExpanded ? `
-                                    <div class="p-4 flex flex-col gap-4 divide-y divide-slate-100 dark:divide-slate-800">
-                                        ${indicatorEntries.map(([indName, defaultMultiplier]) => {
-                                            const indScores = audits.map(a => a.audit_data?.[catName]?.[indName] || { score: 3 });
-
-                                            return `
-                                                <div class="pt-3 first:pt-0 flex flex-col gap-2.5">
-                                                    <!-- Indicator Header & Score Comparison Pills -->
-                                                    <div class="flex flex-wrap items-center justify-between gap-2">
-                                                        <div class="flex items-center gap-2">
-                                                            <span class="font-bold text-xs text-slate-900 dark:text-white">${indName}</span>
-                                                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">${defaultMultiplier}x Risk</span>
-                                                        </div>
-                                                        <div class="flex items-center gap-2">
-                                                            ${indScores.map((item, idx) => {
-                                                                const sc = Number(item.score) || 3;
-                                                                const isBase = idx === baselineIdx;
-                                                                const scoreCol = sc === 5 ? 'bg-emerald-500 text-white' : sc === 4 ? 'bg-blue-500 text-white' : sc === 3 ? 'bg-amber-500 text-white' : sc === 2 ? 'bg-orange-500 text-white' : 'bg-rose-500 text-white';
-                                                                return `
-                                                                    <div class="flex items-center gap-1 text-xs" title="${audits[idx].filename}: Score ${sc}/5">
-                                                                        <span class="text-[10px] text-slate-400 font-semibold">${getShortSchoolName(audits[idx].school)}:</span>
-                                                                        <span class="font-black px-2 py-0.5 rounded-md ${scoreCol} ${isBase ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900' : ''}">${sc}★</span>
-                                                                    </div>
-                                                                `;
-                                                            }).join('')}
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Side-by-Side Write-Up Cards -->
-                                                    <div class="grid grid-cols-1 md:grid-cols-${Math.min(audits.length, 5)} gap-2 text-xs">
-                                                        ${indScores.map((item, idx) => {
-                                                            const hasFeat = item.features && item.features.trim();
-                                                            const hasGaps = item.gaps && item.gaps.trim();
-                                                            const hasActs = item.actions && item.actions.trim();
-                                                            const hasRisk = item.riskApplied && item.riskSeverity;
-
-                                                            return `
-                                                                <div class="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 flex flex-col gap-1.5">
-                                                                    <span class="text-[10px] font-bold text-slate-500 uppercase">${audits[idx].filename} (${audits[idx].date})</span>
-                                                                    ${hasRisk ? `
-                                                                        <div class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                                                                            ⚠️ ${item.riskSeverity} (${item.customMultiplier}x): ${item.riskRationale || ''}
-                                                                        </div>
-                                                                    ` : ''}
-                                                                    ${hasFeat ? `
-                                                                        <div class="flex flex-col">
-                                                                            <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">✓ Strengths:</span>
-                                                                            <p class="text-[11px] text-slate-700 dark:text-slate-300 leading-tight">${item.features}</p>
-                                                                        </div>
-                                                                    ` : ''}
-                                                                    ${hasGaps ? `
-                                                                        <div class="flex flex-col">
-                                                                            <span class="text-[10px] font-bold text-rose-600 dark:text-rose-400">✗ Gaps:</span>
-                                                                            <p class="text-[11px] text-slate-700 dark:text-slate-300 leading-tight">${item.gaps}</p>
-                                                                        </div>
-                                                                    ` : ''}
-                                                                    ${hasActs ? `
-                                                                        <div class="flex flex-col">
-                                                                            <span class="text-[10px] font-bold text-blue-600 dark:text-blue-400">→ Actions:</span>
-                                                                            <p class="text-[11px] text-slate-700 dark:text-slate-300 leading-tight">${item.actions}</p>
-                                                                        </div>
-                                                                    ` : ''}
-                                                                    ${!hasFeat && !hasGaps && !hasActs ? `
-                                                                        <span class="text-[10px] text-slate-400 italic">No narrative notes recorded.</span>
-                                                                    ` : ''}
-                                                                </div>
-                                                            `;
-                                                        }).join('')}
-                                                    </div>
-                                                </div>
-                                            `;
-                                        }).join('')}
-                                    </div>
-                                ` : ''}
+                                <!-- Expand / Collapse All -->
+                                <div class="flex items-center gap-1">
+                                    <button onclick="toggleAllCategoryAccordions(true)" class="px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer">Expand All</button>
+                                    <button onclick="toggleAllCategoryAccordions(false)" class="px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer">Collapse All</button>
+                                </div>
                             </div>
-                        `;
-                    }).join('')}
-                </div>
+                        </div>
+
+                        ${comparisonState.filterDiscrepanciesOnly && totalDiscrepanciesCount === 0 ? `
+                            <div class="py-8 flex flex-col items-center justify-center text-center gap-2 bg-emerald-500/5 rounded-2xl border border-emerald-500/20 p-6">
+                                <span class="text-emerald-600 dark:text-emerald-400 font-bold text-sm">✓ No High Variances or Critical Deficiencies Found</span>
+                                <p class="text-xs text-slate-500">All ${audits.length} compared audits have identical compliant scores across all 56 indicators.</p>
+                                <button onclick="toggleDiscrepancyFilter()" class="mt-2 text-xs font-bold text-brand-600 dark:text-brand-400 underline cursor-pointer">Show All 56 Indicators</button>
+                            </div>
+                        ` : `
+                            <!-- Category Accordions -->
+                            <div class="flex flex-col gap-3">
+                                ${Object.entries(CATEGORIES).map(([catName, catDef]) => {
+                                    const isExpanded = comparisonState.expandedCategories[catName] !== false;
+
+                                    // Filter indicators in category if filterDiscrepanciesOnly is true
+                                    const indicatorEntries = Object.entries(catDef.indicators).filter(([indName, defaultMult]) => {
+                                        if (!comparisonState.filterDiscrepanciesOnly) return true;
+                                        return isIndicatorDiscrepancyOrRisk(catName, indName, defaultMult, audits);
+                                    });
+
+                                    if (comparisonState.filterDiscrepanciesOnly && indicatorEntries.length === 0) {
+                                        return ''; // Skip categories with no matching discrepancies
+                                    }
+
+                                    return `
+                                        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
+                                            <!-- Category Accordion Header -->
+                                            <button onclick="toggleCategoryAccordion('${catName}')" class="w-full flex items-center justify-between p-4 bg-slate-50/80 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left cursor-pointer">
+                                                <div class="flex items-center gap-2.5">
+                                                    <svg class="w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                                    <span class="font-extrabold text-sm text-slate-900 dark:text-white">${catName}</span>
+                                                    <span class="text-xs text-slate-500 font-medium">(${indicatorEntries.length} Indicators)</span>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    ${audits.map((a, idx) => {
+                                                        const catScore = auditCategoryMaps[idx][catName]?.percentage || 60;
+                                                        return `
+                                                            <span class="text-xs font-bold px-2 py-0.5 rounded ${catScore >= 75 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}">
+                                                                ${getShortSchoolName(a.school)}: ${catScore.toFixed(0)}%
+                                                            </span>
+                                                        `;
+                                                    }).join('')}
+                                                </div>
+                                            </button>
+
+                                            <!-- Indicators Table -->
+                                            ${isExpanded ? `
+                                                <div class="p-4 flex flex-col gap-4 divide-y divide-slate-100 dark:divide-slate-800">
+                                                    ${indicatorEntries.map(([indName, defaultMultiplier]) => {
+                                                        const indScores = audits.map(a => a.audit_data?.[catName]?.[indName] || { score: 3 });
+                                                        const scoresOnly = indScores.map(i => Number(i.score) || 3);
+                                                        const maxSc = Math.max(...scoresOnly);
+                                                        const minSc = Math.min(...scoresOnly);
+                                                        const scoreDiff = maxSc - minSc;
+                                                        const hasLowScore = minSc <= 2;
+                                                        const hasDynamicRisk = indScores.some(i => i.riskApplied || i.riskSeverity === 'Critical' || i.riskSeverity === 'High');
+
+                                                        return `
+                                                            <div class="pt-3 first:pt-0 flex flex-col gap-2.5">
+                                                                <!-- Indicator Header & Score Comparison Pills -->
+                                                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                                                    <div class="flex flex-wrap items-center gap-2">
+                                                                        <span class="font-bold text-xs text-slate-900 dark:text-white">${indName}</span>
+                                                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">${defaultMultiplier}x Base Risk</span>
+                                                                        ${scoreDiff >= 1 ? `
+                                                                            <span class="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                                                                                ⚡ Variance (±${scoreDiff}★)
+                                                                            </span>
+                                                                        ` : ''}
+                                                                        ${hasLowScore ? `
+                                                                            <span class="text-[10px] font-black px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30">
+                                                                                ⚠️ Low Score (${minSc}/5)
+                                                                            </span>
+                                                                        ` : ''}
+                                                                        ${hasDynamicRisk ? `
+                                                                            <span class="text-[10px] font-black px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30">
+                                                                                ⚠️ Risk Escalated
+                                                                            </span>
+                                                                        ` : ''}
+                                                                    </div>
+                                                                    <div class="flex items-center gap-2">
+                                                                        ${indScores.map((item, idx) => {
+                                                                            const sc = Number(item.score) || 3;
+                                                                            const isBase = idx === baselineIdx;
+                                                                            const scoreCol = sc === 5 ? 'bg-emerald-500 text-white' : sc === 4 ? 'bg-blue-500 text-white' : sc === 3 ? 'bg-amber-500 text-white' : sc === 2 ? 'bg-orange-500 text-white' : 'bg-rose-500 text-white';
+                                                                            return `
+                                                                                <div class="flex items-center gap-1 text-xs" title="${audits[idx].filename}: Score ${sc}/5">
+                                                                                    <span class="text-[10px] text-slate-400 font-semibold">${getShortSchoolName(audits[idx].school)}:</span>
+                                                                                    <span class="font-black px-2 py-0.5 rounded-md ${scoreCol} ${isBase ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900' : ''}">${sc}★</span>
+                                                                                </div>
+                                                                            `;
+                                                                        }).join('')}
+                                                                    </div>
+                                                                </div>
+
+                                                                <!-- Side-by-Side Write-Up Cards -->
+                                                                <div class="grid grid-cols-1 md:grid-cols-${Math.min(audits.length, 5)} gap-2 text-xs">
+                                                                    ${indScores.map((item, idx) => {
+                                                                        const hasFeat = item.features && item.features.trim();
+                                                                        const hasGaps = item.gaps && item.gaps.trim();
+                                                                        const hasActs = item.actions && item.actions.trim();
+                                                                        const hasRisk = item.riskApplied && item.riskSeverity;
+
+                                                                        return `
+                                                                            <div class="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 flex flex-col gap-1.5">
+                                                                                <span class="text-[10px] font-bold text-slate-500 uppercase">${audits[idx].filename} (${audits[idx].date})</span>
+                                                                                ${hasRisk ? `
+                                                                                    <div class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                                                                                        ⚠️ ${item.riskSeverity} (${item.customMultiplier}x): ${item.riskRationale || ''}
+                                                                                    </div>
+                                                                                ` : ''}
+                                                                                ${hasFeat ? `
+                                                                                    <div class="flex flex-col">
+                                                                                        <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">✓ Strengths:</span>
+                                                                                        <p class="text-[11px] text-slate-700 dark:text-slate-300 leading-tight">${item.features}</p>
+                                                                                    </div>
+                                                                                ` : ''}
+                                                                                ${hasGaps ? `
+                                                                                    <div class="flex flex-col">
+                                                                                        <span class="text-[10px] font-bold text-rose-600 dark:text-rose-400">✗ Gaps:</span>
+                                                                                        <p class="text-[11px] text-slate-700 dark:text-slate-300 leading-tight">${item.gaps}</p>
+                                                                                    </div>
+                                                                                ` : ''}
+                                                                                ${hasActs ? `
+                                                                                    <div class="flex flex-col">
+                                                                                        <span class="text-[10px] font-bold text-blue-600 dark:text-blue-400">→ Actions:</span>
+                                                                                        <p class="text-[11px] text-slate-700 dark:text-slate-300 leading-tight">${item.actions}</p>
+                                                                                    </div>
+                                                                                ` : ''}
+                                                                                ${!hasFeat && !hasGaps && !hasActs ? `
+                                                                                    <span class="text-[10px] text-slate-400 italic">No narrative notes recorded.</span>
+                                                                                ` : ''}
+                                                                            </div>
+                                                                        `;
+                                                                    }).join('')}
+                                                                </div>
+                                                            </div>
+                                                        `;
+                                                    }).join('')}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `}
+                    `;
+                })()}
             </div>
 
-            <!-- ================= SECTION 4: AI COMPARATIVE SYNTHESIS ================= -->
-            <div class="flex flex-col gap-3 pt-8 pb-4">
-                <div class="flex items-center justify-between">
-                    <div>
+            <!-- ================= SECTION 4: AI COMPARATIVE SYNTHESIS & BEST PRACTICES ================= -->
+            <div class="flex flex-col gap-4 pt-8 pb-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-col">
                         <h3 class="text-base font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                            <span>4. AI Comparative Strategic Synthesis</span>
+                            <span>4. AI Comparative Intelligence & Best Practices</span>
                             <span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400 font-bold">Gemini Intelligence</span>
                         </h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">AI-generated longitudinal trend analysis, campus strengths & gaps synthesis, and board strategic recommendations.</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Multi-audit performance diagnostics and institutional standardization playbooks.</p>
                     </div>
 
-                    <div class="flex items-center gap-2">
-                        <button onclick="triggerAIComparison()" ${comparisonState.isAILoading ? 'disabled' : ''} class="bg-gradient-to-r from-purple-600 via-indigo-600 to-brand-600 hover:from-purple-700 hover:via-indigo-700 hover:to-brand-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-lg shadow-purple-600/15 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
-                            ${comparisonState.isAILoading ? `
-                                <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                <span>Synthesizing Audits...</span>
-                            ` : `
-                                <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                <span>${comparisonState.aiComparisonSummary ? 'Regenerate AI Synthesis' : 'Generate AI Synthesis'}</span>
-                            `}
+                    <!-- AI Mode Switcher Tabs -->
+                    <div class="flex items-center bg-slate-100 dark:bg-slate-800/90 p-1 rounded-2xl border border-slate-200 dark:border-slate-700/80 gap-1 shadow-inner">
+                        <button onclick="setComparisonAITab('strategic')" class="px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${comparisonState.activeAITab !== 'best_practices' ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm border border-slate-200/60 dark:border-slate-800' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}">
+                            <span>📊 Strategic Synthesis</span>
+                            ${comparisonState.aiComparisonSummary ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>' : ''}
+                        </button>
+                        <button onclick="setComparisonAITab('best_practices')" class="px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${comparisonState.activeAITab === 'best_practices' ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm border border-slate-200/60 dark:border-slate-800' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}">
+                            <span>🌟 Best Practices Playbook</span>
+                            <span class="text-[9px] px-1.5 py-0.2 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-extrabold uppercase">Exemplars</span>
+                            ${comparisonState.aiBestPracticesSummary ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>' : ''}
                         </button>
                     </div>
                 </div>
 
-                <!-- AI Output Display Box -->
-                <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
-                    ${comparisonState.isAILoading ? `
-                        <div class="py-12 flex flex-col items-center justify-center text-center gap-3">
-                            <div class="w-10 h-10 rounded-full border-4 border-purple-500 border-t-transparent animate-spin"></div>
-                            <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Gemini is analyzing ${audits.length} audit datasets across 56 indicators...</span>
-                            <span class="text-xs text-slate-500">Cross-referencing category deltas, safety risk weights, and write-up observations.</span>
-                        </div>
-                    ` : comparisonState.aiComparisonSummary ? `
-                        <div class="flex flex-col gap-4">
-                            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 text-xs">
-                                <span class="font-bold text-slate-500">Strategic Intelligence Briefing</span>
-                                <button onclick="copyAIComparisonMarkdown()" class="text-brand-600 dark:text-brand-400 hover:underline font-bold flex items-center gap-1 cursor-pointer">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                                    <span>Copy Markdown</span>
+                <!-- Active AI Panel -->
+                ${comparisonState.activeAITab !== 'best_practices' ? `
+                    <!-- TAB 1: STRATEGIC SYNTHESIS -->
+                    <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm flex flex-col gap-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800 text-xs">
+                            <div class="flex flex-col">
+                                <span class="font-extrabold text-slate-800 dark:text-slate-200">Executive Strategic Intelligence Report</span>
+                                <span class="text-[11px] text-slate-400">Longitudinal performance trajectories, high-risk matrix, and board recommendations.</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${comparisonState.aiComparisonSummary ? `
+                                    <button onclick="copyAIComparisonMarkdown()" class="text-brand-600 dark:text-brand-400 hover:underline font-bold flex items-center gap-1 cursor-pointer">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                        <span>Copy Markdown</span>
+                                    </button>
+                                ` : ''}
+                                <button onclick="triggerAIComparison()" ${comparisonState.isAILoading ? 'disabled' : ''} class="bg-gradient-to-r from-purple-600 via-indigo-600 to-brand-600 hover:from-purple-700 hover:via-indigo-700 hover:to-brand-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-lg shadow-purple-600/15 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                                    ${comparisonState.isAILoading ? `
+                                        <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        <span>Synthesizing...</span>
+                                    ` : `
+                                        <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                        <span>${comparisonState.aiComparisonSummary ? 'Regenerate Strategic Report' : 'Generate Strategic Synthesis'}</span>
+                                    `}
                                 </button>
                             </div>
+                        </div>
+
+                        ${comparisonState.isAILoading ? `
+                            <div class="py-12 flex flex-col items-center justify-center text-center gap-3">
+                                <div class="w-10 h-10 rounded-full border-4 border-purple-500 border-t-transparent animate-spin"></div>
+                                <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Gemini is synthesizing ${audits.length} audit datasets...</span>
+                                <span class="text-xs text-slate-500">Cross-referencing category deltas, safety risk weights, and write-up observations.</span>
+                            </div>
+                        ` : comparisonState.aiComparisonSummary ? `
                             <div class="prose dark:prose-invert max-w-none text-xs leading-relaxed overflow-x-auto">
                                 ${renderMarkdown(comparisonState.aiComparisonSummary)}
                             </div>
+                        ` : `
+                            <div class="py-8 flex flex-col items-center justify-center text-center gap-2">
+                                <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-7.072 0z"/></svg>
+                                <span class="text-sm font-bold text-slate-700 dark:text-slate-300">No Strategic Synthesis Generated Yet</span>
+                                <p class="text-xs text-slate-500 max-w-md">Click "Generate Strategic Synthesis" above to produce a comprehensive cross-audit intelligence report with strategic board recommendations.</p>
+                            </div>
+                        `}
+                    </div>
+                ` : `
+                    <!-- TAB 2: BEST PRACTICES PLAYBOOK -->
+                    <div class="rounded-2xl border border-amber-500/30 dark:border-amber-500/20 bg-gradient-to-b from-amber-500/5 via-white to-white dark:via-slate-900 dark:to-slate-900 p-5 shadow-sm flex flex-col gap-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-amber-500/20 text-xs">
+                            <div class="flex flex-col">
+                                <span class="font-extrabold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                                    <span>🌟 Group Best Practices & Institutional Standardization Playbook</span>
+                                </span>
+                                <span class="text-[11px] text-slate-500 dark:text-slate-400">Pillar-by-pillar gold standards, benchmark campuses, and peer replication roadmap.</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${comparisonState.aiBestPracticesSummary ? `
+                                    <button onclick="copyAIBestPracticesMarkdown()" class="text-amber-600 dark:text-amber-400 hover:underline font-bold flex items-center gap-1 cursor-pointer">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                        <span>Copy Playbook</span>
+                                    </button>
+                                ` : ''}
+                                <button onclick="triggerAIBestPractices()" ${comparisonState.isAIBestPracticesLoading ? 'disabled' : ''} class="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-lg shadow-amber-600/15 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                                    ${comparisonState.isAIBestPracticesLoading ? `
+                                        <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        <span>Extracting Best Practices...</span>
+                                    ` : `
+                                        <svg class="w-4 h-4 text-amber-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                                        <span>${comparisonState.aiBestPracticesSummary ? '🌟 Regenerate Playbook' : '🌟 Synthesize Best Practices Playbook'}</span>
+                                    `}
+                                </button>
+                            </div>
                         </div>
-                    ` : `
-                        <div class="py-8 flex flex-col items-center justify-center text-center gap-2">
-                            <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-7.072 0z"/></svg>
-                            <span class="text-sm font-bold text-slate-700 dark:text-slate-300">No AI Comparative Synthesis Generated Yet</span>
-                            <p class="text-xs text-slate-500 max-w-md">Click "Generate AI Synthesis" above to produce a comprehensive cross-audit intelligence report with strategic board recommendations.</p>
-                        </div>
-                    `}
-                </div>
+
+                        ${comparisonState.isAIBestPracticesLoading ? `
+                            <div class="py-12 flex flex-col items-center justify-center text-center gap-3">
+                                <div class="w-10 h-10 rounded-full border-4 border-amber-500 border-t-transparent animate-spin"></div>
+                                <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Gemini is extracting gold-standard operational practices across ${audits.length} branches...</span>
+                                <span class="text-xs text-slate-500">Benchmarking top scores (4-5★) and positive narratives to formulate group standardization guidelines.</span>
+                            </div>
+                        ` : comparisonState.aiBestPracticesSummary ? `
+                            <div class="prose dark:prose-invert max-w-none text-xs leading-relaxed overflow-x-auto">
+                                ${renderMarkdown(comparisonState.aiBestPracticesSummary)}
+                            </div>
+                        ` : `
+                            <div class="py-8 flex flex-col items-center justify-center text-center gap-2">
+                                <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mb-1">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                                </div>
+                                <span class="text-sm font-bold text-slate-800 dark:text-slate-200">Dedicated Cross-Branch Best Practices Engine</span>
+                                <p class="text-xs text-slate-500 max-w-md">Click "Synthesize Best Practices Playbook" above to analyze and extract standout operational procedures from leading branches for group-wide adoption.</p>
+                            </div>
+                        `}
+                    </div>
+                `}
             </div>
 
             <!-- ================= SECTION 5: EXPORT ACTION BAR ================= -->
