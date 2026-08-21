@@ -507,7 +507,14 @@ export async function fetchHistory() {
 export function renderHistoryList(history) {
     const listEl = document.getElementById('saved-audits-list');
     const consolidateBtn = document.getElementById('consolidate-btn');
+    const compareBtn = document.getElementById('compare-audits-btn');
     if (!listEl) return;
+
+    if (state.loggedInUser === "Superadmin") {
+        if (compareBtn) compareBtn.classList.remove('hidden');
+    } else {
+        if (compareBtn) compareBtn.classList.add('hidden');
+    }
 
     if (!history || history.length === 0) {
         listEl.innerHTML = `<span class="text-slate-600 dark:text-slate-300 italic">No saved drafts in browser cache</span>`;
@@ -790,8 +797,93 @@ export async function consolidateSelectedAudits() {
     }
 }
 
+/**
+ * Exports comparative multi-audit benchmark matrix to RFC 4180 CSV spreadsheet.
+ */
+export function exportComparativeCSV(audits = null, baselineIdx = null) {
+    const targetAudits = audits || window.comparisonState?.selectedAudits || [];
+    if (!targetAudits || targetAudits.length < 2) {
+        showToast("At least 2 audits are required for comparative CSV export.", "error");
+        return;
+    }
+
+    const baselineIndex = baselineIdx !== null ? baselineIdx : (window.comparisonState?.baselineIndex || 0);
+    const baselineAudit = targetAudits[baselineIndex] || targetAudits[0];
+
+    const escapeCSV = (val) => {
+        const str = String(val === undefined || val === null ? "" : val);
+        return `"${str.replace(/"/g, '""')}"`;
+    };
+
+    const headers = [
+        "Category",
+        "Indicator",
+        "Base Multiplier"
+    ];
+
+    targetAudits.forEach((a, i) => {
+        const label = `${a.filename} (${a.school})`;
+        headers.push(`${label} - Score`);
+        headers.push(`${label} - Effective Mult`);
+        if (i !== baselineIndex) {
+            headers.push(`${label} - Delta vs Base`);
+        }
+        headers.push(`${label} - Strengths`);
+        headers.push(`${label} - Gaps`);
+        headers.push(`${label} - Actions`);
+    });
+
+    const csvRows = [headers.map(h => escapeCSV(h)).join(",")];
+
+    Object.entries(CATEGORIES).forEach(([catName, catData]) => {
+        Object.entries(catData.indicators).forEach(([indName, defaultMult]) => {
+            const row = [catName, indName, `${defaultMult}x`];
+
+            const baseItem = baselineAudit.audit_data?.[catName]?.[indName] || { score: 3 };
+            const baseScore = Number(baseItem.score) || 3;
+
+            targetAudits.forEach((a, i) => {
+                const item = a.audit_data?.[catName]?.[indName] || { score: 3 };
+                const sc = Number(item.score) || 3;
+                const effMult = (item.riskApplied && item.customMultiplier) ? Number(item.customMultiplier) : defaultMult;
+                const delta = sc - baseScore;
+
+                row.push(sc);
+                row.push(`${effMult}x`);
+                if (i !== baselineIndex) {
+                    row.push(delta >= 0 ? `+${delta}` : `${delta}`);
+                }
+                row.push(item.features || "");
+                row.push(item.gaps || "");
+                row.push(item.actions || "");
+            });
+
+            csvRows.push(row.map(escapeCSV).join(","));
+        });
+    });
+
+    const csvContent = "\ufeff" + csvRows.join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    
+    const fileName = `Excelsis_Comparative_Matrix_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    showToast("Comparative CSV downloaded successfully!", "success");
+}
+
 export const exportJSON = exportToJSON;
 export const exportCSV = exportToCSV;
 export const importJSON = importFromJSON;
-export { generatePDFReport as generatePDF, generateAuditLegend, generatePDFReport as printAudit } from './reports.js';
+export { generatePDFReport as generatePDF, generateAuditLegend, generatePDFReport as printAudit, generateComparativePDFReport } from './reports.js';
+
 

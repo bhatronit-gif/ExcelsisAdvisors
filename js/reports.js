@@ -910,6 +910,219 @@ export function downloadReport(settings = {}) {
     generatePDFReport(settings);
 }
 
+/**
+ * Generates a comprehensive Multi-Audit Comparative Board PDF Report.
+ */
+export function generateComparativePDFReport(audits = null, baselineIdx = null, aiSummary = null) {
+    const targetAudits = audits || window.comparisonState?.selectedAudits || [];
+    if (!targetAudits || targetAudits.length < 2) {
+        showToast("At least 2 audits are required to generate a comparative board report.", "error");
+        return;
+    }
+
+    const baselineIndex = baselineIdx !== null ? baselineIdx : (window.comparisonState?.baselineIndex || 0);
+    const baselineAudit = targetAudits[baselineIndex] || targetAudits[0];
+    const aiText = aiSummary !== null ? aiSummary : (window.comparisonState?.aiComparisonSummary || "");
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        showToast("Pop-up blocked. Please allow pop-ups for this site to generate reports.", "error");
+        return;
+    }
+
+    const isSameSchool = targetAudits.every(a => a.school === targetAudits[0].school);
+    const reportTitle = isSameSchool 
+        ? `Longitudinal Year-over-Year Audit Report: ${targetAudits[0].school}`
+        : `Cross-Campus Audit Benchmark & Comparative Report`;
+
+    const cohortAvg = targetAudits.reduce((acc, a) => acc + (a.score * 100), 0) / targetAudits.length;
+
+    const reportHTML = `
+        <!DOCTYPE html>
+        <html lang="en">
+        ${buildPrintHeadHTML(reportTitle, "EXCELSIS ADVISORS • COMPARATIVE AUDIT BENCHMARK")}
+        <body class="bg-white text-slate-800 font-sans p-8 print:p-0 max-w-5xl mx-auto leading-normal">
+            
+            <!-- Cover Page -->
+            ${buildPrintCoverPageHTML({
+                tag: isSameSchool ? "Longitudinal Compliance Matrix" : "Institutional Cohort Benchmark",
+                title: reportTitle,
+                subtitle: `Executive side-by-side compliance, safety risk evaluation, and progress velocity across ${targetAudits.length} audit datasets.`,
+                preparedForLabel: "Target Institution(s)",
+                preparedForValue: isSameSchool ? targetAudits[0].school : `${targetAudits.length} Educational Campuses`,
+                meta1Label: "Generated Date",
+                meta1Value: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+                meta2Label: "Executive Reviewer",
+                meta2Value: "Superadmin / Chief Auditor",
+                refLabel: "Baseline Reference",
+                refValue: `${baselineAudit.filename} (${baselineAudit.school}) • ${(baselineAudit.score * 100).toFixed(1)}%`
+            })}
+
+            <div class="flex flex-col gap-10">
+                <!-- Section 1: Executive KPI Scoreboard -->
+                <div class="flex flex-col gap-4 print-avoid-break">
+                    <h2 class="text-xl font-bold text-slate-900 font-serif border-b-2 border-slate-100 pb-2 flex items-center gap-2">
+                        <span class="text-brand-500 font-black">1.</span>
+                        Executive Performance Scoreboard
+                    </h2>
+                    <p class="text-xs text-slate-600">
+                        Summary of risk-adjusted compliance scores, rating classifications, and variance relative to baseline. Cohort average score across all ${targetAudits.length} audits is <strong>${cohortAvg.toFixed(2)}%</strong>.
+                    </p>
+
+                    <div class="grid grid-cols-${Math.min(targetAudits.length, 5)} gap-4 mt-2">
+                        ${targetAudits.map((a, idx) => {
+                            const isBase = idx === baselineIndex;
+                            const scorePct = (a.score * 100).toFixed(2);
+                            const deltaVsBase = (a.score * 100) - (baselineAudit.score * 100);
+                            const deltaVsCohort = (a.score * 100) - cohortAvg;
+                            const tier = a.score >= 0.90 ? "Outstanding" : a.score >= 0.75 ? "Compliant" : a.score >= 0.60 ? "Needs Improvement" : "Critical Risk";
+                            const tierColor = a.score >= 0.90 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : a.score >= 0.75 ? "text-blue-700 bg-blue-50 border-blue-200" : a.score >= 0.60 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+
+                            return `
+                                <div class="p-4 rounded-xl border ${isBase ? 'border-brand-500 bg-brand-50/20' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between">
+                                    <div class="flex flex-col gap-1">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[9px] font-bold uppercase text-slate-400">Audit #${idx + 1}</span>
+                                            ${isBase ? '<span class="text-[9px] font-black text-brand-600 bg-brand-100 px-1.5 py-0.5 rounded">Baseline</span>' : ''}
+                                        </div>
+                                        <h4 class="font-bold text-xs text-slate-900 leading-tight">${a.filename}</h4>
+                                        <span class="text-[10px] text-slate-500">${a.school} • ${a.date}</span>
+                                        
+                                        <div class="pt-2">
+                                            <span class="text-2xl font-black text-slate-900">${scorePct}%</span>
+                                            <span class="block text-[9px] font-bold px-1.5 py-0.5 rounded border ${tierColor} w-fit mt-1">${tier}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="pt-3 mt-3 border-t border-slate-200 text-[10px] flex flex-col gap-0.5">
+                                        ${!isBase ? `
+                                            <div class="flex justify-between">
+                                                <span class="text-slate-500">vs Base:</span>
+                                                <span class="font-bold ${deltaVsBase >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${deltaVsBase >= 0 ? '+' : ''}${deltaVsBase.toFixed(2)}%</span>
+                                            </div>
+                                        ` : '<div class="text-slate-400 italic">Reference Target</div>'}
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-500">vs Cohort:</span>
+                                            <span class="font-semibold ${deltaVsCohort >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${deltaVsCohort >= 0 ? '+' : ''}${deltaVsCohort.toFixed(2)}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <!-- Section 2: 10-Category Benchmark Matrix -->
+                <div class="flex flex-col gap-4 print-avoid-break">
+                    <h2 class="text-xl font-bold text-slate-900 font-serif border-b-2 border-slate-100 pb-2 flex items-center gap-2">
+                        <span class="text-brand-500 font-black">2.</span>
+                        10-Category Benchmark Matrix
+                    </h2>
+                    
+                    <table class="w-full text-xs text-left border-collapse border border-slate-200">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 uppercase text-[10px] border-b border-slate-200">
+                                <th class="p-2.5 font-bold">Category & Weight</th>
+                                ${targetAudits.map((a, i) => `
+                                    <th class="p-2.5 font-bold ${i === baselineIndex ? 'bg-brand-50 text-brand-700' : ''}">
+                                        ${a.filename} ${i === baselineIndex ? '(Base)' : ''}
+                                    </th>
+                                `).join('')}
+                                <th class="p-2.5 text-center font-bold">Max Delta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.entries(CATEGORIES).map(([catName, catDef]) => {
+                                const weightPct = (catDef.weight * 100).toFixed(0);
+                                const scores = targetAudits.map(a => {
+                                    let catEarned = 0, catMax = 0;
+                                    Object.entries(catDef.indicators).forEach(([ind, mult]) => {
+                                        const item = a.audit_data?.[catName]?.[ind] || { score: 3 };
+                                        const effMult = (item.riskApplied && item.customMultiplier) ? Number(item.customMultiplier) : mult;
+                                        catEarned += (Number(item.score) || 3) * effMult;
+                                        catMax += 5 * effMult;
+                                    });
+                                    return catMax > 0 ? (catEarned / catMax) * 100 : 60;
+                                });
+                                const baseScore = scores[baselineIndex];
+                                const minSc = Math.min(...scores);
+                                const maxSc = Math.max(...scores);
+                                const delta = maxSc - minSc;
+
+                                return `
+                                    <tr class="border-b border-slate-100">
+                                        <td class="p-2.5 font-bold text-slate-900">
+                                            ${catName} <span class="text-[10px] text-slate-400 font-normal">(${weightPct}%)</span>
+                                        </td>
+                                        ${scores.map((sc, i) => {
+                                            const diff = sc - baseScore;
+                                            return `
+                                                <td class="p-2.5 ${i === baselineIndex ? 'bg-brand-50/50 font-bold' : ''}">
+                                                    <span>${sc.toFixed(1)}%</span>
+                                                    ${i !== baselineIndex ? `
+                                                        <span class="text-[9px] font-bold ml-1 ${diff >= 0 ? 'text-emerald-600' : 'text-rose-600'}">
+                                                            (${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%)
+                                                        </span>
+                                                    ` : ''}
+                                                </td>
+                                            `;
+                                        }).join('')}
+                                        <td class="p-2.5 text-center font-bold ${delta > 15 ? 'text-rose-600' : 'text-slate-600'}">
+                                            ±${delta.toFixed(1)}%
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Section 3: AI Comparative Strategic Synthesis -->
+                ${aiText ? `
+                    <div class="flex flex-col gap-4 print-page-break">
+                        <h2 class="text-xl font-bold text-slate-900 font-serif border-b-2 border-slate-100 pb-2 flex items-center gap-2">
+                            <span class="text-brand-500 font-black">3.</span>
+                            AI Comparative Intelligence & Strategic Synthesis
+                        </h2>
+                        <div class="prose max-w-none text-xs leading-relaxed text-slate-700">
+                            ${renderMarkdown(aiText)}
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- Section 4: Sign-off and Governance -->
+                <div class="flex flex-col gap-4 print-avoid-break mt-6 pt-6 border-t-2 border-slate-200">
+                    <h2 class="text-lg font-bold text-slate-900 font-serif">4. Governance & Executive Sign-off</h2>
+                    <div class="grid grid-cols-2 gap-12 mt-4 text-xs">
+                        <div class="flex flex-col gap-8">
+                            <div class="border-b border-slate-300 pb-2">
+                                <span class="text-slate-400 text-[10px] block">CHIEF AUDIT OFFICER</span>
+                                <span class="font-bold text-slate-800">Excelsis Advisors Compliance Directorate</span>
+                            </div>
+                            <span class="text-[10px] text-slate-400">Signature: ___________________________</span>
+                        </div>
+                        <div class="flex flex-col gap-8">
+                            <div class="border-b border-slate-300 pb-2">
+                                <span class="text-slate-400 text-[10px] block">CAMPUS LEADERSHIP / TRUSTEE</span>
+                                <span class="font-bold text-slate-800">Executive School Board</span>
+                            </div>
+                            <span class="text-[10px] text-slate-400">Signature: ___________________________</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            ${buildPrintTailScriptHTML()}
+        </body>
+        </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(reportHTML);
+    printWindow.document.close();
+}
+
 export const generatePDF = generatePDFReport;
 export const printAudit = generatePDFReport;
+
 

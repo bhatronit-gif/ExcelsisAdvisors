@@ -116,3 +116,26 @@ export const INITIAL_STATE_DEFAULTS = {
     useLocalStorageFallback: false
 };
 
+/**
+ * Returns institutional group name for cross-branch benchmarking.
+ */
+export function getSchoolGroup(schoolName) {
+    if (!schoolName) return "Unspecified";
+    if (schoolName.toLowerCase().includes("children's academy") || schoolName.toLowerCase().includes("childrens academy")) {
+        return "Children's Academy Group";
+    }
+    return schoolName;
+}
+
+/**
+ * Returns short branch name for clean table headers.
+ */
+export function getShortSchoolName(schoolName) {
+    if (!schoolName) return "Unknown";
+    return schoolName
+        .replace("Children's Academy", "CA")
+        .replace("Academy", "Acad.")
+        .trim();
+}
+
+

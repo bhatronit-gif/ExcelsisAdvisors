@@ -20,7 +20,7 @@ import {
     deleteAuditFromDatabase, deleteAuditFromDatabaseForSuperadmin, saveDraftAction,
     saveAsAction, handleConsolidateCheckboxClick, consolidateSelectedAudits
 } from './export.js';
-import { closePDFModal, submitPDFReport, generatePDFReport, generateAuditLegend } from './reports.js';
+import { closePDFModal, submitPDFReport, generatePDFReport, generateAuditLegend, generateComparativePDFReport } from './reports.js';
 import { 
     openAISummaryModal, closeAISummaryModal, setAIActiveTab, toggleAISettingsDrawer,
     saveGeminiApiKeyFromUI, testGeminiApiKey, triggerAISummaryGeneration,
@@ -32,11 +32,39 @@ import {
     showAIPipelineModal, closeAIPipelineModal, cancelAIPipeline, resumeAIPipelineWithKey,
     runFullAuditAIPipeline
 } from './ai.js';
+import { 
+    openComparisonHub, closeComparisonHub, handlePresetChange,
+    handleComparisonSchoolFilterChange, toggleAuditSelection, setBaselineAudit,
+    toggleCategoryAccordion, toggleAllCategoryAccordions, toggleDiscrepancyFilter,
+    handleExternalComparisonUpload, triggerAIComparison, handleAIComparisonSummaryEdit,
+    copyAIComparisonMarkdown, renderComparisonView
+} from './comparison.js';
+import { exportComparativeCSV } from './export.js';
+import { comparisonState } from './state.js';
 import { refreshCardDOM } from './ui.js';
 
 // --- Window Bridge Bindings (Ensures 100% backward compatibility for inline HTML event attributes) ---
+window.comparisonState = comparisonState;
+window.openComparisonHub = openComparisonHub;
+window.closeComparisonHub = closeComparisonHub;
+window.handlePresetChange = handlePresetChange;
+window.handleComparisonSchoolFilterChange = handleComparisonSchoolFilterChange;
+window.toggleAuditSelection = toggleAuditSelection;
+window.setBaselineAudit = setBaselineAudit;
+window.toggleCategoryAccordion = toggleCategoryAccordion;
+window.toggleAllCategoryAccordions = toggleAllCategoryAccordions;
+window.toggleDiscrepancyFilter = toggleDiscrepancyFilter;
+window.handleExternalComparisonUpload = handleExternalComparisonUpload;
+window.triggerAIComparison = triggerAIComparison;
+window.handleAIComparisonSummaryEdit = handleAIComparisonSummaryEdit;
+window.copyAIComparisonMarkdown = copyAIComparisonMarkdown;
+window.renderComparisonView = renderComparisonView;
+window.generateComparativePDFReport = generateComparativePDFReport;
+window.exportComparativeCSV = exportComparativeCSV;
+
 window.cycleRiskMultiplier = cycleRiskMultiplier;
 window.setIndicatorMultiplier = setIndicatorMultiplier;
+
 window.handleCategorySelect = handleCategorySelect;
 window.handleScoreChange = handleScoreChange;
 window.handleScoreKeyDown = handleScoreKeyDown;

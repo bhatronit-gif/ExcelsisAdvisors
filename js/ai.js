@@ -2297,4 +2297,115 @@ export async function runFullAuditAIPipeline() {
     }
 }
 
+/**
+ * Synthesizes cross-audit comparative insights, trends, strengths, and recommendations for Superadmin.
+ */
+export async function generateComparativeExecutiveSummary(audits, baselineIndex = 0) {
+    if (!audits || audits.length < 2) {
+        throw new Error("At least 2 audits are required to generate comparative insights.");
+    }
 
+    const apiKey = getStoredApiKey();
+
+    // Prepare structured metadata & metrics payload for the prompt
+    const auditSummaries = audits.map((a, idx) => {
+        const totalScorePct = ((a.score !== undefined ? a.score : 0) * 100).toFixed(1);
+        const catBreakdown = [];
+        
+        Object.entries(CATEGORIES).forEach(([catName, catData]) => {
+            let catEarned = 0;
+            let catMax = 0;
+            const criticalGaps = [];
+            const topFeatures = [];
+            
+            Object.entries(catData.indicators).forEach(([indName, defaultMult]) => {
+                const item = a.audit_data?.[catName]?.[indName] || { score: 3 };
+                const mult = (item.riskApplied && item.customMultiplier) ? Number(item.customMultiplier) : defaultMult;
+                const sc = Number(item.score) || 3;
+                catEarned += (sc * mult);
+                catMax += (5 * mult);
+
+                if (sc <= 2 || item.riskSeverity === 'Critical' || item.riskSeverity === 'High') {
+                    if (item.gaps && item.gaps.trim()) {
+                        criticalGaps.push(`${indName} (Score ${sc}/5, Risk ${mult}x): ${item.gaps.trim().slice(0, 120)}`);
+                    }
+                }
+                if (sc >= 4 && item.features && item.features.trim()) {
+                    topFeatures.push(`${indName} (Score ${sc}/5): ${item.features.trim().slice(0, 120)}`);
+                }
+            });
+            
+            const catPct = catMax > 0 ? ((catEarned / catMax) * 100).toFixed(1) : "60.0";
+            catBreakdown.push({
+                category: catName,
+                scorePercent: `${catPct}%`,
+                criticalGaps: criticalGaps.slice(0, 3),
+                topFeatures: topFeatures.slice(0, 2)
+            });
+        });
+
+        return {
+            index: idx + 1,
+            isBaseline: idx === baselineIndex,
+            filename: a.filename || `Audit ${idx + 1}`,
+            school: a.school || "Unspecified Campus",
+            date: a.date || "Unspecified Date",
+            auditor: a.auditor || "Auditor",
+            totalScore: `${totalScorePct}%`,
+            categories: catBreakdown
+        };
+    });
+
+    const isSameSchool = audits.every(a => a.school === audits[0].school);
+    const contextType = isSameSchool 
+        ? `Longitudinal Year-over-Year Progression for campus "${audits[0].school}"`
+        : `Cross-Branch Institutional Benchmarking across ${audits.length} different school campuses`;
+
+    const baselineAudit = auditSummaries[baselineIndex] || auditSummaries[0];
+
+    const promptText = `
+You are an expert Senior Educational Compliance & Campus Safety Auditor for Excelsis Advisors.
+Analyze the following comparative audit datasets and generate a comprehensive, executive-level **Multi-Audit Comparative Intelligence & Strategic Synthesis Report**.
+
+### COMPARISON CONTEXT:
+- **Analysis Type**: ${contextType}
+- **Baseline Audit**: Audit #${baselineAudit.index} - "${baselineAudit.filename}" (${baselineAudit.school}, ${baselineAudit.date}) - Overall Score: ${baselineAudit.totalScore}
+- **Total Audits Compared**: ${audits.length}
+
+### AUDIT DATASETS:
+\`\`\`json
+${JSON.stringify(auditSummaries, null, 2)}
+\`\`\`
+
+### REQUIRED REPORT STRUCTURE (Output in clean, executive GitHub-flavored Markdown):
+
+# 🏢 Excelsis Advisors - Comparative Audit Intelligence Report
+
+## 1. Executive Summary & Comparative Verdict
+- Clear synthesis of overall institutional health and compliance trajectory.
+- Highlight standout top-performing campuses/years vs lagging areas.
+- Quantify score variance and performance delta against baseline (${baselineAudit.filename}).
+
+## 2. ${isSameSchool ? "Year-over-Year Trend Analysis & Progress Velocity" : "Cross-Campus Benchmark & Inter-Branch Variance"}
+- Deep dive into macro categories (e.g. Safety & Security, Infrastructure, Health, Regulatory Compliance).
+- Highlight categories demonstrating major gains (+%) and those exhibiting severe regression or stagnation (-%).
+- Identify root operational factors driving score disparities between the compared entities.
+
+## 3. High-Risk & Safety Vulnerabilities Matrix
+- Cross-reference critical life-safety gaps (Fire safety, hazardous materials, CCTV surveillance, electrical/lift rooms, emergency sick bays).
+- Identify recurring systemic compliance failures that persist across multiple audits or years.
+
+## 4. Institutional Best Practices to Replicate
+- Highlight exemplary operational practices, robust documentation, or proactive facilities management noted in high-scoring audits that should be standardized group-wide.
+
+## 5. Board-Level Strategic Action Roadmap (Prioritized)
+- **Immediate Priorities (0 - 30 Days)**: Critical life-safety remediation and regulatory compliance fixes.
+- **Medium-Term Strategic Upgrades (1 - 6 Months)**: Infrastructure maintenance, transport standardizations, staff training.
+- **Governance & Policy Recommendations**: Governance frameworks and periodic internal review mechanisms.
+
+Write in a formal, authoritative, and data-driven tone appropriate for school board trustees, managing directors, and principals. Do not include raw json code blocks in the output.
+`;
+
+    const result = await callGeminiAPI(apiKey, promptText, getGeminiModel(), { maxOutputTokens: 3000 });
+    return result.text;
+}

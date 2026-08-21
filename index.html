@@ -304,6 +304,13 @@
                     <p class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-1 flex items-center justify-between">
                         <span>Local Browser Drafts</span>
                     </p>
+                    
+                    <!-- Compare Audits Button (Only visible for Superadmin) -->
+                    <button id="compare-audits-btn" onclick="openComparisonHub()" class="hidden w-full bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600 hover:from-brand-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold text-xs px-3 py-2.5 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-brand-500/15">
+                        <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                        <span>Compare Audits &amp; Matrix</span>
+                    </button>
+
                     <!-- Consolidate Button (Only visible for Superadmin) -->
                     <button id="consolidate-btn" onclick="consolidateSelectedAudits()" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all-custom flex items-center justify-center gap-1.5 cursor-pointer mb-2">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
@@ -797,7 +804,18 @@
         </div>
     </div>
 
+    <!-- ================= SUPERADMIN MULTI-AUDIT COMPARISON & BENCHMARKING HUB MODAL ================= -->
+    <div id="comparison-hub-modal" role="dialog" aria-modal="true" aria-labelledby="comparison-modal-title" class="fixed inset-0 z-[115] flex items-center justify-center bg-slate-950/85 backdrop-blur-md transition-opacity duration-300 hidden p-2 sm:p-4 lg:p-6">
+        <div class="bg-white dark:bg-[#0E131F] rounded-3xl w-full max-w-7xl max-h-[96vh] h-full shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden text-slate-800 dark:text-slate-200">
+            <!-- Scrollable Inner View Container (Rendered dynamically by js/comparison.js) -->
+            <div id="comparison-hub-content" class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 overscroll-contain flex flex-col gap-6">
+                <!-- Dynamically rendered -->
+            </div>
+        </div>
+    </div>
+
     <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script type="module" src="js/app.js"></script>
 </body>
 </html>
+
