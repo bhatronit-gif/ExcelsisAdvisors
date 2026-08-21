@@ -196,9 +196,13 @@ export function toggleAuditSelection(auditId) {
  * Sets which selected audit acts as the baseline for delta calculations.
  */
 export function setBaselineAudit(index) {
-    const idx = Number(index);
-    if (idx >= 0 && idx < comparisonState.selectedAudits.length) {
+    const idx = parseInt(index, 10);
+    if (!isNaN(idx) && idx >= 0 && idx < comparisonState.selectedAudits.length) {
         comparisonState.baselineIndex = idx;
+        const selectedBase = comparisonState.selectedAudits[idx];
+        const isYoy = comparisonState.activePreset === 'yoy';
+        const label = isYoy ? `Base year set to ${selectedBase.date ? selectedBase.date.split('-')[0] : selectedBase.date} (${selectedBase.filename})` : `Baseline set to "${selectedBase.filename}"`;
+        showToast(label, 'info');
         renderComparisonView();
     }
 }
@@ -537,16 +541,32 @@ export function renderComparisonView() {
                 </div>
 
                 <!-- Contextual Filter / Active Selection Pill -->
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-3">
                     ${preset === 'yoy' ? `
                         <div class="flex items-center gap-1.5">
                             <label for="yoy-school-select" class="text-xs font-bold text-slate-500 dark:text-slate-400">Campus:</label>
-                            <select id="yoy-school-select" onchange="handleComparisonSchoolFilterChange(this.value)" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-1 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                            <select id="yoy-school-select" onchange="handleComparisonSchoolFilterChange(this.value)" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand-500 shadow-sm">
                                 ${availableSchools.map(sch => `<option value="${sch}" ${sch === comparisonState.presetFilterSchool ? 'selected' : ''}>${sch}</option>`).join('')}
                             </select>
                         </div>
                     ` : ''}
-                    <div class="text-xs font-bold px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+
+                    ${audits.length >= 2 ? `
+                        <div class="flex items-center gap-1.5 bg-amber-500/10 dark:bg-amber-950/30 border border-amber-500/20 px-2.5 py-1 rounded-xl">
+                            <label for="comparison-base-year-select" class="text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                                <span>⭐️ ${preset === 'yoy' ? 'Base Year:' : 'Baseline Target:'}</span>
+                            </label>
+                            <select id="comparison-base-year-select" onchange="setBaselineAudit(this.value)" class="bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700/60 rounded-lg px-2 py-0.5 text-xs font-black text-brand-600 dark:text-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-500 shadow-sm cursor-pointer">
+                                ${audits.map((a, i) => {
+                                    const dateYear = a.date ? a.date.split('-')[0] : '';
+                                    const label = preset === 'yoy' ? `${dateYear || a.date} — ${a.filename}` : `${a.filename} (${getShortSchoolName(a.school)})`;
+                                    return `<option value="${i}" ${i === baselineIdx ? 'selected' : ''}>${label}</option>`;
+                                }).join('')}
+                            </select>
+                        </div>
+                    ` : ''}
+
+                    <div class="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                         <span>Comparing <strong>${audits.length}</strong> of 5 Max Audits</span>
                     </div>
                 </div>
@@ -573,7 +593,7 @@ export function renderComparisonView() {
                                     <span class="text-[10px] text-slate-500 dark:text-slate-400">${getShortSchoolName(cand.school)} • ${cand.date}</span>
                                 </div>
                                 <span class="font-black text-xs ${candTier.bgClass} px-1.5 py-0.5 rounded-md">${candPct}%</span>
-                                ${isBase ? '<span class="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Base</span>' : ''}
+                                ${isBase ? `<span class="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">${preset === 'yoy' ? 'Base Year' : 'Base'}</span>` : ''}
                             </div>
                         `;
                     }).join('')}
@@ -610,8 +630,8 @@ export function renderComparisonView() {
                         return `
                             <div class="relative flex flex-col justify-between p-4 rounded-2xl border transition-all ${isBaseline ? 'bg-gradient-to-b from-brand-500/10 to-transparent border-brand-500/50 ring-2 ring-brand-500/20 dark:from-brand-950/20' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}">
                                 ${isBaseline ? `
-                                    <div class="absolute -top-2.5 right-3 bg-brand-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider shadow-sm flex items-center gap-1">
-                                        <span>⭐️ Baseline Audit</span>
+                                    <div class="absolute -top-2.5 right-3 bg-brand-600 text-white text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider shadow-sm flex items-center gap-1">
+                                        <span>⭐️ ${preset === 'yoy' ? 'Base Year Reference' : 'Baseline Audit'}</span>
                                     </div>
                                 ` : ''}
                                 
@@ -633,14 +653,14 @@ export function renderComparisonView() {
                                     <div class="flex flex-col gap-1 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px]">
                                         ${!isBaseline ? `
                                             <div class="flex items-center justify-between">
-                                                <span class="text-slate-500 dark:text-slate-400">vs Baseline:</span>
+                                                <span class="text-slate-500 dark:text-slate-400">${preset === 'yoy' ? 'vs Base Year' : 'vs Baseline'}:</span>
                                                 <span class="font-bold ${deltaVsBase >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">
                                                     ${deltaVsBase >= 0 ? '+' : ''}${deltaVsBase.toFixed(2)}%
                                                 </span>
                                             </div>
                                         ` : `
                                             <div class="flex items-center justify-between text-slate-400 italic">
-                                                <span>Active Reference</span>
+                                                <span>Active ${preset === 'yoy' ? 'Base Year' : 'Reference'}</span>
                                                 <span>±0.00%</span>
                                             </div>
                                         `}
@@ -656,10 +676,14 @@ export function renderComparisonView() {
                                 <div class="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400">
                                     <span>${audit.date} • ${audit.auditor}</span>
                                     ${!isBaseline ? `
-                                        <button onclick="setBaselineAudit(${idx})" class="text-brand-600 dark:text-brand-400 hover:underline font-bold cursor-pointer">
-                                            Set Baseline
+                                        <button onclick="setBaselineAudit(${idx})" class="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/20 text-[10px] font-bold px-2 py-0.5 rounded-md cursor-pointer transition-all flex items-center gap-1">
+                                            <span>Set as ${preset === 'yoy' ? 'Base Year' : 'Baseline'}</span>
                                         </button>
-                                    ` : ''}
+                                    ` : `
+                                        <span class="text-emerald-600 dark:text-emerald-400 font-bold text-[10px] flex items-center gap-0.5">
+                                            ✓ Active ${preset === 'yoy' ? 'Base Year' : 'Baseline'}
+                                        </span>
+                                    `}
                                 </div>
                             </div>
                         `;

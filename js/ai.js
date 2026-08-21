@@ -2305,7 +2305,7 @@ export async function generateComparativeExecutiveSummary(audits, baselineIndex 
         throw new Error("At least 2 audits are required to generate comparative insights.");
     }
 
-    const apiKey = getStoredApiKey();
+    const apiKey = getGeminiApiKey();
 
     // Prepare structured metadata & metrics payload for the prompt
     const auditSummaries = audits.map((a, idx) => {
