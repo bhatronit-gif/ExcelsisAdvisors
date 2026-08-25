@@ -321,6 +321,7 @@ export const comparisonState = {
     presetFilterSchool: "", // school filter value when in YoY or branch mode
     filterDiscrepanciesOnly: false, // boolean flag for 56-indicator table
     expandedCategories: {}, // { [catName]: true/false }
+    selectedModel: "gemini-3.5-flash-lite", // Chosen Gemini model for comparative intelligence & best practices
     aiComparisonSummary: "", // Strategic Intelligence Report markdown
     aiBestPracticesSummary: "", // Dedicated Cross-Branch Best Practices Playbook markdown
     isAILoading: false,

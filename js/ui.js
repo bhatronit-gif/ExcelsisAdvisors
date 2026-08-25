@@ -79,6 +79,7 @@ export function toggleDataDropdown() {
 }
 
 export function showToast(message, type = 'success') {
+    if (typeof document === 'undefined') return;
     const container = document.getElementById('toast-container');
     if (!container) return;
     

@@ -7,7 +7,10 @@ import { CATEGORIES, SCHOOLS, getSchoolGroup, getShortSchoolName, getDefaultAcad
 import { comparisonState, calculateAuditScore, calculateCategoryScores, getComplianceTier, state } from './state.js';
 import { dbGetAll } from './storage.js';
 import { showToast, trapFocus, releaseFocus } from './ui.js';
-import { generateComparativeExecutiveSummary, generateCrossBranchBestPractices, renderMarkdown } from './ai.js';
+import { 
+    generateComparativeExecutiveSummary, generateCrossBranchBestPractices, 
+    renderMarkdown, getGeminiModel, setGeminiModel, CANDIDATE_MODELS 
+} from './ai.js';
 import { generateComparativePDFReport } from './reports.js';
 import { exportComparativeCSV } from './export.js';
 
@@ -25,6 +28,9 @@ export async function openComparisonHub(initialPreset = "all") {
 
     modal.classList.remove('hidden');
     trapFocus('comparison-hub-modal');
+
+    // Initialize chosen model from storage or default
+    comparisonState.selectedModel = getGeminiModel() || 'gemini-3.5-flash-lite';
 
     // Load candidate drafts from DB
     await refreshCandidateAudits();
@@ -442,6 +448,17 @@ function parseCSVToAuditObject(csvText, fileName) {
 }
 
 /**
+ * Handles user selecting a specific Gemini model in Comparison Hub.
+ */
+export function handleComparisonModelChange(modelName) {
+    if (!modelName) return;
+    comparisonState.selectedModel = modelName;
+    setGeminiModel(modelName);
+    showToast(`AI Model set to ${modelName}`, "info");
+    renderComparisonView();
+}
+
+/**
  * Triggers AI Comparative Synthesis using Gemini API.
  */
 export async function triggerAIComparison() {
@@ -450,16 +467,18 @@ export async function triggerAIComparison() {
         return;
     }
 
+    const modelToUse = comparisonState.selectedModel || getGeminiModel() || 'gemini-3.5-flash-lite';
     comparisonState.isAILoading = true;
     renderComparisonView();
 
     try {
         const markdown = await generateComparativeExecutiveSummary(
             comparisonState.selectedAudits,
-            comparisonState.baselineIndex
+            comparisonState.baselineIndex,
+            modelToUse
         );
         comparisonState.aiComparisonSummary = markdown;
-        showToast("AI Comparative Synthesis completed successfully!", "success");
+        showToast(`AI Comparative Synthesis completed successfully!`, "success");
     } catch (e) {
         console.error("AI Comparative synthesis failed:", e);
         showToast(`AI Synthesis Error: ${e.message}`, "error");
@@ -495,14 +514,18 @@ export async function triggerAIBestPractices() {
         return;
     }
 
+    const modelToUse = comparisonState.selectedModel || getGeminiModel() || 'gemini-3.5-flash-lite';
     comparisonState.isAIBestPracticesLoading = true;
     comparisonState.activeAITab = 'best_practices';
     renderComparisonView();
 
     try {
-        const markdown = await generateCrossBranchBestPractices(comparisonState.selectedAudits);
+        const markdown = await generateCrossBranchBestPractices(
+            comparisonState.selectedAudits,
+            modelToUse
+        );
         comparisonState.aiBestPracticesSummary = markdown;
-        showToast("Group Best Practices Playbook synthesized successfully!", "success");
+        showToast(`Group Best Practices Playbook synthesized successfully!`, "success");
     } catch (e) {
         console.error("Best practices synthesis failed:", e);
         showToast(`Best Practices AI Error: ${e.message}`, "error");
@@ -566,6 +589,7 @@ function computeCohortOverallAverage(audits) {
  * Main UI Rendering Engine for the Multi-Audit Comparison Hub.
  */
 export function renderComparisonView() {
+    if (typeof document === 'undefined') return;
     const container = document.getElementById('comparison-hub-content');
     if (!container) return;
 
@@ -1069,17 +1093,34 @@ export function renderComparisonView() {
                         <p class="text-xs text-slate-500 dark:text-slate-400">Multi-audit performance diagnostics and institutional standardization playbooks.</p>
                     </div>
 
-                    <!-- AI Mode Switcher Tabs -->
-                    <div class="flex items-center bg-slate-100 dark:bg-slate-800/90 p-1 rounded-2xl border border-slate-200 dark:border-slate-700/80 gap-1 shadow-inner">
-                        <button onclick="setComparisonAITab('strategic')" class="px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${comparisonState.activeAITab !== 'best_practices' ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm border border-slate-200/60 dark:border-slate-800' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}">
-                            <span>📊 Strategic Synthesis</span>
-                            ${comparisonState.aiComparisonSummary ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>' : ''}
-                        </button>
-                        <button onclick="setComparisonAITab('best_practices')" class="px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${comparisonState.activeAITab === 'best_practices' ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm border border-slate-200/60 dark:border-slate-800' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}">
-                            <span>🌟 Best Practices Playbook</span>
-                            <span class="text-[9px] px-1.5 py-0.2 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-extrabold uppercase">Exemplars</span>
-                            ${comparisonState.aiBestPracticesSummary ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>' : ''}
-                        </button>
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <!-- Gemini Model Selector -->
+                        <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/90 px-3 py-1.5 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm">
+                            <label for="comparison-model-select" class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1 whitespace-nowrap">
+                                <svg class="w-3.5 h-3.5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                <span>Model:</span>
+                            </label>
+                            <select id="comparison-model-select" onchange="handleComparisonModelChange(this.value)" class="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer pr-1">
+                                <option value="gemini-3.5-flash-lite" ${(comparisonState.selectedModel || 'gemini-3.5-flash-lite') === 'gemini-3.5-flash-lite' ? 'selected' : ''}>Gemini 3.5 Flash-Lite (Fast &amp; Recommended)</option>
+                                <option value="gemini-3.7-flash" ${(comparisonState.selectedModel) === 'gemini-3.7-flash' ? 'selected' : ''}>Gemini 3.7 Flash</option>
+                                <option value="gemini-3.6-flash" ${(comparisonState.selectedModel) === 'gemini-3.6-flash' ? 'selected' : ''}>Gemini 3.6 Flash</option>
+                                <option value="gemini-3.5-flash" ${(comparisonState.selectedModel) === 'gemini-3.5-flash' ? 'selected' : ''}>Gemini 3.5 Flash</option>
+                                <option value="gemini-3.1-flash-lite" ${(comparisonState.selectedModel) === 'gemini-3.1-flash-lite' ? 'selected' : ''}>Gemini 3.1 Flash-Lite</option>
+                            </select>
+                        </div>
+
+                        <!-- AI Mode Switcher Tabs -->
+                        <div class="flex items-center bg-slate-100 dark:bg-slate-800/90 p-1 rounded-2xl border border-slate-200 dark:border-slate-700/80 gap-1 shadow-inner">
+                            <button onclick="setComparisonAITab('strategic')" class="px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${comparisonState.activeAITab !== 'best_practices' ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm border border-slate-200/60 dark:border-slate-800' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}">
+                                <span>📊 Strategic Synthesis</span>
+                                ${comparisonState.aiComparisonSummary ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>' : ''}
+                            </button>
+                            <button onclick="setComparisonAITab('best_practices')" class="px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${comparisonState.activeAITab === 'best_practices' ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm border border-slate-200/60 dark:border-slate-800' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}">
+                                <span>🌟 Best Practices Playbook</span>
+                                <span class="text-[9px] px-1.5 py-0.2 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-extrabold uppercase">Exemplars</span>
+                                ${comparisonState.aiBestPracticesSummary ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>' : ''}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1114,7 +1155,7 @@ export function renderComparisonView() {
                         ${comparisonState.isAILoading ? `
                             <div class="py-12 flex flex-col items-center justify-center text-center gap-3">
                                 <div class="w-10 h-10 rounded-full border-4 border-purple-500 border-t-transparent animate-spin"></div>
-                                <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Gemini is synthesizing ${audits.length} audit datasets...</span>
+                                <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Gemini (${comparisonState.selectedModel || 'gemini-3.5-flash-lite'}) is synthesizing ${audits.length} audit datasets...</span>
                                 <span class="text-xs text-slate-500">Cross-referencing category deltas, safety risk weights, and write-up observations.</span>
                             </div>
                         ` : comparisonState.aiComparisonSummary ? `
@@ -1125,7 +1166,7 @@ export function renderComparisonView() {
                             <div class="py-8 flex flex-col items-center justify-center text-center gap-2">
                                 <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-7.072 0z"/></svg>
                                 <span class="text-sm font-bold text-slate-700 dark:text-slate-300">No Strategic Synthesis Generated Yet</span>
-                                <p class="text-xs text-slate-500 max-w-md">Click "Generate Strategic Synthesis" above to produce a comprehensive cross-audit intelligence report with strategic board recommendations.</p>
+                                <p class="text-xs text-slate-500 max-w-md">Click "Generate Strategic Synthesis" above to produce a comprehensive cross-audit intelligence report with strategic board recommendations using <strong>${comparisonState.selectedModel || 'gemini-3.5-flash-lite'}</strong>.</p>
                             </div>
                         `}
                     </div>
@@ -1161,7 +1202,7 @@ export function renderComparisonView() {
                         ${comparisonState.isAIBestPracticesLoading ? `
                             <div class="py-12 flex flex-col items-center justify-center text-center gap-3">
                                 <div class="w-10 h-10 rounded-full border-4 border-amber-500 border-t-transparent animate-spin"></div>
-                                <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Gemini is extracting gold-standard operational practices across ${audits.length} branches...</span>
+                                <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Gemini (${comparisonState.selectedModel || 'gemini-3.5-flash-lite'}) is extracting gold-standard operational practices across ${audits.length} branches...</span>
                                 <span class="text-xs text-slate-500">Benchmarking top scores (4-5★) and positive narratives to formulate group standardization guidelines.</span>
                             </div>
                         ` : comparisonState.aiBestPracticesSummary ? `
@@ -1174,7 +1215,7 @@ export function renderComparisonView() {
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
                                 </div>
                                 <span class="text-sm font-bold text-slate-800 dark:text-slate-200">Dedicated Cross-Branch Best Practices Engine</span>
-                                <p class="text-xs text-slate-500 max-w-md">Click "Synthesize Best Practices Playbook" above to analyze and extract standout operational procedures from leading branches for group-wide adoption.</p>
+                                <p class="text-xs text-slate-500 max-w-md">Click "Synthesize Best Practices Playbook" above to analyze and extract standout operational procedures from leading branches using <strong>${comparisonState.selectedModel || 'gemini-3.5-flash-lite'}</strong>.</p>
                             </div>
                         `}
                     </div>

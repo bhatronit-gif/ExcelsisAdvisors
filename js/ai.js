@@ -380,6 +380,7 @@ export function extractCandidateText(data) {
  * Retrieves the stored Gemini API Key from localStorage.
  */
 export function getGeminiApiKey() {
+    if (typeof localStorage === 'undefined') return '';
     return localStorage.getItem('gemini_api_key') || '';
 }
 
@@ -387,6 +388,7 @@ export function getGeminiApiKey() {
  * Saves the Gemini API Key to localStorage.
  */
 export function setGeminiApiKey(key) {
+    if (typeof localStorage === 'undefined') return;
     if (key && typeof key === 'string') {
         localStorage.setItem('gemini_api_key', key.trim());
     } else {
@@ -398,6 +400,7 @@ export function setGeminiApiKey(key) {
  * Retrieves the stored Gemini model name from localStorage or defaults to DEFAULT_MODEL.
  */
 export function getGeminiModel() {
+    if (typeof localStorage === 'undefined') return DEFAULT_MODEL;
     const stored = localStorage.getItem('gemini_selected_model');
     const validModels = [
         'gemini-3.7-flash',
@@ -407,7 +410,7 @@ export function getGeminiModel() {
         'gemini-3.1-flash-lite'
     ];
     if (!stored || !validModels.includes(stored.trim())) {
-        return DEFAULT_MODEL; // gemini-3.7-flash
+        return DEFAULT_MODEL;
     }
     return stored.trim();
 }
@@ -416,6 +419,7 @@ export function getGeminiModel() {
  * Saves the chosen Gemini model name to localStorage.
  */
 export function setGeminiModel(modelName) {
+    if (typeof localStorage === 'undefined') return;
     if (modelName && typeof modelName === 'string') {
         localStorage.setItem('gemini_selected_model', modelName.trim());
     } else {
@@ -2302,7 +2306,7 @@ export async function runFullAuditAIPipeline() {
 /**
  * Synthesizes cross-audit comparative insights, trends, strengths, and recommendations for Superadmin.
  */
-export async function generateComparativeExecutiveSummary(audits, baselineIndex = 0) {
+export async function generateComparativeExecutiveSummary(audits, baselineIndex = 0, modelOverride = null) {
     if (!audits || audits.length < 2) {
         throw new Error("At least 2 audits are required to generate comparative insights.");
     }
@@ -2401,7 +2405,8 @@ ${JSON.stringify(auditSummaries, null, 2)}
 Keep the report concise, data-driven, and authoritative. Do not include raw JSON code blocks in output.
 `;
 
-    const result = await callGeminiAPI(apiKey, promptText, getGeminiModel() || DEFAULT_SUMMARY_MODEL, { maxOutputTokens: 1500 });
+    const modelToUse = modelOverride || getGeminiModel() || DEFAULT_SUMMARY_MODEL;
+    const result = await callGeminiAPI(apiKey, promptText, modelToUse, { maxOutputTokens: 1500 });
     return result.text;
 }
 
@@ -2409,7 +2414,7 @@ Keep the report concise, data-driven, and authoritative. Do not include raw JSON
  * Synthesizes a dedicated Group-Wide Best Practices & Institutional Standardization Playbook
  * extracted from high-scoring campus branches across each pillar.
  */
-export async function generateCrossBranchBestPractices(audits) {
+export async function generateCrossBranchBestPractices(audits, modelOverride = null) {
     if (!audits || audits.length < 2) {
         throw new Error("At least 2 campus branch audits are required to benchmark best practices.");
     }
@@ -2497,7 +2502,8 @@ For the standout pillars (e.g. Fire & Life Safety, Infrastructure & Hygiene, Tra
 Write in a formal, inspiring, and data-driven tone suitable for the Managing Director, Board of Trustees, and Campus Principals. Do not include raw JSON code blocks.
 `;
 
-    const result = await callGeminiAPI(apiKey, promptText, getGeminiModel() || DEFAULT_SUMMARY_MODEL, { maxOutputTokens: 1500 });
+    const modelToUse = modelOverride || getGeminiModel() || DEFAULT_SUMMARY_MODEL;
+    const result = await callGeminiAPI(apiKey, promptText, modelToUse, { maxOutputTokens: 1500 });
     return result.text;
 }
 

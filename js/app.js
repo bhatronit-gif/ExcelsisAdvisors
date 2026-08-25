@@ -36,9 +36,10 @@ import {
     openComparisonHub, closeComparisonHub, handlePresetChange,
     handleComparisonSchoolFilterChange, toggleAuditSelection, setBaselineAudit,
     toggleCategoryAccordion, toggleAllCategoryAccordions, toggleDiscrepancyFilter,
-    handleExternalComparisonUpload, triggerAIComparison, handleAIComparisonSummaryEdit,
-    copyAIComparisonMarkdown, triggerAIBestPractices, setComparisonAITab,
-    handleAIBestPracticesSummaryEdit, copyAIBestPracticesMarkdown, renderComparisonView
+    handleExternalComparisonUpload, handleComparisonModelChange, triggerAIComparison, 
+    handleAIComparisonSummaryEdit, copyAIComparisonMarkdown, triggerAIBestPractices, 
+    setComparisonAITab, handleAIBestPracticesSummaryEdit, copyAIBestPracticesMarkdown, 
+    renderComparisonView
 } from './comparison.js';
 import { generateCrossBranchBestPractices } from './ai.js';
 import { exportComparativeCSV } from './export.js';
@@ -57,6 +58,7 @@ window.toggleCategoryAccordion = toggleCategoryAccordion;
 window.toggleAllCategoryAccordions = toggleAllCategoryAccordions;
 window.toggleDiscrepancyFilter = toggleDiscrepancyFilter;
 window.handleExternalComparisonUpload = handleExternalComparisonUpload;
+window.handleComparisonModelChange = handleComparisonModelChange;
 window.triggerAIComparison = triggerAIComparison;
 window.handleAIComparisonSummaryEdit = handleAIComparisonSummaryEdit;
 window.copyAIComparisonMarkdown = copyAIComparisonMarkdown;
@@ -68,8 +70,6 @@ window.generateCrossBranchBestPractices = generateCrossBranchBestPractices;
 window.generateComparativePDFReport = generateComparativePDFReport;
 window.exportComparativeCSV = exportComparativeCSV;
 window.renderComparisonView = renderComparisonView;
-window.generateComparativePDFReport = generateComparativePDFReport;
-window.exportComparativeCSV = exportComparativeCSV;
 
 window.cycleRiskMultiplier = cycleRiskMultiplier;
 window.setIndicatorMultiplier = setIndicatorMultiplier;
