@@ -5,7 +5,7 @@
  * a formal, multi-section executive briefing.
  */
 
-import { CATEGORIES } from './config.js';
+import { CATEGORIES, getSchoolGroup } from './config.js';
 import { state, saveState, saveStateNow, calculateScore, updateCalculations } from './state.js';
 import { showToast, refreshCardDOM, renderCategoryNavigation, renderActiveCategoryIndicators } from './ui.js';
 
@@ -1015,6 +1015,7 @@ export function setAIActiveTab(tabName) {
  * Updates the API Key Status UI indicator in the modal header.
  */
 export function updateApiKeyStatusUI() {
+    if (typeof document === 'undefined') return;
     const key = getGeminiApiKey();
     const badge = document.getElementById('ai-api-key-badge');
     if (!badge) return;
