@@ -275,6 +275,14 @@ export function renderActiveCategoryIndicators() {
         });
     }
 
+    const catEvidenceSection = document.getElementById('category-evidence-container');
+    if (catEvidenceSection) {
+        catEvidenceSection.classList.toggle('hidden', !!query);
+    }
+    if (!query) {
+        renderCategoryPhotosGallery(state.activeCategory);
+    }
+
     const saveFooter = document.getElementById('save-draft-footer');
     if (saveFooter) {
         saveFooter.classList.toggle('hidden', query !== '' && matchCount === 0);
@@ -314,7 +322,9 @@ export function renderCardHTML(catName, indName, baseMultiplier) {
         badgeColorClass = "bg-purple-100 text-purple-900 border border-purple-300 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-700 font-extrabold";
     }
     
-    const hasModifications = data.reviewed || data.features || data.gaps || data.actions || data.aiFeatures || data.aiGaps || data.aiActions || data.score !== 3 || data.photoName || isRiskModified;
+    const photos = Array.isArray(data.photos) ? data.photos : (data.photoData ? [{ name: data.photoName || "Photo", data: data.photoData }] : []);
+    const hasPhotos = photos.length > 0;
+    const hasModifications = data.reviewed || data.features || data.gaps || data.actions || data.aiFeatures || data.aiGaps || data.aiActions || data.score !== 3 || hasPhotos || isRiskModified;
     const borderAccentClass = isRiskModified 
         ? "border-purple-500/40 dark:border-purple-500/30 ring-1 ring-purple-500/20"
         : (hasModifications 
@@ -572,29 +582,34 @@ export function renderCardHTML(catName, indName, baseMultiplier) {
                 </div>
             </div>
 
-            <!-- Photographic Evidence Mapping Row (Embedded Images) -->
-            <div class="flex flex-col gap-1.5 mt-2 border-t border-slate-100 dark:border-[#1F2937]/60 pt-3">
-                <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Attached Photographic Evidence</span>
+            <!-- Photographic Evidence Mapping Row (Multiple Embedded Images) -->
+            <div class="flex flex-col gap-2 mt-2 border-t border-slate-100 dark:border-[#1F2937]/60 pt-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-brand-500" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <span>Attached Photographic Evidence</span>
+                    </span>
+                    <span id="photo-count-${catEscaped}-${indEscaped}" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#1c273d] text-slate-600 dark:text-slate-400">
+                        ${photos.length} photo${photos.length === 1 ? '' : 's'}
+                    </span>
+                </div>
+
                 <div class="flex flex-col gap-3">
-                    <div class="flex items-center gap-3 flex-wrap">
+                    <div class="flex items-center gap-2 flex-wrap">
                         <label for="photo-file-${catEscaped}-${indEscaped}" class="px-3 py-1.5 border border-slate-200 dark:border-[#2C3854] rounded-lg text-xs font-bold cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c273d] transition-all-custom flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                            <svg class="w-3.5 h-3.5 text-brand-500" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                            <span>Choose Image</span>
-                            <input type="file" id="photo-file-${catEscaped}-${indEscaped}" accept="image/*" class="hidden" aria-label="Upload photographic evidence for ${indName}" onchange="handlePhotoUpload('${catName}', '${indName}', this)">
+                            <svg class="w-3.5 h-3.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>${photos.length > 0 ? 'Add Images' : 'Choose Images'}</span>
+                            <input type="file" id="photo-file-${catEscaped}-${indEscaped}" accept="image/*" multiple class="hidden" aria-label="Upload photographic evidence for ${indName}" onchange="handlePhotoUpload('${catName}', '${indName}', this)">
                         </label>
                         
-                        <div id="photo-info-${catEscaped}-${indEscaped}" class="flex items-center gap-1.5 text-[11px]">
-                            ${data.photoName 
-                                ? `<span class="text-slate-500 dark:text-slate-400 italic font-medium truncate max-w-[200px] block">${data.photoName}</span>
-                                   <button type="button" onclick="removePhoto('${catName}', '${indName}')" aria-label="Remove attached evidence photo for ${indName}" class="text-rose-500 hover:text-rose-700 font-bold p-1 cursor-pointer">✕</button>`
-                                : `<span class="text-slate-400 dark:text-slate-600">No photographic evidence attached</span>`
-                            }
-                        </div>
+                        <button type="button" id="photo-clear-${catEscaped}-${indEscaped}" onclick="removePhoto('${catName}', '${indName}', null)" class="text-[11px] font-bold text-rose-500 hover:text-rose-700 px-2 py-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer ${photos.length > 1 ? '' : 'hidden'}">
+                            Clear All (${photos.length})
+                        </button>
                     </div>
                     
-                    <!-- Medium Image Preview Block in Card -->
-                    <div id="photo-preview-${catEscaped}-${indEscaped}" class="w-full max-w-sm rounded-xl border border-slate-200 dark:border-[#2C3854] overflow-hidden bg-slate-100 dark:bg-[#172033] ${data.photoData ? '' : 'hidden'} mt-1">
-                        <img id="img-preview-${catEscaped}-${indEscaped}" src="${data.photoData || ''}" alt="Photographic evidence preview for ${indName}" class="object-cover w-full max-h-48">
+                    <!-- Multi-Image Thumbnails Gallery in Card -->
+                    <div id="photo-gallery-${catEscaped}-${indEscaped}" class="flex flex-wrap gap-2.5 items-start mt-1">
+                        ${renderIndicatorGalleryHTML(catName, indName, photos)}
                     </div>
                 </div>
             </div>
@@ -772,69 +787,227 @@ export function compressImage(file, maxDim, quality, callback) {
     reader.readAsDataURL(file);
 }
 
-export function handlePhotoUpload(catName, indName, input) {
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        showToast("Compressing photo for offline storage...", "info");
-        
-        compressImage(file, 1024, 0.7, function(base64Data) {
-            const item = state.auditData[catName][indName];
-            item.photoName = file.name;
-            item.photoData = base64Data;
-            item.reviewed = true;
-            
-            saveState();
-            
-            const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
-            const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
-            
-            const infoEl = document.getElementById(`photo-info-${catEscaped}-${indEscaped}`);
-            if (infoEl) {
-                infoEl.innerHTML = `
-                    <span class="text-slate-600 dark:text-slate-300 italic font-medium truncate max-w-[200px] block">${file.name}</span>
-                    <button type="button" onclick="removePhoto('${catName}', '${indName}')" aria-label="Remove attached photo evidence for ${indName}" class="text-rose-500 hover:text-rose-700 font-bold p-1 cursor-pointer">✕</button>
-                `;
-            }
-            
-            const previewContainer = document.getElementById(`photo-preview-${catEscaped}-${indEscaped}`);
-            const imgEl = document.getElementById(`img-preview-${catEscaped}-${indEscaped}`);
-            if (previewContainer && imgEl) {
-                imgEl.src = base64Data;
-                imgEl.alt = `Photographic evidence preview for ${indName} (${file.name})`;
-                previewContainer.classList.remove('hidden');
-            }
-            
-            updateLiveIndicatorsForCard(catName, indName);
-            updateCalculations();
-            showToast(`Attached evidence: ${file.name}`);
-        });
-    }
+export function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
-export function removePhoto(catName, indName) {
-    const item = state.auditData[catName][indName];
-    const oldName = item.photoName;
-    item.photoName = "";
-    item.photoData = "";
-    
-    saveState();
-    
+export function renderIndicatorGalleryHTML(catName, indName, photos) {
+    if (!photos || photos.length === 0) {
+        return `<span class="text-slate-400 dark:text-slate-600 text-[11px] italic">No photographic evidence attached</span>`;
+    }
+    const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
+    const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
+
+    return photos.map((p, idx) => `
+        <div class="group relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl border border-slate-200 dark:border-[#2C3854] overflow-hidden bg-slate-100 dark:bg-[#172033] shadow-sm flex items-center justify-center shrink-0">
+            <img src="${p.data}" alt="${escapeHtml(p.name)}" onclick="openImageLightbox('${p.data}', '${escapeHtml(p.name)} (${escapeHtml(indName)})')" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform" title="Click to view full size">
+            <button type="button" onclick="removePhoto('${catName}', '${indName}', ${idx})" aria-label="Remove photo ${idx + 1}" title="Remove photo" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold opacity-80 hover:opacity-100 transition-all cursor-pointer shadow">✕</button>
+            <div class="absolute bottom-0 inset-x-0 bg-slate-900/80 px-1 py-0.5 text-[8px] font-mono text-slate-200 truncate text-center pointer-events-none">
+                ${escapeHtml(p.name)}
+            </div>
+        </div>
+    `).join('');
+}
+
+export function renderIndicatorPhotosLive(catName, indName) {
+    const item = state.auditData[catName]?.[indName];
+    if (!item) return;
     const catEscaped = catName.replace(/[^a-zA-Z0-9]/g, '');
     const indEscaped = indName.replace(/[^a-zA-Z0-9]/g, '');
     
-    const infoEl = document.getElementById(`photo-info-${catEscaped}-${indEscaped}`);
-    if (infoEl) {
-        infoEl.innerHTML = `<span class="text-slate-600 dark:text-slate-300">No photographic evidence attached</span>`;
+    const photos = Array.isArray(item.photos) ? item.photos : [];
+    
+    const countEl = document.getElementById(`photo-count-${catEscaped}-${indEscaped}`);
+    if (countEl) {
+        countEl.textContent = `${photos.length} photo${photos.length === 1 ? '' : 's'}`;
     }
     
-    const previewContainer = document.getElementById('photo-preview-' + catEscaped + '-' + indEscaped);
-    if (previewContainer) {
-        previewContainer.classList.add('hidden');
+    const clearBtn = document.getElementById(`photo-clear-${catEscaped}-${indEscaped}`);
+    if (clearBtn) {
+        clearBtn.textContent = `Clear All (${photos.length})`;
+        clearBtn.classList.toggle('hidden', photos.length <= 1);
     }
     
+    const galleryEl = document.getElementById(`photo-gallery-${catEscaped}-${indEscaped}`);
+    if (galleryEl) {
+        galleryEl.innerHTML = renderIndicatorGalleryHTML(catName, indName, photos);
+    }
+}
+
+export function handlePhotoUpload(catName, indName, input) {
+    if (input.files && input.files.length > 0) {
+        const files = Array.from(input.files);
+        const item = state.auditData[catName][indName];
+        if (!Array.isArray(item.photos)) {
+            item.photos = item.photoData ? [{ name: item.photoName || "Photo", data: item.photoData }] : [];
+        }
+        
+        showToast(`Compressing ${files.length} photo(s) for offline storage...`, "info");
+        
+        let completed = 0;
+        files.forEach(file => {
+            compressImage(file, 1024, 0.7, function(base64Data) {
+                item.photos.push({
+                    name: file.name,
+                    data: base64Data,
+                    timestamp: Date.now()
+                });
+                completed++;
+                if (completed === files.length) {
+                    item.photoName = item.photos.map(p => p.name).join(', ');
+                    item.photoData = item.photos[0]?.data || "";
+                    item.reviewed = true;
+                    
+                    saveState();
+                    renderIndicatorPhotosLive(catName, indName);
+                    updateLiveIndicatorsForCard(catName, indName);
+                    updateCalculations();
+                    showToast(`Attached ${files.length} photo(s) to ${indName}`);
+                }
+            });
+        });
+        input.value = "";
+    }
+}
+
+export function removePhoto(catName, indName, photoIndex = null) {
+    const item = state.auditData[catName][indName];
+    if (!item) return;
+    if (!Array.isArray(item.photos)) {
+        item.photos = item.photoData ? [{ name: item.photoName || "Photo", data: item.photoData }] : [];
+    }
+    
+    let msg = "";
+    if (photoIndex !== null && photoIndex >= 0 && photoIndex < item.photos.length) {
+        const removed = item.photos.splice(photoIndex, 1)[0];
+        msg = `Removed photo: ${removed.name}`;
+    } else {
+        item.photos = [];
+        msg = "Removed all attached photos";
+    }
+    
+    item.photoName = item.photos.map(p => p.name).join(', ');
+    item.photoData = item.photos[0]?.data || "";
+    
+    saveState();
+    renderIndicatorPhotosLive(catName, indName);
     updateLiveIndicatorsForCard(catName, indName);
     updateCalculations();
-    showToast(`Removed attached photo: ${oldName}`, 'info');
+    showToast(msg, 'info');
+}
+
+export function handleCategoryPhotoUpload(input) {
+    const catName = state.activeCategory;
+    if (!catName || !input.files || input.files.length === 0) return;
+    
+    if (!state.categoryPhotos) state.categoryPhotos = {};
+    if (!Array.isArray(state.categoryPhotos[catName])) {
+        state.categoryPhotos[catName] = [];
+    }
+    
+    const files = Array.from(input.files);
+    showToast(`Compressing ${files.length} category photo(s)...`, "info");
+    
+    let completed = 0;
+    files.forEach(file => {
+        compressImage(file, 1024, 0.7, function(base64Data) {
+            state.categoryPhotos[catName].push({
+                name: file.name,
+                data: base64Data,
+                timestamp: Date.now()
+            });
+            completed++;
+            if (completed === files.length) {
+                saveState();
+                renderCategoryPhotosGallery(catName);
+                showToast(`Attached ${files.length} photo(s) to ${catName}`, "success");
+            }
+        });
+    });
+    input.value = "";
+}
+
+export function removeCategoryPhoto(catName, photoIndex = null) {
+    if (!state.categoryPhotos || !Array.isArray(state.categoryPhotos[catName])) return;
+    
+    let msg = "";
+    if (photoIndex !== null && photoIndex >= 0 && photoIndex < state.categoryPhotos[catName].length) {
+        const removed = state.categoryPhotos[catName].splice(photoIndex, 1)[0];
+        msg = `Removed category photo: ${removed.name}`;
+    } else {
+        state.categoryPhotos[catName] = [];
+        msg = `Removed all photos for ${catName}`;
+    }
+    
+    saveState();
+    renderCategoryPhotosGallery(catName);
+    showToast(msg, "info");
+}
+
+export function renderCategoryPhotosGallery(catName = null) {
+    const activeCat = catName || state.activeCategory;
+    const galleryEl = document.getElementById('category-photo-gallery');
+    const badgeEl = document.getElementById('category-photo-count-badge');
+    if (!galleryEl) return;
+    
+    const photos = (state.categoryPhotos && Array.isArray(state.categoryPhotos[activeCat])) 
+        ? state.categoryPhotos[activeCat] 
+        : [];
+        
+    if (badgeEl) {
+        badgeEl.textContent = `${photos.length} photo${photos.length === 1 ? '' : 's'}`;
+    }
+    
+    if (photos.length === 0) {
+        galleryEl.innerHTML = `
+            <span class="text-xs text-slate-500 dark:text-slate-400 italic">
+                No general category-level photos attached yet. You can attach macro-level evidence above or indicator-specific photos on the cards below.
+            </span>
+        `;
+        return;
+    }
+    
+    galleryEl.innerHTML = photos.map((p, idx) => `
+        <div class="group relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border border-slate-200 dark:border-[#2C3854] overflow-hidden bg-slate-100 dark:bg-[#172033] shadow-sm flex items-center justify-center shrink-0">
+            <img src="${p.data}" alt="${escapeHtml(p.name)}" onclick="openImageLightbox('${p.data}', '${escapeHtml(p.name)} (${escapeHtml(activeCat)})')" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform" title="Click to view full size">
+            <button type="button" onclick="removeCategoryPhoto('${escapeHtml(activeCat)}', ${idx})" aria-label="Remove category photo ${idx + 1}" title="Remove photo" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold opacity-80 hover:opacity-100 transition-all cursor-pointer shadow">✕</button>
+            <div class="absolute bottom-0 inset-x-0 bg-slate-900/80 px-1 py-0.5 text-[8px] font-mono text-slate-200 truncate text-center pointer-events-none">
+                ${escapeHtml(p.name)}
+            </div>
+        </div>
+    `).join('') + `
+        <button type="button" onclick="removeCategoryPhoto('${escapeHtml(activeCat)}', null)" class="text-xs font-bold text-rose-500 hover:text-rose-700 px-2.5 py-1.5 rounded-xl border border-rose-200 dark:border-rose-950/60 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all cursor-pointer self-center ml-1">
+            Clear All
+        </button>
+    `;
+}
+
+export function openImageLightbox(src, caption = "") {
+    const modal = document.getElementById('image-lightbox-modal');
+    const imgEl = document.getElementById('lightbox-image');
+    const capEl = document.getElementById('lightbox-caption');
+    if (!modal || !imgEl) return;
+    
+    imgEl.src = src;
+    imgEl.alt = caption || "Photo Evidence";
+    if (capEl) capEl.textContent = caption || "";
+    
+    modal.classList.remove('hidden');
+    trapFocus('image-lightbox-modal');
+}
+
+export function closeImageLightbox() {
+    const modal = document.getElementById('image-lightbox-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        releaseFocus();
+    }
 }
 
 export function handleSearch(query) {

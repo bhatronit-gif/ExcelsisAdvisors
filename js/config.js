@@ -125,10 +125,11 @@ export const DB_NAME = "ExcelsisAuditDB";
 export const DB_VERSION = 1;
 
 export const RATING_THRESHOLDS = {
-    OUTSTANDING: { min: 90.0, label: "Outstanding", shortLabel: "Outstnd", color: "#10B981" },
-    COMPLIANT: { min: 75.0, label: "Good / Compliant", shortLabel: "Complnt", color: "#3B82F6" },
-    NEEDS_IMPROVEMENT: { min: 60.0, label: "Needs Improvement", shortLabel: "NeedImp", color: "#F59E0B" },
-    CRITICAL_RISK: { min: 0.0, label: "Critical Risk", shortLabel: "CritRsk", color: "#EF4444" }
+    EXCELLENT: { min: 86.0, label: "Excellent", shortLabel: "Excel", color: "#10B981" },
+    GOOD: { min: 76.0, label: "Good", shortLabel: "Good", color: "#3B82F6" },
+    SATISFACTORY: { min: 66.0, label: "Satisfactory", shortLabel: "Satisf", color: "#F59E0B" },
+    NEEDS_IMPROVEMENT: { min: 56.0, label: "Needs Improvement", shortLabel: "NeedImp", color: "#F97316" },
+    POOR: { min: 0.0, label: "Poor", shortLabel: "Poor", color: "#EF4444" }
 };
 
 export const RISK_SEVERITY_LEVELS = {
@@ -150,6 +151,8 @@ export const INITIAL_STATE_DEFAULTS = {
     searchQuery: "",
     loggedInUser: null,
     auditData: {},
+    categoryPhotos: {},
+    annexures: [],
     useLocalStorageFallback: false
 };
 

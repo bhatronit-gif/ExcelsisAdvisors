@@ -12,8 +12,15 @@ import {
     renderCategoryNavigation, initIndicatorsGrid, renderActiveCategoryIndicators,
     handleCategorySelect, handleScoreChange, handleScoreKeyDown, handleTextChange,
     handlePhotoUpload, removePhoto, handleSearch, clearSearch, handleFilenameChange, handleMetaChange,
-    cycleRiskMultiplier, setIndicatorMultiplier
+    cycleRiskMultiplier, setIndicatorMultiplier,
+    handleCategoryPhotoUpload, removeCategoryPhoto, renderCategoryPhotosGallery,
+    openImageLightbox, closeImageLightbox
 } from './ui.js';
+import {
+    openAnnexuresModal, closeAnnexuresModal, handleAnnexurePDFUpload,
+    removeAnnexure, reorderAnnexure, updateAnnexureTitle,
+    previewAnnexure, closeAnnexurePreviewModal, updateAnnexureBadges
+} from './annexures.js';
 import { 
     exportToCSV, exportToJSON, importFromJSON, importFromCSV, downloadCSVTemplate,
     fetchHistory, loadAuditFromDatabase, loadAuditFromDatabaseForSuperadmin,
@@ -80,6 +87,22 @@ window.handleScoreKeyDown = handleScoreKeyDown;
 window.handleTextChange = handleTextChange;
 window.handlePhotoUpload = handlePhotoUpload;
 window.removePhoto = removePhoto;
+window.handleCategoryPhotoUpload = handleCategoryPhotoUpload;
+window.removeCategoryPhoto = removeCategoryPhoto;
+window.renderCategoryPhotosGallery = renderCategoryPhotosGallery;
+window.openImageLightbox = openImageLightbox;
+window.closeImageLightbox = closeImageLightbox;
+
+window.openAnnexuresModal = openAnnexuresModal;
+window.closeAnnexuresModal = closeAnnexuresModal;
+window.handleAnnexurePDFUpload = handleAnnexurePDFUpload;
+window.removeAnnexure = removeAnnexure;
+window.reorderAnnexure = reorderAnnexure;
+window.updateAnnexureTitle = updateAnnexureTitle;
+window.previewAnnexure = previewAnnexure;
+window.closeAnnexurePreviewModal = closeAnnexurePreviewModal;
+window.updateAnnexureBadges = updateAnnexureBadges;
+
 window.handleSearch = handleSearch;
 window.clearSearch = clearSearch;
 window.handleFilenameChange = handleFilenameChange;
@@ -213,6 +236,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     initIndicatorsGrid();
     renderActiveCategoryIndicators();
     updateCalculations();
+    updateAnnexureBadges();
 
     // 3. Auth check & session setup
     await checkAuthentication();

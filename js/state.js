@@ -17,6 +17,8 @@ export let state = {
     loggedInUser: null,
     aiSummary: "",
     auditData: {},
+    categoryPhotos: {},
+    annexures: [],
     useLocalStorageFallback: false
 };
 
@@ -34,6 +36,13 @@ export async function loadState() {
         state.academicYear = getDefaultAcademicYear(state.date);
     }
     
+    if (!state.categoryPhotos || typeof state.categoryPhotos !== 'object') {
+        state.categoryPhotos = {};
+    }
+    if (!Array.isArray(state.annexures)) {
+        state.annexures = [];
+    }
+
     for (const [catName, catData] of Object.entries(CATEGORIES)) {
         if (!state.auditData[catName]) {
             state.auditData[catName] = {};
@@ -50,6 +59,7 @@ export async function loadState() {
                     aiActions: "",
                     photoName: "",
                     photoData: "",
+                    photos: [],
                     reviewed: false,
                     customMultiplier: null,
                     riskSeverity: "",
@@ -65,6 +75,9 @@ export async function loadState() {
                 if (ind.riskRationale === undefined) ind.riskRationale = "";
                 if (ind.riskScoreDelta === undefined) ind.riskScoreDelta = 0;
                 if (ind.riskApplied === undefined) ind.riskApplied = false;
+                if (!Array.isArray(ind.photos)) {
+                    ind.photos = ind.photoData ? [{ name: ind.photoName || "Photo", data: ind.photoData }] : [];
+                }
             }
         }
     }
@@ -135,10 +148,11 @@ export function updateCalculations() {
         let catMax = 0;
         
         Object.entries(catData.indicators).forEach(([indName, defaultMultiplier]) => {
-            const item = state.auditData[catName]?.[indName] || { score: 3, reviewed: false, features: "", gaps: "", actions: "", photoName: "" };
+            const item = state.auditData[catName]?.[indName] || { score: 3, reviewed: false, features: "", gaps: "", actions: "", photoName: "", photos: [] };
             
             totalIndicators++;
-            if (item.reviewed || item.features || item.gaps || item.actions || item.score !== 3 || item.photoName || item.riskApplied) {
+            const hasPhotos = (Array.isArray(item.photos) && item.photos.length > 0) || (item.photoName && item.photoName.trim() !== "");
+            if (item.reviewed || item.features || item.gaps || item.actions || item.score !== 3 || hasPhotos || item.riskApplied) {
                 reviewedIndicators++;
             }
             
@@ -173,12 +187,14 @@ export function updateCalculations() {
     const ringEl = document.getElementById('sidebar-score-ring');
     if (ringEl) {
         ringEl.setAttribute('stroke-dasharray', `${finalPercent.toFixed(1)}, 100`);
-        if (finalPercent >= 90) {
+        if (finalPercent >= 86) {
             ringEl.setAttribute('stroke', '#10B981');
-        } else if (finalPercent >= 75) {
+        } else if (finalPercent >= 76) {
             ringEl.setAttribute('stroke', '#3B82F6');
-        } else if (finalPercent >= 60) {
+        } else if (finalPercent >= 66) {
             ringEl.setAttribute('stroke', '#F59E0B');
+        } else if (finalPercent >= 56) {
+            ringEl.setAttribute('stroke', '#F97316');
         } else {
             ringEl.setAttribute('stroke', '#EF4444');
         }
@@ -191,14 +207,16 @@ export function updateCalculations() {
 
     const ratingLabelEl = document.getElementById('sidebar-score-rating');
     if (ratingLabelEl) {
-        if (finalPercent >= 90) {
-            ratingLabelEl.innerText = "Outstanding";
-        } else if (finalPercent >= 75) {
-            ratingLabelEl.innerText = "Compliant";
-        } else if (finalPercent >= 60) {
+        if (finalPercent >= 86) {
+            ratingLabelEl.innerText = "Excellent";
+        } else if (finalPercent >= 76) {
+            ratingLabelEl.innerText = "Good";
+        } else if (finalPercent >= 66) {
+            ratingLabelEl.innerText = "Satisfactory";
+        } else if (finalPercent >= 56) {
             ratingLabelEl.innerText = "Needs Improvement";
         } else {
-            ratingLabelEl.innerText = "Critical Risk";
+            ratingLabelEl.innerText = "Poor";
         }
     }
 
@@ -226,6 +244,8 @@ export async function startNewAudit(force = false) {
     state.date = new Date().toISOString().split('T')[0];
     state.aiSummary = "";
     state.auditData = {};
+    state.categoryPhotos = {};
+    state.annexures = [];
     
     await loadState();
     await saveStateNow();
@@ -299,14 +319,16 @@ export function calculateCategoryScores(auditData) {
  */
 export function getComplianceTier(percentage) {
     const val = Number(percentage) || 0;
-    if (val >= 90) {
-        return { label: "Outstanding", shortLabel: "Outstnd", color: "#10B981", bgClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" };
-    } else if (val >= 75) {
-        return { label: "Good / Compliant", shortLabel: "Complnt", color: "#3B82F6", bgClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30" };
-    } else if (val >= 60) {
-        return { label: "Needs Improvement", shortLabel: "NeedImp", color: "#F59E0B", bgClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30" };
+    if (val >= 86) {
+        return { label: "Excellent", shortLabel: "Excel", color: "#10B981", bgClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" };
+    } else if (val >= 76) {
+        return { label: "Good", shortLabel: "Good", color: "#3B82F6", bgClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30" };
+    } else if (val >= 66) {
+        return { label: "Satisfactory", shortLabel: "Satisf", color: "#F59E0B", bgClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30" };
+    } else if (val >= 56) {
+        return { label: "Needs Improvement", shortLabel: "NeedImp", color: "#F97316", bgClass: "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30" };
     } else {
-        return { label: "Critical Risk", shortLabel: "CritRsk", color: "#EF4444", bgClass: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30" };
+        return { label: "Poor", shortLabel: "Poor", color: "#EF4444", bgClass: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30" };
     }
 }
 

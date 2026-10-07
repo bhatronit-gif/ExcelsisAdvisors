@@ -187,6 +187,7 @@ export function submitPDFReport() {
     const includeAISummary = document.getElementById('pdf-include-ai-summary')?.checked ?? true;
     const useAIEnhancedWriteups = document.getElementById('pdf-use-ai-writeups')?.checked ?? true;
     const includeRiskAdjustments = document.getElementById('pdf-include-risk-adjustments')?.checked ?? false;
+    const includeAnnexures = document.getElementById('pdf-include-annexures')?.checked ?? true;
     
     closePDFModal();
     
@@ -197,7 +198,8 @@ export function submitPDFReport() {
         includeHeaders,
         includeAISummary,
         useAIEnhancedWriteups,
-        includeRiskAdjustments
+        includeRiskAdjustments,
+        includeAnnexures
     });
 }
 
@@ -264,7 +266,10 @@ export function generatePDFReport(options) {
             const hasGapsText = gapsText && String(gapsText).trim() !== "";
             const hasActionsText = actText && String(actText).trim() !== "";
             const hasFeaturesText = featText && String(featText).trim() !== "";
-            const hasPhoto = item.photoName && String(item.photoName).trim() !== "";
+            const itemPhotos = (Array.isArray(item.photos) && item.photos.length > 0)
+                ? item.photos
+                : (item.photoData ? [{ name: item.photoName || "Photo Exhibit", data: item.photoData }] : []);
+            const hasPhoto = itemPhotos.length > 0 || (item.photoName && String(item.photoName).trim() !== "");
 
             const isGap = score === 1 || score === 2 || hasGapsText || hasActionsText;
             const hasModifications = item.reviewed || score !== 3 || hasFeaturesText || hasGapsText || hasActionsText || hasPhoto || isRiskMod;
@@ -283,8 +288,9 @@ export function generatePDFReport(options) {
                     features: options.reportType === 'summary' ? "" : featText,
                     gaps: gapsText,
                     actions: actText,
-                    photoName: options.includePhotos ? item.photoName : "",
-                    photoData: options.includePhotos ? item.photoData : ""
+                    photos: options.includePhotos ? itemPhotos : [],
+                    photoName: options.includePhotos ? (item.photoName || (itemPhotos[0]?.name || "")) : "",
+                    photoData: options.includePhotos ? (item.photoData || (itemPhotos[0]?.data || "")) : ""
                 });
             }
         });
@@ -309,17 +315,20 @@ export function generatePDFReport(options) {
     });
 
     const finalPercent = finalWeightedScore * 100;
-    let ratingText = "Critical Risk";
+    let ratingText = "Poor";
     let ratingColor = "text-rose-600 bg-rose-50 border-rose-200";
-    if (finalPercent >= 90) {
-        ratingText = "Outstanding";
+    if (finalPercent >= 86) {
+        ratingText = "Excellent";
         ratingColor = "text-emerald-600 bg-emerald-50 border-emerald-200";
-    } else if (finalPercent >= 75) {
-        ratingText = "Good / Compliant";
+    } else if (finalPercent >= 76) {
+        ratingText = "Good";
         ratingColor = "text-blue-600 bg-blue-50 border-blue-200";
-    } else if (finalPercent >= 60) {
-        ratingText = "Needs Improvement";
+    } else if (finalPercent >= 66) {
+        ratingText = "Satisfactory";
         ratingColor = "text-amber-600 bg-amber-50 border-amber-200";
+    } else if (finalPercent >= 56) {
+        ratingText = "Needs Improvement";
+        ratingColor = "text-orange-600 bg-orange-50 border-orange-200";
     }
 
     let detailedCategoriesHTML = "";
@@ -332,10 +341,11 @@ export function generatePDFReport(options) {
                 
                 ${Object.entries(CATEGORIES).map(([catName, catData]) => {
                     const indicatorsHTML = Object.entries(catData.indicators).map(([indName, multiplier]) => {
-                        const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "", photoData: "" };
+                        const item = state.auditData[catName]?.[indName] || { score: 3, features: "", gaps: "", actions: "", photoName: "", photoData: "", photos: [] };
                         const score = Number(item.score) || 3;
-                        const isRiskMod = !!(item.riskApplied && item.customMultiplier != null && Number(item.customMultiplier) > 0);
-                        const effectiveMult = isRiskMod ? Number(item.customMultiplier) : multiplier;
+                        const indPhotos = (Array.isArray(item.photos) && item.photos.length > 0)
+                            ? item.photos
+                            : (item.photoData ? [{ name: item.photoName || "Exhibit", data: item.photoData }] : []);
                         
                         return `
                             <div class="flex flex-col gap-2.5 print-avoid-break pb-3 border-b border-slate-100 last:border-b-0">
@@ -343,15 +353,6 @@ export function generatePDFReport(options) {
                                     <span class="text-xs font-bold text-slate-800">${indName}</span>
                                     <div class="flex items-center gap-2">
                                         ${getPDFScoreBadge(score)}
-                                        ${isRiskMod ? `
-                                            <span class="text-[10px] font-extrabold px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
-                                                ⚡ Dynamic: ${effectiveMult}x (${item.riskSeverity || 'Modified'})
-                                            </span>
-                                        ` : `
-                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                                                Weight: ${multiplier}x
-                                            </span>
-                                        `}
                                     </div>
                                 </div>
                                 
@@ -387,17 +388,24 @@ export function generatePDFReport(options) {
                                 </div>
                                 ` : ''}
                                 
-                                ${item.photoData && options.includePhotos ? `
-                                    <div class="mt-3 flex flex-col print-avoid-break bg-slate-50 border border-slate-200 rounded-xl overflow-hidden max-w-md shadow-sm ml-2">
-                                        <div class="p-3 bg-white border-b border-slate-200 flex items-center justify-center">
-                                            <img src="${item.photoData}" alt="Photographic evidence exhibit for indicator ${indName || 'compliance audit'}" class="max-w-full max-h-60 object-contain rounded-lg">
-                                        </div>
-                                        <div class="bg-slate-100 px-4 py-2 flex items-center justify-between">
-                                            <span class="font-extrabold text-[9px] uppercase text-slate-600 tracking-widest flex items-center gap-1.5">
-                                                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                                Evidence Exhibit
-                                            </span>
-                                            <span class="text-[9px] font-bold text-slate-500 font-mono">${item.photoName}</span>
+                                ${options.includePhotos && indPhotos.length > 0 ? `
+                                    <div class="mt-3 flex flex-col gap-2 print-avoid-break ml-2">
+                                        <span class="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            Photographic Evidence (${indPhotos.length} exhibit${indPhotos.length > 1 ? 's' : ''})
+                                        </span>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                            ${indPhotos.map((p, pIdx) => `
+                                                <div class="flex flex-col bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                                    <div class="p-2.5 bg-white border-b border-slate-200 flex items-center justify-center">
+                                                        <img src="${p.data}" alt="Evidence exhibit ${pIdx + 1} for ${indName}" class="max-w-full max-h-52 object-contain rounded-lg">
+                                                    </div>
+                                                    <div class="bg-slate-100 px-3 py-1.5 flex items-center justify-between text-[9px]">
+                                                        <span class="font-extrabold uppercase text-slate-600 tracking-wider">Exhibit ${pIdx + 1}</span>
+                                                        <span class="font-mono font-bold text-slate-500 truncate max-w-[140px]">${p.name || 'Photo'}</span>
+                                                    </div>
+                                                </div>
+                                            `).join('')}
                                         </div>
                                     </div>
                                 ` : ''}
@@ -405,9 +413,36 @@ export function generatePDFReport(options) {
                         `;
                     }).join('');
                     
+                    const catPhotos = (options.includePhotos && state.categoryPhotos && Array.isArray(state.categoryPhotos[catName]))
+                        ? state.categoryPhotos[catName]
+                        : [];
+
                     return `
                         <div class="flex flex-col gap-4 mb-6">
                             <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 print-avoid-break-after">${catName}</h4>
+                            
+                            ${catPhotos.length > 0 ? `
+                                <div class="flex flex-col gap-2 print-avoid-break ml-2 p-3 bg-slate-50/70 border border-slate-200 rounded-xl mb-2">
+                                    <span class="text-[9px] font-extrabold text-brand-700 uppercase tracking-widest flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        Category Photographic Evidence Exhibits (${catPhotos.length} attached)
+                                    </span>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                        ${catPhotos.map((cp, cpIdx) => `
+                                            <div class="flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                                <div class="p-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-center">
+                                                    <img src="${cp.data}" alt="Category exhibit ${cpIdx + 1} for ${catName}" class="max-w-full max-h-52 object-contain rounded-lg">
+                                                </div>
+                                                <div class="bg-slate-100 px-3 py-1.5 flex items-center justify-between text-[9px]">
+                                                    <span class="font-extrabold uppercase text-brand-700 tracking-wider">Category Exhibit ${cpIdx + 1}</span>
+                                                    <span class="font-mono font-bold text-slate-500 truncate max-w-[140px]">${cp.name || 'Photo'}</span>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
                             <div class="flex flex-col gap-4 pl-4 border-l-2 border-slate-200">
                                 ${indicatorsHTML}
                             </div>
@@ -416,12 +451,6 @@ export function generatePDFReport(options) {
                 }).join('')}
             </div>
         `;
-    }
-
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-        showToast("Popup blocked! Please allow popups to open/print reports.", "error");
-        return;
     }
 
     const headerText = options.includeHeaders && options.confidentiality !== 'NONE' ? options.confidentiality : "";
@@ -599,7 +628,6 @@ export function generatePDFReport(options) {
                                             <span class="text-xs font-bold text-slate-900">${item.indName}</span>
                                             <div class="flex items-center gap-2">
                                                 ${getPDFScoreBadge(item.score)}
-                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">Weight: ${item.multiplier}x</span>
                                             </div>
                                         </div>
                                         
@@ -633,17 +661,24 @@ export function generatePDFReport(options) {
                                             ` : ''}
                                         </div>
                                         
-                                        ${item.photoData ? `
-                                            <div class="mt-3 flex flex-col print-avoid-break bg-slate-50 border border-slate-200 rounded-xl overflow-hidden max-w-md shadow-sm ml-2 font-sans">
-                                                <div class="p-3 bg-white border-b border-slate-200 flex items-center justify-center">
-                                                    <img src="${item.photoData}" alt="Photographic evidence exhibit for indicator ${item.indName || 'compliance audit'}" class="max-w-full max-h-60 object-contain rounded-lg">
-                                                </div>
-                                                <div class="bg-slate-100 px-4 py-2 flex items-center justify-between">
-                                                    <span class="font-extrabold text-[9px] uppercase text-slate-600 tracking-widest flex items-center gap-1.5">
-                                                        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                                        Evidence Exhibit
-                                                    </span>
-                                                    <span class="text-[9px] font-bold text-slate-500 font-mono">${item.photoName}</span>
+                                        ${((item.photos && item.photos.length > 0) || item.photoData) ? `
+                                            <div class="mt-3 flex flex-col gap-2 print-avoid-break ml-2 font-sans">
+                                                <span class="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                                                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                    Photographic Evidence (${(item.photos && item.photos.length > 0 ? item.photos : [{ name: item.photoName, data: item.photoData }]).length} exhibit${(item.photos && item.photos.length > 0 ? item.photos : [{ name: item.photoName, data: item.photoData }]).length > 1 ? 's' : ''})
+                                                </span>
+                                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                                    ${(item.photos && item.photos.length > 0 ? item.photos : [{ name: item.photoName, data: item.photoData }]).map((p, pIdx) => `
+                                                        <div class="flex flex-col bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                                            <div class="p-2.5 bg-white border-b border-slate-200 flex items-center justify-center">
+                                                                <img src="${p.data}" alt="Evidence exhibit ${pIdx + 1} for ${item.indName}" class="max-w-full max-h-52 object-contain rounded-lg">
+                                                            </div>
+                                                            <div class="bg-slate-100 px-3 py-1.5 flex items-center justify-between text-[9px]">
+                                                                <span class="font-extrabold uppercase text-slate-600 tracking-wider">Exhibit ${pIdx + 1}</span>
+                                                                <span class="font-mono font-bold text-slate-500 truncate max-w-[140px]">${p.name || 'Photo'}</span>
+                                                            </div>
+                                                        </div>
+                                                    `).join('')}
                                                 </div>
                                             </div>
                                         ` : ''}
@@ -670,10 +705,108 @@ export function generatePDFReport(options) {
                 </div>
             </div>
 
+            <!-- Documentary Evidence & Compliance Annexures -->
+            ${(options.includeAnnexures !== false && state.annexures && state.annexures.length > 0) ? `
+                <!-- Annexure Index / Table of Annexures -->
+                <div class="flex flex-col gap-6 mt-16 print-page-break">
+                    <div class="flex justify-between items-center border-b-2 border-brand-600 pb-3">
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-black text-brand-600 uppercase tracking-widest">Documentary Evidence &amp; Statutory Compliance</span>
+                            <h2 class="text-2xl font-black text-slate-900 tracking-tight font-serif">Table of Statutory Annexures</h2>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            ${state.annexures.length} Document Exhibit(s) Attached
+                        </span>
+                    </div>
+                    
+                    <p class="text-xs text-slate-600 leading-relaxed font-medium">
+                        The following certified documents, regulatory filings, and physical audit records are appended to this inspection report as official documentary annexures for <strong>${state.school}</strong>:
+                    </p>
+
+                    <table class="w-full text-xs text-left border-collapse border border-slate-200 mt-2">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 uppercase border-b border-slate-200 text-[10px]">
+                                <th class="p-3 font-extrabold w-28">Annexure Ref</th>
+                                <th class="p-3 font-extrabold">Document Title</th>
+                                <th class="p-3 font-extrabold">Original File Reference</th>
+                                <th class="p-3 font-extrabold text-center w-20">Pages</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${state.annexures.map((ann, idx) => {
+                                const letter = String.fromCharCode(65 + (idx % 26)) + (idx >= 26 ? Math.floor(idx / 26) : '');
+                                return `
+                                    <tr class="border-b border-slate-100 hover:bg-slate-50/50">
+                                        <td class="p-3 font-bold text-brand-600">Annexure ${letter}</td>
+                                        <td class="p-3 font-bold text-slate-800">${ann.title || 'Untitled Annexure'}</td>
+                                        <td class="p-3 font-mono text-slate-500 text-[11px]">${ann.fileName || 'document.pdf'}</td>
+                                        <td class="p-3 text-center font-bold text-slate-700">${ann.pageCount || (ann.renderedPages ? ann.renderedPages.length : 1)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Rendered Annexure Pages -->
+                ${state.annexures.map((ann, idx) => {
+                    const letter = String.fromCharCode(65 + (idx % 26)) + (idx >= 26 ? Math.floor(idx / 26) : '');
+                    const pages = (ann.renderedPages && ann.renderedPages.length > 0) ? ann.renderedPages : [];
+                    
+                    if (pages.length === 0 && ann.pdfData) {
+                        return `
+                            <div class="flex flex-col gap-4 mt-12 print-page-break">
+                                <div class="flex justify-between items-center border-b border-slate-300 pb-2">
+                                    <span class="font-extrabold text-brand-700 text-sm uppercase tracking-wider">
+                                        Annexure ${letter}: ${ann.title}
+                                    </span>
+                                    <span class="text-xs text-slate-500 font-mono">${ann.fileName}</span>
+                                </div>
+                                <div class="p-6 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                                    <p class="text-xs text-slate-700 font-semibold">Document Attached: ${ann.fileName}</p>
+                                    <p class="text-[11px] text-slate-500 mt-1">Certified PDF copy filed under official audit records.</p>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    return pages.map((pageDataUrl, pageIdx) => `
+                        <div class="flex flex-col gap-3 mt-10 print-page-break">
+                            <div class="flex justify-between items-center border-b border-slate-300 pb-2 text-xs">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-black text-brand-700 uppercase tracking-wider">
+                                        Annexure ${letter}
+                                    </span>
+                                    <span class="text-slate-400">&bull;</span>
+                                    <span class="font-bold text-slate-800">${ann.title}</span>
+                                </div>
+                                <span class="text-[10px] font-mono font-bold text-slate-500">
+                                    Page ${pageIdx + 1} of ${pages.length} (${ann.fileName})
+                                </span>
+                            </div>
+                            
+                            <div class="flex justify-center items-center bg-white border border-slate-200 rounded-lg p-2 overflow-hidden shadow-sm">
+                                <img src="${pageDataUrl}" alt="${ann.title} - Page ${pageIdx + 1}" class="w-full h-auto object-contain max-h-[90vh]">
+                            </div>
+                        </div>
+                    `).join('');
+                }).join('')}
+            ` : ''}
+
             ${buildPrintTailScriptHTML()}
         </body>
         </html>
     `;
+
+    if (options.returnHtmlOnly) {
+        return reportHTML;
+    }
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+        showToast("Popup blocked! Please allow popups to open/print reports.", "error");
+        return;
+    }
 
     printWindow.document.open();
     printWindow.document.write(reportHTML);
@@ -874,27 +1007,63 @@ export function generateAuditLegend() {
                         </thead>
                         <tbody>
                             <tr class="border-b border-slate-100">
-                                <td class="p-3 font-bold text-slate-900">90.00% – 100.00%</td>
-                                <td class="p-3 text-center font-bold text-emerald-700"><span class="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200">Outstanding</span></td>
-                                <td class="p-3 text-slate-600 font-medium">Exemplary compliance. Zero major safety gaps. Maintain standards and conduct annual check-ups.</td>
+                                <td class="p-3 font-bold text-slate-900">86.00% – 100.00%</td>
+                                <td class="p-3 text-center font-bold text-emerald-700"><span class="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200">Excellent</span></td>
+                                <td class="p-3 text-slate-600 font-medium">Exemplary compliance and safety culture. High operational readiness. Maintain regular check-ups.</td>
                             </tr>
                             <tr class="border-b border-slate-100">
-                                <td class="p-3 font-bold text-slate-900">75.00% – 89.99%</td>
-                                <td class="p-3 text-center font-bold text-blue-700"><span class="px-2 py-0.5 rounded bg-blue-50 border border-blue-200">Good / Compliant</span></td>
-                                <td class="p-3 text-slate-600 font-medium">Safe operations. Minor gaps identified requiring scheduling for routine maintenance or record updates.</td>
+                                <td class="p-3 font-bold text-slate-900">76.00% – 85.99%</td>
+                                <td class="p-3 text-center font-bold text-blue-700"><span class="px-2 py-0.5 rounded bg-blue-50 border border-blue-200">Good</span></td>
+                                <td class="p-3 text-slate-600 font-medium">Safe and compliant operations. Minor operational gaps scheduled for routine maintenance or documentation updates.</td>
                             </tr>
                             <tr class="border-b border-slate-100">
-                                <td class="p-3 font-bold text-slate-900">60.00% – 74.99%</td>
-                                <td class="p-3 text-center font-bold text-amber-700"><span class="px-2 py-0.5 rounded bg-amber-50 border border-amber-200">Needs Improvement</span></td>
-                                <td class="p-3 text-slate-600 font-medium">Significant compliance gaps. Corrective actions required within 30 days to mitigate risk.</td>
+                                <td class="p-3 font-bold text-slate-900">66.00% – 75.99%</td>
+                                <td class="p-3 text-center font-bold text-amber-700"><span class="px-2 py-0.5 rounded bg-amber-50 border border-amber-200">Satisfactory</span></td>
+                                <td class="p-3 text-slate-600 font-medium">Adequate baseline safety controls in place. Noticeable operational vulnerabilities requiring structured remediation.</td>
                             </tr>
                             <tr class="border-b border-slate-100">
-                                <td class="p-3 font-bold text-rose-700 font-black">Below 60.00%</td>
-                                <td class="p-3 text-center font-bold text-rose-700"><span class="px-2 py-0.5 rounded bg-rose-50 border border-rose-200">Critical Risk</span></td>
-                                <td class="p-3 text-slate-700 font-semibold">Severe safety or regulatory violations. Requires immediate executive intervention and emergency action.</td>
+                                <td class="p-3 font-bold text-slate-900">56.00% – 65.99%</td>
+                                <td class="p-3 text-center font-bold text-orange-700"><span class="px-2 py-0.5 rounded bg-orange-50 border border-orange-200">Needs Improvement</span></td>
+                                <td class="p-3 text-slate-600 font-medium">Significant compliance gaps identified. Formal corrective action plan required within 30 days to mitigate risk.</td>
+                            </tr>
+                            <tr class="border-b border-slate-100">
+                                <td class="p-3 font-bold text-rose-700 font-black">Below 56.00% (0.00% – 55.99%)</td>
+                                <td class="p-3 text-center font-bold text-rose-700"><span class="px-2 py-0.5 rounded bg-rose-50 border border-rose-200">Poor</span></td>
+                                <td class="p-3 text-slate-700 font-semibold">Severe safety or regulatory non-compliance. Immediate campus management intervention and urgent remediation required.</td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Section 6: Photographic Exhibits & Statutory PDF Annexures -->
+                <div class="flex flex-col gap-4 print-avoid-break mt-6 pb-12">
+                    <h2 class="text-xl font-bold text-slate-900 font-serif border-b-2 border-slate-100 pb-2 flex items-center gap-2">
+                        <span class="text-brand-500 font-black">6.</span>
+                        Multi-Photo Exhibits &amp; Statutory PDF Annexures
+                    </h2>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        To fulfill strict legal compliance and institutional accreditation mandates, audit files support rich multi-media exhibits and official statutory document annexures:
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col gap-1.5">
+                            <span class="font-extrabold text-[10px] uppercase text-brand-700 tracking-wider flex items-center gap-1.5">
+                                📸 Multi-Angle Photographic Evidence
+                            </span>
+                            <p class="text-slate-700 font-medium leading-relaxed text-xs">
+                                Lead auditors can attach multiple photographic exhibits per compliance indicator and macro category. Images are automatically compressed for resilient local IndexedDB storage and rendered in print-optimized multi-column exhibit galleries.
+                            </p>
+                        </div>
+
+                        <div class="bg-emerald-50/70 border border-emerald-200 p-4 rounded-xl shadow-sm flex flex-col gap-1.5">
+                            <span class="font-extrabold text-[10px] uppercase text-emerald-900 tracking-wider flex items-center gap-1.5">
+                                📎 Official Documentary PDF Annexures
+                            </span>
+                            <p class="text-slate-700 font-medium leading-relaxed text-xs">
+                                External statutory certificates (Fire Safety NOC, Structural Fitness, Laboratory Water Potability Reports, Transport ARD AMCs) are attached as dedicated PDF Annexures. These are cataloged in an executive Table of Annexures and compiled into full-page document exhibits in the generated board report.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1009,8 +1178,8 @@ export function generateComparativePDFReport(audits = null, baselineIdx = null, 
                         ${targetAudits.map((a, idx) => {
                             const isBase = idx === baselineIndex;
                             const scorePct = (a.score * 100).toFixed(2);
-                            const tier = a.score >= 0.90 ? "Outstanding" : a.score >= 0.75 ? "Compliant" : a.score >= 0.60 ? "Needs Imp." : "Critical Risk";
-                            const tierColor = a.score >= 0.90 ? "border-emerald-600 text-emerald-800" : a.score >= 0.75 ? "border-blue-600 text-blue-800" : a.score >= 0.60 ? "border-amber-600 text-amber-800" : "border-rose-600 text-rose-800";
+                            const tier = a.score >= 0.86 ? "Excellent" : a.score >= 0.76 ? "Good" : a.score >= 0.66 ? "Satisfactory" : a.score >= 0.56 ? "Needs Imp." : "Poor";
+                            const tierColor = a.score >= 0.86 ? "border-emerald-600 text-emerald-800" : a.score >= 0.76 ? "border-blue-600 text-blue-800" : a.score >= 0.66 ? "border-amber-600 text-amber-800" : a.score >= 0.56 ? "border-orange-600 text-orange-800" : "border-rose-600 text-rose-800";
                             const deltaVsBase = (a.score * 100) - (baselineAudit.score * 100);
                             const deltaVsCohort = (a.score * 100) - cohortAvg;
 

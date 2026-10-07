@@ -8,8 +8,9 @@ import { state, saveState, calculateScore, updateCalculations, startNewAudit } f
 import { dbGet, dbGetAll, saveLocalDraftToDB, deleteLocalDraftFromDB } from './storage.js';
 import { showToast, renderCategoryNavigation, renderActiveCategoryIndicators, initIndicatorsGrid } from './ui.js';
 import { runFullAuditAIPipeline } from './ai.js';
+import { updateAnnexureBadges } from './annexures.js';
 
-export function exportToCSV() {
+export function exportToCSV(triggerDownload = true) {
     saveState.flush();
     const headers = [
         "File Name",
@@ -73,7 +74,7 @@ export function exportToCSV() {
                 item.aiGaps || "",
                 item.actions || "",
                 item.aiActions || "",
-                item.photoName || ""
+                (Array.isArray(item.photos) && item.photos.length > 0) ? item.photos.map(p => p.name).join("; ") : (item.photoName || "")
             ];
             
             csvRows.push(row.map(escapeCSV).join(","));
@@ -81,88 +82,127 @@ export function exportToCSV() {
     });
     
     const csvContent = "\ufeff" + csvRows.join("\r\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    
-    const formattedName = filename.replace(/\s+/g, '_');
-    const fileName = `Excelsis_Audit_${formattedName}_${date}.csv`;
-    
-    link.setAttribute("href", url);
-    link.setAttribute("download", fileName);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    if (triggerDownload && typeof document !== 'undefined' && typeof Blob !== 'undefined' && typeof URL !== 'undefined') {
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        
+        const formattedName = filename.replace(/\s+/g, '_');
+        const fileName = `Excelsis_Audit_${formattedName}_${date}.csv`;
+        
+        link.setAttribute("href", url);
+        link.setAttribute("download", fileName);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        if (typeof link.click === 'function') link.click();
+        document.body.removeChild(link);
+        
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+    }
+    return csvContent;
 }
 
-export function exportToJSON() {
+export function exportToJSON(triggerDownload = true) {
     saveState.flush();
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+    const payload = {
         version: "2.0",
         filename: state.filename,
         school: state.school,
         academicYear: state.academicYear || getDefaultAcademicYear(state.date),
         date: state.date,
         aiSummary: state.aiSummary || "",
-        auditData: state.auditData
-    }, null, 2));
+        auditData: state.auditData,
+        categoryPhotos: state.categoryPhotos || {},
+        annexures: state.annexures || []
+    };
+    const jsonStr = JSON.stringify(payload, null, 2);
     
-    const link = document.createElement('a');
-    link.setAttribute("href", dataStr);
-    const cleanName = state.filename.replace(/\s+/g, '_');
-    link.setAttribute("download", `Excelsis_Backup_${cleanName}_${state.date}.json`);
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast("JSON Backup downloaded successfully!");
+    if (triggerDownload && typeof document !== 'undefined') {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonStr);
+        const link = document.createElement('a');
+        link.setAttribute("href", dataStr);
+        const cleanName = state.filename.replace(/\s+/g, '_');
+        link.setAttribute("download", `Excelsis_Backup_${cleanName}_${state.date}.json`);
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        if (typeof link.click === 'function') link.click();
+        document.body.removeChild(link);
+        showToast("JSON Backup downloaded successfully!");
+    }
+    return jsonStr;
 }
 
 export function importFromJSON(input) {
-    if (input.files && input.files[0]) {
+    const processParsed = async (imported) => {
+        if (!imported || !imported.filename || !imported.school || !imported.auditData) {
+            showToast("Invalid JSON backup structure.", "error");
+            return false;
+        }
+        
+        state.filename = imported.filename;
+        state.school = imported.school;
+        state.academicYear = imported.academicYear || imported.academic_year || getDefaultAcademicYear(imported.date);
+        if (imported.date) state.date = imported.date;
+        state.aiSummary = imported.aiSummary || "";
+        state.auditData = imported.auditData;
+        state.categoryPhotos = imported.categoryPhotos || {};
+        state.annexures = imported.annexures || [];
+        
+        // Normalize ind.photos on imported auditData
+        Object.values(state.auditData).forEach(cat => {
+            if (cat && typeof cat === 'object') {
+                Object.values(cat).forEach(ind => {
+                    if (ind && typeof ind === 'object' && !Array.isArray(ind.photos)) {
+                        ind.photos = ind.photoData ? [{ name: ind.photoName || "Photo", data: ind.photoData }] : [];
+                    }
+                });
+            }
+        });
+        
+        // Sync UI inputs
+        const fileInput = document.getElementById('meta-filename');
+        if (fileInput) fileInput.value = state.filename;
+        const schoolSelect = document.getElementById('meta-school');
+        if (schoolSelect) schoolSelect.value = state.school;
+        const yearSelect = document.getElementById('meta-academic-year');
+        if (yearSelect) yearSelect.value = state.academicYear;
+        const dateInput = document.getElementById('meta-date');
+        if (dateInput) dateInput.value = state.date;
+        
+        saveState.flush();
+        await saveState();
+        try {
+            if (typeof fetchHistory === 'function') await fetchHistory();
+        } catch (_) {}
+        updateAnnexureBadges();
+        
+        initIndicatorsGrid();
+        renderCategoryNavigation();
+        renderActiveCategoryIndicators();
+        updateCalculations();
+        
+        showToast(`Successfully loaded draft file: "${state.filename}"`);
+        return true;
+    };
+
+    if (typeof input === 'string') {
+        try {
+            return processParsed(JSON.parse(input));
+        } catch (err) {
+            showToast("Failed to parse JSON file.", "error");
+            return Promise.resolve(false);
+        }
+    } else if (input && typeof input === 'object' && !input.files) {
+        return processParsed(input);
+    } else if (input && input.files && input.files[0]) {
         const file = input.files[0];
         const reader = new FileReader();
         
         reader.onload = async function(e) {
             try {
                 const imported = JSON.parse(e.target.result);
-                
-                if (!imported.filename || !imported.school || !imported.auditData) {
-                    showToast("Invalid JSON backup structure.", "error");
-                    return;
-                }
-                
-                state.filename = imported.filename;
-                state.school = imported.school;
-                state.academicYear = imported.academicYear || imported.academic_year || getDefaultAcademicYear(imported.date);
-                if (imported.date) state.date = imported.date;
-                state.aiSummary = imported.aiSummary || "";
-                state.auditData = imported.auditData;
-                
-                // Sync UI inputs
-                const fileInput = document.getElementById('meta-filename');
-                if (fileInput) fileInput.value = state.filename;
-                const schoolSelect = document.getElementById('meta-school');
-                if (schoolSelect) schoolSelect.value = state.school;
-                const yearSelect = document.getElementById('meta-academic-year');
-                if (yearSelect) yearSelect.value = state.academicYear;
-                const dateInput = document.getElementById('meta-date');
-                if (dateInput) dateInput.value = state.date;
-                
-                saveState.flush();
-                await saveState();
-                await fetchHistory();
-                
-                initIndicatorsGrid();
-                renderCategoryNavigation();
-                renderActiveCategoryIndicators();
-                updateCalculations();
-                
-                showToast(`Successfully loaded draft file: "${state.filename}"`);
+                await processParsed(imported);
             } catch (err) {
                 showToast("Failed to parse JSON file.", "error");
             }
@@ -617,6 +657,21 @@ export async function loadAuditFromDatabaseForAuditor(filename, auditor) {
     state.auditor = auditor;
     state.aiSummary = data.ai_summary || "";
     state.auditData = data.audit_data;
+    state.categoryPhotos = data.category_photos || data.categoryPhotos || {};
+    state.annexures = data.annexures || [];
+    
+    // Normalize ind.photos on restored auditData
+    if (state.auditData) {
+        Object.values(state.auditData).forEach(cat => {
+            if (cat && typeof cat === 'object') {
+                Object.values(cat).forEach(ind => {
+                    if (ind && typeof ind === 'object' && !Array.isArray(ind.photos)) {
+                        ind.photos = ind.photoData ? [{ name: ind.photoName || "Photo", data: ind.photoData }] : [];
+                    }
+                });
+            }
+        });
+    }
     
     // Sync UI inputs
     const fileInput = document.getElementById('meta-filename');
@@ -631,6 +686,7 @@ export async function loadAuditFromDatabaseForAuditor(filename, auditor) {
     if (activeAuditorLabel) activeAuditorLabel.innerHTML = auditor;
     
     await saveState();
+    updateAnnexureBadges();
     initIndicatorsGrid();
     renderCategoryNavigation();
     renderActiveCategoryIndicators();

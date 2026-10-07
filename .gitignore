@@ -1,0 +1,15 @@
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Environment & Python artifacts
+__pycache__/
+*.pyc
+.python-version
+
+# Editor / IDE configuration
+.vscode/
+.idea/
+
+# Agent / Build cache
+.agents/

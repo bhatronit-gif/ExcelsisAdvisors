@@ -88,7 +88,7 @@ export function initIndexedDB() {
 }
 
 export function dbGet(storeName, key) {
-    if (useLocalStorageFallback) {
+    if (useLocalStorageFallback || typeof window === 'undefined' || !window.indexedDB) {
         const item = localStorage.getItem(storeName === "active_state" ? key : `excelsis_draft_${key}`);
         return Promise.resolve(item ? JSON.parse(item) : null);
     }
@@ -103,7 +103,7 @@ export function dbGet(storeName, key) {
 }
 
 export function dbSet(storeName, key, value) {
-    if (useLocalStorageFallback) {
+    if (useLocalStorageFallback || typeof window === 'undefined' || !window.indexedDB) {
         localStorage.setItem(storeName === "active_state" ? key : `excelsis_draft_${key}`, JSON.stringify(value));
         return Promise.resolve();
     }
@@ -118,7 +118,7 @@ export function dbSet(storeName, key, value) {
 }
 
 export function dbDelete(storeName, key) {
-    if (useLocalStorageFallback) {
+    if (useLocalStorageFallback || typeof window === 'undefined' || !window.indexedDB) {
         localStorage.removeItem(storeName === "active_state" ? key : `excelsis_draft_${key}`);
         return Promise.resolve();
     }
@@ -214,6 +214,8 @@ export async function saveLocalDraftToDB(filename, auditor, data, currentScore) 
         score: currentScore,
         ai_summary: data.aiSummary || "",
         audit_data: data.auditData,
+        category_photos: data.categoryPhotos || {},
+        annexures: data.annexures || [],
         last_updated: new Date().toISOString()
     };
     await dbSet("drafts", key, draft);
